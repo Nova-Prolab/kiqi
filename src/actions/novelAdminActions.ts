@@ -60,7 +60,12 @@ export async function createNovelAction(
     return { message: "No se pudo generar un ID para la novela a partir del título.", success: false };
   }
 
-  const tagsArray = data.tags ? data.tags.split(',').map(tag => tag.trim()).filter(tag => tag) : undefined;
+  // Filter out "destacado" tag (case-insensitive)
+  const tagsArray = data.tags 
+    ? data.tags.split(',')
+        .map(tag => tag.trim())
+        .filter(tag => tag && tag.toLowerCase() !== 'destacado') 
+    : undefined;
 
   const infoJson: InfoJson = {
     titulo: data.title,
@@ -138,7 +143,7 @@ export async function saveChapterAction(
     };
   }
 
-  const { novelId, chapterNumber, chapterContent } = validatedFields.data;
+  const { novelId, chapterNumber, chapterTitle, chapterContent } = validatedFields.data;
   // chapterTitle is also in validatedFields.data but not directly used for filename or basic HTML structure
 
   // Convert plain text content to simple HTML: wrap each non-empty line in <p> tags
@@ -155,13 +160,20 @@ export async function saveChapterAction(
     }
   }
 
+  // Construct the chapter title for HTML if provided
+  let finalHtmlContent = htmlContent;
+  if (chapterTitle && chapterTitle.trim() !== '') {
+    finalHtmlContent = `<h1>${chapterTitle.trim()}</h1>\n${htmlContent}`;
+  }
+
+
   const chapterFilename = `chapter-${chapterNumber}.html`;
   const filePathInRepo = `${novelId}/${chapterFilename}`;
   const commitMessage = `feat: Add/Update chapter ${chapterNumber} for ${novelId}`;
 
   try {
     console.log(`[ChapterSaveAction] Attempting to save chapter: ${filePathInRepo}`);
-    await createFileInRepo(filePathInRepo, htmlContent, commitMessage);
+    await createFileInRepo(filePathInRepo, finalHtmlContent, commitMessage);
 
     revalidatePath(`/novels/${novelId}`);
     revalidatePath(`/novels/${novelId}/chapters/chapter-${chapterNumber}`); // Revalidate specific chapter page
@@ -180,3 +192,6 @@ export async function saveChapterAction(
     };
   }
 }
+
+
+    
