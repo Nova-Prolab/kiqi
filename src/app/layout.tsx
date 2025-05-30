@@ -1,6 +1,7 @@
 
 import type { Metadata } from 'next';
-import { GeistSans, GeistMono } from 'geist/font';
+import { GeistSans } from 'geist/font/sans';
+import { GeistMono } from 'geist/font/mono';
 import { 
   Lora, 
   Merriweather, 
@@ -11,27 +12,20 @@ import {
   Open_Sans,
   Lato,
   Roboto,
-  Source_Sans_Pro,
+  Source_Sans_3,
   Inter,
   Bitter
-} from 'next/font/google';
+} from 'next/font/google'; // Google Fonts
 import './globals.css';
 import { ThemeProvider } from '@/components/providers/theme-provider';
 import { ReaderSettingsProvider } from '@/contexts/ReaderSettingsContext';
 import { Toaster } from '@/components/ui/toaster';
 import AppHeader from '@/components/layout/AppHeader';
 
-const geistSans = GeistSans({
-  variable: '--font-geist-sans',
-  subsets: ['latin'],
-});
+// Geist fonts are used directly from their import, no need to call them as functions.
+// Their .variable property will provide the CSS variable string.
 
-const geistMono = GeistMono({
-  variable: '--font-geist-mono',
-  subsets: ['latin'],
-});
-
-// Reader Font Options
+// Reader Font Options (from Google Fonts)
 const lora = Lora({ subsets: ['latin'], variable: '--font-lora', display: 'swap', weight: ['400', '700'] });
 const merriweather = Merriweather({ subsets: ['latin'], variable: '--font-merriweather', display: 'swap', weight: ['400', '700'] });
 const notoSerif = Noto_Serif({ subsets: ['latin'], variable: '--font-noto-serif', display: 'swap', weight: ['400', '700'] });
@@ -43,7 +37,7 @@ const bitter = Bitter({ subsets: ['latin'], variable: '--font-bitter', display: 
 const openSans = Open_Sans({ subsets: ['latin'], variable: '--font-open-sans', display: 'swap', weight: ['400', '700'] });
 const lato = Lato({ subsets: ['latin'], variable: '--font-lato', display: 'swap', weight: ['400', '700'] });
 const roboto = Roboto({ subsets: ['latin'], variable: '--font-roboto', display: 'swap', weight: ['400', '500', '700'] });
-const sourceSansPro = Source_Sans_Pro({ subsets: ['latin'], variable: '--font-source-sans-pro', display: 'swap', weight: ['400', '700'] });
+const sourceSans3 = Source_Sans_3({ subsets: ['latin'], variable: '--font-source-sans-pro', display: 'swap', weight: ['400', '700'] });
 const inter = Inter({ subsets: ['latin'], variable: '--font-inter', display: 'swap', weight: ['400', '500', '700'] });
 
 
@@ -61,8 +55,8 @@ export default function RootLayout({
     <html lang="en" suppressHydrationWarning>
       <body 
         className={`
-          ${geistSans.variable} 
-          ${geistMono.variable} 
+          ${GeistSans.variable} 
+          ${GeistMono.variable} 
           ${lora.variable}
           ${merriweather.variable}
           ${notoSerif.variable}
@@ -73,7 +67,7 @@ export default function RootLayout({
           ${openSans.variable}
           ${lato.variable}
           ${roboto.variable}
-          ${sourceSansPro.variable}
+          ${sourceSans3.variable} 
           ${inter.variable}
           antialiased flex flex-col min-h-screen
         `}
