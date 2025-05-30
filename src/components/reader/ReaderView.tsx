@@ -19,7 +19,7 @@ interface ReaderViewProps {
   currentChapter: Chapter;
 }
 
-const DOUBLE_CLICK_REVEAL_TIMEOUT = 150; // ms
+const DOUBLE_CLICK_REVEAL_TIMEOUT = 2500; // ms - Increased from 150ms
 
 export default function ReaderView({ novel, currentChapter }: ReaderViewProps) {
   const { 
@@ -181,15 +181,15 @@ export default function ReaderView({ novel, currentChapter }: ReaderViewProps) {
 
   if (!isMounted) {
     return (
-      <div className="flex flex-col h-[calc(100vh-8rem)]">
-        <div className="p-4 border-b bg-muted animate-pulse h-20"></div>
+      <div className="flex flex-col h-[calc(100vh-var(--header-height,8rem))]">
+        <div className="p-4 border-b bg-muted animate-pulse h-20 rounded-t-lg"></div>
         <div className="p-2 bg-muted/80 animate-pulse h-14"></div>
         <div className="flex-grow bg-muted/50 animate-pulse p-6">
           <div className="h-16 bg-muted rounded mb-4"></div>
           <div className="h-8 bg-muted rounded mb-2 w-3/4"></div>
           <div className="h-8 bg-muted rounded mb-2 w-1/2"></div>
         </div>
-        <div className="p-4 border-t bg-muted animate-pulse h-16"></div>
+        <div className="p-4 border-t bg-muted animate-pulse h-16 rounded-b-lg"></div>
       </div>
     );
   }
@@ -238,7 +238,7 @@ export default function ReaderView({ novel, currentChapter }: ReaderViewProps) {
           dangerouslySetInnerHTML={chapterContentToDisplay}
         />
         
-        <Card className={`mx-auto max-w-4xl my-6 ${isImmersive ? 'bg-transparent border-none shadow-none' : 'shadow rounded-lg border'}`}>
+        <Card className={`mx-auto max-w-4xl my-6 ${isImmersive ? 'bg-transparent border-none shadow-none text-muted-foreground' : 'shadow rounded-lg border'}`}>
           <nav className="p-4 flex justify-between items-center">
             {prevChapter ? (
               <Button variant="outline" asChild>
