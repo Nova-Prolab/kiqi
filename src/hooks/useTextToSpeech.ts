@@ -12,12 +12,10 @@ export function useTextToSpeech() {
   useEffect(() => {
     if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
       setIsSupported(true);
-      // Ensure any speech from a previous page load or state is stopped.
       if (window.speechSynthesis.speaking || window.speechSynthesis.paused) {
         window.speechSynthesis.cancel();
       }
 
-      // Diagnostic: Log available voices and listen for changes
       const logVoices = () => {
         const voices = window.speechSynthesis.getVoices();
         if (voices.length === 0) {
@@ -27,17 +25,20 @@ export function useTextToSpeech() {
         }
       };
       
-      logVoices(); // Log voices on initial load
-      window.speechSynthesis.onvoiceschanged = logVoices; // Log voices if they change
+      // Voices might not be loaded immediately.
+      if (window.speechSynthesis.getVoices().length === 0) {
+        window.speechSynthesis.onvoiceschanged = logVoices;
+      } else {
+        logVoices();
+      }
 
     } else {
       setIsSupported(false);
     }
 
-    // Cleanup on unmount
     return () => {
       if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
-        window.speechSynthesis.onvoiceschanged = null; // Clean up event listener
+        window.speechSynthesis.onvoiceschanged = null;
         if (speechSynthesis.speaking || speechSynthesis.paused) {
           speechSynthesis.cancel();
         }
@@ -46,9 +47,8 @@ export function useTextToSpeech() {
   }, []);
 
   const handleError = useCallback((event: Event) => {
-    // Explicitly cancel any synthesis attempt on error
     if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
-      speechSynthesis.cancel();
+      speechSynthesis.cancel(); // Ensure any ongoing synthesis is stopped
     }
 
     const errorEvent = event as SpeechSynthesisErrorEvent;
@@ -68,8 +68,6 @@ export function useTextToSpeech() {
 
   useEffect(() => {
     if (!isSupported || !utterance) {
-      // If utterance is explicitly cleared (e.g., by stop() or error), reset speaking states.
-      // This check also handles the initial state before any utterance is set.
       if (!utterance) { 
         setIsSpeaking(false);
         setIsPaused(false);
@@ -84,10 +82,9 @@ export function useTextToSpeech() {
     };
     
     utterance.onend = handleEnd;
-    utterance.onerror = handleError; // Use the memoized handleError
+    utterance.onerror = handleError;
     
     return () => {
-      // Cleanup event listeners from the utterance
       utterance.onend = null;
       utterance.onerror = null;
     };
@@ -100,31 +97,39 @@ export function useTextToSpeech() {
         return;
     }
 
-    // Cancel any ongoing or paused speech before starting anew.
     if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
       if (speechSynthesis.speaking || speechSynthesis.paused) {
-        speechSynthesis.cancel(); // This should also trigger onend/onerror for previous utterance if any
+        speechSynthesis.cancel();
       }
     }
     
-    // Setting utterance to null ensures the useEffect cleanup for the *previous* utterance runs.
     setUtterance(null); 
 
-    // Defer creation of new utterance to allow React to process state update (setUtterance(null))
-    // and ensure the old utterance's event handlers are cleaned up.
     setTimeout(() => {
       const newUtterance = new SpeechSynthesisUtterance(text);
-      // Optional: Configure voice, lang, rate, pitch here if needed
-      // const voices = window.speechSynthesis.getVoices();
-      // const spanishVoice = voices.find(voice => voice.lang.startsWith('es'));
-      // if (spanishVoice) newUtterance.voice = spanishVoice;
-      // newUtterance.lang = 'es-ES'; // Or 'es-MX', etc.
-      
-      setUtterance(newUtterance); // This will trigger the useEffect to attach new handlers
       
       if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
+        const voices = window.speechSynthesis.getVoices();
+        if (voices.length > 0) {
+          let selectedVoice = voices.find(voice => voice.default);
+          if (!selectedVoice) selectedVoice = voices.find(voice => voice.lang === 'en-US');
+          if (!selectedVoice) selectedVoice = voices.find(voice => voice.lang.startsWith('en'));
+          if (!selectedVoice) selectedVoice = voices.find(voice => voice.lang === 'es-ES');
+          if (!selectedVoice) selectedVoice = voices.find(voice => voice.lang.startsWith('es'));
+          if (!selectedVoice) selectedVoice = voices[0]; // Fallback to the first available voice
+
+          if (selectedVoice) {
+            newUtterance.voice = selectedVoice;
+            newUtterance.lang = selectedVoice.lang; // Explicitly set lang
+            // console.log(`SpeechSynthesis: Attempting to use voice: ${selectedVoice.name} (${selectedVoice.lang})`);
+          }
+        } else {
+          // console.warn("SpeechSynthesis: No voices available when trying to speak.");
+        }
         speechSynthesis.speak(newUtterance);
       }
+      
+      setUtterance(newUtterance);
       setIsSpeaking(true);
       setIsPaused(false);
     }, 0);
@@ -150,11 +155,9 @@ export function useTextToSpeech() {
     if (!isSupported) return;
     if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
       if (speechSynthesis.speaking || speechSynthesis.paused) {
-          speechSynthesis.cancel(); // This will trigger onend/onerror which resets state via setUtterance(null)
+          speechSynthesis.cancel();
       }
     }
-    // Explicitly ensure states are reset if cancel() doesn't immediately trigger handlers
-    // or if there was no active speech to cancel.
     setIsSpeaking(false);
     setIsPaused(false);
     setUtterance(null); 
@@ -163,4 +166,3 @@ export function useTextToSpeech() {
 
   return { speak, pause, resume, stop, isSpeaking, isPaused, isSupported };
 }
-
