@@ -1,10 +1,11 @@
+
 'use client';
 
 import { useReaderSettings } from '@/contexts/ReaderSettingsContext';
 import type { ReaderTheme, ReaderFontSize } from '@/lib/types';
 import { Button } from '@/components/ui/button';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger, DropdownMenuRadioGroup, DropdownMenuRadioItem } from '@/components/ui/dropdown-menu';
-import { Palette, TextQuote, Volume2, Minimize, Maximize, Settings2, Sun, Moon, Coffee, ChevronLeft, ChevronRight, BookOpen, AlignLeft, Home } from 'lucide-react';
+import { Palette, TextQuote, Volume2, Minimize, Maximize, Settings2, Sun, Moon, Coffee, BookOpen, AlignLeft } from 'lucide-react'; // Removed ChevronLeft, ChevronRight, Home
 import React, { useState } from 'react';
 import ChapterSummaryDialog from './ChapterSummaryDialog';
 import AudioPlayer from './AudioPlayer';
@@ -18,8 +19,7 @@ interface ReaderControlsProps {
   isImmersive: boolean;
   novelId: string;
   currentChapterId: string;
-  prevChapterId?: string;
-  nextChapterId?: string;
+  // prevChapterId and nextChapterId are no longer needed
 }
 
 const FONT_SIZES: { label: string, value: ReaderFontSize }[] = [
@@ -36,7 +36,7 @@ const THEMES: { label: string, value: ReaderTheme, icon: React.ElementType }[] =
   { label: 'Dark', value: 'dark', icon: Moon },
 ];
 
-export default function ReaderControls({ chapterHtmlContent, onToggleImmersive, isImmersive, novelId, currentChapterId, prevChapterId, nextChapterId }: ReaderControlsProps) {
+export default function ReaderControls({ chapterHtmlContent, onToggleImmersive, isImmersive, novelId }: ReaderControlsProps) { // Removed currentChapterId, prevChapterId, nextChapterId from props as they are not used here anymore
   const { theme, fontSize, setTheme, setFontSize } = useReaderSettings();
   const [isSummaryDialogOpen, setIsSummaryDialogOpen] = useState(false);
 
@@ -44,32 +44,18 @@ export default function ReaderControls({ chapterHtmlContent, onToggleImmersive, 
     <div className={`reader-controls p-2 bg-card/90 backdrop-blur-sm shadow-md border-b transition-all duration-300 ${isImmersive ? 'opacity-0 hover:opacity-100 fixed top-0 left-0 right-0 z-[110] pt-2' : 'sticky top-0 z-40 rounded-t-lg border-x'}`}>
       <div className="mx-auto flex items-center justify-between gap-1 max-w-4xl px-2 sm:px-0">
         
-        <div className="flex items-center gap-0.5">
-          {isImmersive && prevChapterId && (
-            <TooltipProvider delayDuration={100}>
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <Button variant="ghost" size="icon" asChild>
-                    <Link href={`/novels/${novelId}/chapters/${prevChapterId}`} aria-label="Previous Chapter">
-                      <ChevronLeft />
-                    </Link>
-                  </Button>
-                </TooltipTrigger>
-                <TooltipContent><p>Previous Chapter</p></TooltipContent>
-              </Tooltip>
-            </TooltipProvider>
-          )}
+        <div className="flex items-center gap-0.5 min-w-[40px]"> {/* min-w to balance the right side */}
            {isImmersive && (
             <TooltipProvider delayDuration={100}>
               <Tooltip>
                 <TooltipTrigger asChild>
                   <Button variant="ghost" size="icon" asChild>
-                      <Link href={`/novels/${novelId}`} aria-label="Back to Novel Details">
+                      <Link href={`/novels/${novelId}`} aria-label="Volver a Detalles de la Novela">
                           <BookOpen />
                       </Link>
                   </Button>
                 </TooltipTrigger>
-                <TooltipContent><p>Novel Details</p></TooltipContent>
+                <TooltipContent><p>Detalles de la Novela</p></TooltipContent>
               </Tooltip>
             </TooltipProvider>
           )}
@@ -82,16 +68,16 @@ export default function ReaderControls({ chapterHtmlContent, onToggleImmersive, 
               <Tooltip>
                 <TooltipTrigger asChild>
                   <DropdownMenuTrigger asChild>
-                    <Button variant="ghost" size="icon" aria-label="Adjust text settings">
+                    <Button variant="ghost" size="icon" aria-label="Ajustes de texto">
                       <AlignLeft />
                     </Button>
                   </DropdownMenuTrigger>
                 </TooltipTrigger>
-                <TooltipContent><p>Text Settings</p></TooltipContent>
+                <TooltipContent><p>Ajustes de Texto</p></TooltipContent>
               </Tooltip>
             </TooltipProvider>
             <DropdownMenuContent align="center">
-              <DropdownMenuLabel>Font Size</DropdownMenuLabel>
+              <DropdownMenuLabel>Tamaño de Fuente</DropdownMenuLabel>
               <DropdownMenuRadioGroup value={fontSize} onValueChange={(value) => setFontSize(value as ReaderFontSize)}>
                 {FONT_SIZES.map(fs => (
                   <DropdownMenuRadioItem key={fs.value} value={fs.value}>
@@ -100,7 +86,7 @@ export default function ReaderControls({ chapterHtmlContent, onToggleImmersive, 
                 ))}
               </DropdownMenuRadioGroup>
               <DropdownMenuSeparator />
-              <DropdownMenuLabel>Theme</DropdownMenuLabel>
+              <DropdownMenuLabel>Tema</DropdownMenuLabel>
                <DropdownMenuRadioGroup value={theme} onValueChange={(value) => setTheme(value as ReaderTheme)}>
                 {THEMES.map(th => (
                   <DropdownMenuRadioItem key={th.value} value={th.value}>
@@ -115,11 +101,11 @@ export default function ReaderControls({ chapterHtmlContent, onToggleImmersive, 
           <TooltipProvider delayDuration={100}>
             <Tooltip>
               <TooltipTrigger asChild>
-                <Button variant="ghost" size="icon" onClick={() => setIsSummaryDialogOpen(true)} aria-label="Chapter summary">
+                <Button variant="ghost" size="icon" onClick={() => setIsSummaryDialogOpen(true)} aria-label="Resumen del capítulo">
                   <TextQuote />
                 </Button>
               </TooltipTrigger>
-              <TooltipContent><p>Chapter Summary</p></TooltipContent>
+              <TooltipContent><p>Resumen del Capítulo</p></TooltipContent>
             </Tooltip>
           </TooltipProvider>
           <ChapterSummaryDialog 
@@ -131,33 +117,18 @@ export default function ReaderControls({ chapterHtmlContent, onToggleImmersive, 
           <AudioPlayer textToRead={chapterHtmlContent} />
         </div>
 
-        <div className="flex items-center gap-0.5">
+        <div className="flex items-center gap-0.5 min-w-[40px]"> {/* min-w to balance the left side */}
           <TooltipProvider delayDuration={100}>
             <Tooltip>
               <TooltipTrigger asChild>
-                <Button variant="ghost" size="icon" onClick={onToggleImmersive} aria-label={isImmersive ? "Exit Immersive Mode" : "Enter Immersive Mode"}>
+                <Button variant="ghost" size="icon" onClick={onToggleImmersive} aria-label={isImmersive ? "Salir de Pantalla Completa" : "Lectura en Pantalla Completa"}>
                   {isImmersive ? <Minimize /> : <Maximize />}
                 </Button>
               </TooltipTrigger>
-              <TooltipContent><p>{isImmersive ? "Exit Fullscreen" : "Fullscreen Reading"}</p></TooltipContent>
+              <TooltipContent><p>{isImmersive ? "Salir de Pantalla Completa" : "Lectura en Pantalla Completa"}</p></TooltipContent>
             </Tooltip>
           </TooltipProvider>
-          {isImmersive && nextChapterId && (
-             <TooltipProvider delayDuration={100}>
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <Button variant="ghost" size="icon" asChild>
-                    <Link href={`/novels/${novelId}/chapters/${nextChapterId}`} aria-label="Next Chapter">
-                      <ChevronRight />
-                    </Link>
-                  </Button>
-                </TooltipTrigger>
-                <TooltipContent><p>Next Chapter</p></TooltipContent>
-              </Tooltip>
-            </TooltipProvider>
-          )}
-          {isImmersive && !nextChapterId && <div className="w-9 h-9"/> /* Placeholder for alignment */}
-           {isImmersive && !prevChapterId && !nextChapterId && <div className="w-9 h-9"/> /* Placeholder for alignment when only one chapter & immersive */}
+          {/* Immersive next/prev buttons removed from here */}
         </div>
       </div>
     </div>

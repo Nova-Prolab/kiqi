@@ -18,7 +18,7 @@ interface ReaderViewProps {
 }
 
 export default function ReaderView({ novel, currentChapter }: ReaderViewProps) {
-  const { fontClass, themeClass, isImmersive, setIsImmersive } = useReaderSettings(); // Get isImmersive and setIsImmersive from context
+  const { fontClass, themeClass, isImmersive, setIsImmersive } = useReaderSettings();
   const chapterKey = `${novel.id}_${currentChapter.id}`;
   const { savePosition, loadPosition } = useReadingPosition(chapterKey);
   
@@ -106,12 +106,11 @@ export default function ReaderView({ novel, currentChapter }: ReaderViewProps) {
       
       <ReaderControls
         chapterHtmlContent={currentChapter.content}
-        onToggleImmersive={handleToggleImmersive} // Pass the toggle function
-        isImmersive={isImmersive} // Pass the global immersive state
+        onToggleImmersive={handleToggleImmersive}
+        isImmersive={isImmersive}
         novelId={novel.id}
         currentChapterId={currentChapter.id}
-        prevChapterId={prevChapter?.id}
-        nextChapterId={nextChapter?.id}
+        // prevChapterId and nextChapterId are no longer needed here for ReaderControls
       />
 
       <ScrollArea 
@@ -122,20 +121,19 @@ export default function ReaderView({ novel, currentChapter }: ReaderViewProps) {
           className={`reading-content-area ${themeClass} ${fontClass} p-6 md:p-10 lg:p-12 prose prose-sm sm:prose md:prose-lg max-w-4xl mx-auto selection:bg-accent selection:text-accent-foreground`}
           dangerouslySetInnerHTML={chapterContentHtml}
         />
-      </ScrollArea>
-
-      {!isImmersive && (
-        <Card className="m-2 mt-0 shadow rounded-t-none border-t-0">
+        
+        {/* Always visible bottom navigation */}
+        <Card className={`mx-auto max-w-4xl my-6 ${isImmersive ? 'bg-transparent border-none shadow-none' : 'shadow rounded-lg border'}`}>
           <nav className="p-4 flex justify-between items-center">
             {prevChapter ? (
               <Button variant="outline" asChild>
                 <Link href={`/novels/${novel.id}/chapters/${prevChapter.id}`}>
-                  <ChevronLeft className="mr-2 h-4 w-4" /> Previous
+                  <ChevronLeft className="mr-2 h-4 w-4" /> Anterior
                 </Link>
               </Button>
-            ) : <Button variant="outline" disabled><ChevronLeft className="mr-2 h-4 w-4" /> Previous</Button> }
+            ) : <Button variant="outline" disabled><ChevronLeft className="mr-2 h-4 w-4" /> Anterior</Button> }
             
-            <Button variant="ghost" asChild title="Back to Novel Details">
+            <Button variant="ghost" asChild title="Volver a Detalles de la Novela">
               <Link href={`/novels/${novel.id}`}>
                 <Home className="h-5 w-5"/>
               </Link>
@@ -144,13 +142,15 @@ export default function ReaderView({ novel, currentChapter }: ReaderViewProps) {
             {nextChapter ? (
               <Button variant="outline" asChild>
                 <Link href={`/novels/${novel.id}/chapters/${nextChapter.id}`}>
-                  Next <ChevronRight className="ml-2 h-4 w-4" />
+                  Siguiente <ChevronRight className="ml-2 h-4 w-4" />
                 </Link>
               </Button>
-            ) : <Button variant="outline" disabled>Next <ChevronRight className="ml-2 h-4 w-4" /></Button> }
+            ) : <Button variant="outline" disabled>Siguiente <ChevronRight className="ml-2 h-4 w-4" /></Button> }
           </nav>
         </Card>
-      )}
+      </ScrollArea>
+
+      {/* The old conditional bottom navigation is removed as it's now always inside ScrollArea */}
     </div>
   );
 }
