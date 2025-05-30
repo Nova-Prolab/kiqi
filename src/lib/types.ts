@@ -11,7 +11,7 @@ export interface InfoJson {
   titulo: string;
   descripcion: string;
   autor: string;
-  coverImageUrl?: string; // New field for Imgur URL
+  coverImageUrl?: string; 
   fecha_lanzamiento?: string;
   etiquetas?: string[];
   categoria?: string;
@@ -19,20 +19,20 @@ export interface InfoJson {
 }
 
 export interface Novel {
-  id: string; // Corresponds to the folder name in the GitHub repo
+  id: string; 
   title: string;
   author: string;
-  coverImage: string; // Will now store Imgur URL or placeholder
+  coverImage: string; 
   summary: string;
-  githubRepoUrl?: string; // URL to the specific novel folder on GitHub
-  chapters: Pick<Chapter, 'id' | 'title' | 'order'>[]; // Array of chapter metadata
+  githubRepoUrl?: string; 
+  chapters: Pick<Chapter, 'id' | 'title' | 'order'>[]; 
 
   // Fields from info.json
   fecha_lanzamiento?: string;
   etiquetas?: string[];
   categoria?: string;
   traductor?: string;
-  lastUpdateDate?: string; // Will use fecha_lanzamiento for this
+  lastUpdateDate?: string; 
 }
 
 // For Reader Settings Context
@@ -42,4 +42,5 @@ export type ReaderFontSize = 'sm' | 'base' | 'lg' | 'xl' | '2xl';
 export interface ReaderSettings {
   theme: ReaderTheme;
   fontSize: ReaderFontSize;
+  isImmersive: boolean; // Added immersive mode state
 }

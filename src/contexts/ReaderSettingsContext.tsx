@@ -1,3 +1,4 @@
+
 "use client";
 
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
@@ -6,6 +7,7 @@ import type { ReaderTheme, ReaderFontSize, ReaderSettings } from '@/lib/types';
 interface ReaderSettingsContextType extends ReaderSettings {
   setTheme: (theme: ReaderTheme) => void;
   setFontSize: (fontSize: ReaderFontSize) => void;
+  setIsImmersive: (isImmersive: boolean) => void; // Added setter for immersive mode
   fontClass: string;
   themeClass: string;
 }
@@ -30,15 +32,19 @@ export const ReaderSettingsProvider = ({ children }: { children: ReactNode }) =>
   const [isMounted, setIsMounted] = useState(false);
   const [theme, setThemeState] = useState<ReaderTheme>('light');
   const [fontSize, setFontSizeState] = useState<ReaderFontSize>('base');
+  const [isImmersive, setIsImmersiveState] = useState<boolean>(false); // State for immersive mode
 
   useEffect(() => {
     setIsMounted(true);
     try {
       const storedTheme = localStorage.getItem('readerTheme') as ReaderTheme | null;
       const storedFontSize = localStorage.getItem('readerFontSize') as ReaderFontSize | null;
+      const storedImmersive = localStorage.getItem('readerImmersive');
 
       if (storedTheme && THEME_CLASS_MAP[storedTheme]) setThemeState(storedTheme);
       if (storedFontSize && FONT_SIZE_MAP[storedFontSize]) setFontSizeState(storedFontSize);
+      if (storedImmersive) setIsImmersiveState(JSON.parse(storedImmersive) as boolean);
+
     } catch (error) {
       console.warn("Could not access localStorage for reader settings:", error);
     }
@@ -66,36 +72,44 @@ export const ReaderSettingsProvider = ({ children }: { children: ReactNode }) =>
     }
   };
 
+  const setIsImmersive = (newIsImmersive: boolean) => {
+    setIsImmersiveState(newIsImmersive);
+    if (isMounted) {
+      try {
+        localStorage.setItem('readerImmersive', JSON.stringify(newIsImmersive));
+      } catch (error) {
+        console.warn("Could not save reader immersive mode to localStorage:", error);
+      }
+    }
+  };
+
   const fontClass = FONT_SIZE_MAP[fontSize] || FONT_SIZE_MAP['base'];
   const themeClass = THEME_CLASS_MAP[theme] || THEME_CLASS_MAP['light'];
 
-  // To prevent hydration mismatch, ensure context values are stable after mount
   const contextValue = {
     theme,
     fontSize,
+    isImmersive, // Provide immersive state
     setTheme,
     setFontSize,
+    setIsImmersive, // Provide setter for immersive state
     fontClass,
     themeClass,
   };
   
   if (!isMounted && typeof window !== 'undefined') {
-     // Initial client render before useEffect runs, use defaults or derived state.
-     // This specific setup with isMounted attempts to delay using localStorage values
-     // until client side is confirmed, but state updates still happen on client.
-     // Returning null might be too drastic if children are expected.
-     // Let's ensure children are rendered but context provides initial defaults.
      const initialContextValue = {
         theme: 'light' as ReaderTheme,
         fontSize: 'base' as ReaderFontSize,
+        isImmersive: false,
         setTheme: () => {},
         setFontSize: () => {},
+        setIsImmersive: () => {},
         fontClass: FONT_SIZE_MAP['base'],
         themeClass: THEME_CLASS_MAP['light'],
      }
      return <ReaderSettingsContext.Provider value={initialContextValue}>{children}</ReaderSettingsContext.Provider>;
   }
-
 
   return (
     <ReaderSettingsContext.Provider value={contextValue}>

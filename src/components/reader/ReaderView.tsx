@@ -1,3 +1,4 @@
+
 'use client';
 
 import type { Novel, Chapter } from '@/lib/types';
@@ -17,20 +18,18 @@ interface ReaderViewProps {
 }
 
 export default function ReaderView({ novel, currentChapter }: ReaderViewProps) {
-  const { fontClass, themeClass } = useReaderSettings();
+  const { fontClass, themeClass, isImmersive, setIsImmersive } = useReaderSettings(); // Get isImmersive and setIsImmersive from context
   const chapterKey = `${novel.id}_${currentChapter.id}`;
   const { savePosition, loadPosition } = useReadingPosition(chapterKey);
   
-  const scrollViewportRef = useRef<HTMLDivElement>(null); // Ref for the ScrollArea's viewport
+  const scrollViewportRef = useRef<HTMLDivElement>(null); 
 
-  const [isImmersive, setIsImmersive] = useState(false);
   const [isMounted, setIsMounted] = useState(false);
 
   useEffect(() => {
     setIsMounted(true);
   }, []);
 
-  // Debounce scroll saving
   const debounceTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const debouncedSavePosition = useCallback((scrollTop: number) => {
     if (debounceTimeoutRef.current) {
@@ -38,7 +37,7 @@ export default function ReaderView({ novel, currentChapter }: ReaderViewProps) {
     }
     debounceTimeoutRef.current = setTimeout(() => {
       savePosition(scrollTop);
-    }, 500); // Save 500ms after last scroll event
+    }, 500); 
   }, [savePosition]);
 
 
@@ -75,8 +74,11 @@ export default function ReaderView({ novel, currentChapter }: ReaderViewProps) {
 
   const chapterContentHtml = { __html: currentChapter.content };
 
+  const handleToggleImmersive = () => {
+    setIsImmersive(!isImmersive);
+  };
+
   if (!isMounted) {
-    // Basic skeleton or loading state to avoid hydration issues with dynamic classes
     return (
       <div className="flex flex-col h-[calc(100vh-8rem)]">
         <div className="p-4 border-b bg-muted animate-pulse h-20"></div>
@@ -104,8 +106,8 @@ export default function ReaderView({ novel, currentChapter }: ReaderViewProps) {
       
       <ReaderControls
         chapterHtmlContent={currentChapter.content}
-        onToggleImmersive={() => setIsImmersive(!isImmersive)}
-        isImmersive={isImmersive}
+        onToggleImmersive={handleToggleImmersive} // Pass the toggle function
+        isImmersive={isImmersive} // Pass the global immersive state
         novelId={novel.id}
         currentChapterId={currentChapter.id}
         prevChapterId={prevChapter?.id}
@@ -114,7 +116,7 @@ export default function ReaderView({ novel, currentChapter }: ReaderViewProps) {
 
       <ScrollArea 
         className={`flex-grow ${isImmersive ? 'h-full' : 'm-2 mt-0 rounded-t-none shadow'}`}
-        viewportRef={scrollViewportRef} // Pass ref to ScrollArea's viewport
+        viewportRef={scrollViewportRef} 
       >
         <div
           className={`reading-content-area ${themeClass} ${fontClass} p-6 md:p-10 lg:p-12 prose prose-sm sm:prose md:prose-lg max-w-4xl mx-auto selection:bg-accent selection:text-accent-foreground`}
