@@ -1,6 +1,6 @@
 
 import Link from 'next/link';
-import { BookMarked, PlusCircle, Settings } from 'lucide-react'; // Added Settings
+import { BookMarked, Settings } from 'lucide-react'; // Changed PlusCircle to Settings
 import { ModeToggle } from '@/components/layout/ModeToggle';
 import { Button } from '@/components/ui/button';
 
