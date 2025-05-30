@@ -1,3 +1,4 @@
+
 import type { Novel, Chapter } from './types';
 
 const GITHUB_API_BASE = 'https://api.github.com';
@@ -96,7 +97,15 @@ export async function fetchNovels(): Promise<Novel[]> {
       }
 
       const infoJsonContent = await fetchFileContent(infoJsonFile.path);
-      const info: InfoJson = JSON.parse(infoJsonContent);
+      let info: InfoJson;
+      try {
+        info = JSON.parse(infoJsonContent);
+      } catch (parseError: any) {
+        console.error(`Error parsing info.json for novel ${novelId} (path: ${infoJsonFile.path}): ${parseError.message}`);
+        console.error(`Content of problematic info.json for ${novelId}:\n---\n${infoJsonContent}\n---`);
+        console.warn(`Skipping novel ${novelId} due to invalid info.json.`);
+        continue; 
+      }
 
       const coverImageFile = novelContents.find(f => f.name === 'cover.png' && f.type === 'file'); // Assuming cover.png
       const coverImage = coverImageFile ? getRawContentUrl(coverImageFile.path) : 'https://placehold.co/300x450.png?text=No+Cover';
@@ -112,6 +121,9 @@ export async function fetchNovels(): Promise<Novel[]> {
       const chaptersMetadata: Pick<Chapter, 'id' | 'title' | 'order'>[] = chapterFiles.map(file => {
         const orderMatch = file.name.match(/chapter-(\d+)\.html$/);
         const order = orderMatch ? parseInt(orderMatch[1]) : 0;
+        // Attempt to extract title from HTML content (e.g., from <h1>) if available
+        // This part is complex and might require actual HTML parsing if titles are embedded
+        // For now, keeping it simple as "Chapter X"
         return {
           id: file.name.replace('.html', ''), // e.g. "chapter-1"
           title: `Chapter ${order}`, // Generic title
@@ -149,8 +161,6 @@ export async function fetchNovelById(id: string): Promise<Novel | undefined> {
   }
   
   try {
-    // First, check if the directory exists by trying to fetch its contents.
-    // GitHub API returns 404 if path doesn't exist.
     let novelContents: GitHubFile[];
     try {
         novelContents = await fetchFromGitHub<GitHubFile[]>(`contents/${id}?ref=${DEFAULT_BRANCH}`);
@@ -159,9 +169,8 @@ export async function fetchNovelById(id: string): Promise<Novel | undefined> {
             console.warn(`Novel with id ${id} not found (404).`);
             return undefined;
         }
-        throw error; // Re-throw other errors
+        throw error; 
     }
-
 
     const infoJsonFile = novelContents.find(f => f.name === 'info.json' && f.type === 'file');
     if (!infoJsonFile) {
@@ -170,7 +179,14 @@ export async function fetchNovelById(id: string): Promise<Novel | undefined> {
     }
 
     const infoJsonContent = await fetchFileContent(infoJsonFile.path);
-    const info: InfoJson = JSON.parse(infoJsonContent);
+    let info: InfoJson;
+    try {
+      info = JSON.parse(infoJsonContent);
+    } catch (parseError: any) {
+      console.error(`Error parsing info.json for novel ${id} (path: ${infoJsonFile.path}): ${parseError.message}`);
+      console.error(`Content of problematic info.json for ${id}:\n---\n${infoJsonContent}\n---`);
+      return undefined;
+    }
 
     const coverImageFile = novelContents.find(f => f.name === 'cover.png' && f.type === 'file');
     const coverImage = coverImageFile ? getRawContentUrl(coverImageFile.path) : 'https://placehold.co/300x450.png?text=No+Cover';
@@ -219,7 +235,6 @@ export async function fetchChapter(novelId: string, chapterId: string): Promise<
     return undefined;
   }
 
-  // chapterId is expected to be like "chapter-1"
   const chapterMeta = novel.chapters.find(c => c.id === chapterId);
   if (!chapterMeta) {
     console.warn(`Chapter ${chapterId} not found in novel ${novelId}`);
@@ -227,12 +242,12 @@ export async function fetchChapter(novelId: string, chapterId: string): Promise<
   }
 
   try {
-    const chapterFilePath = `${novelId}/${chapterId}.html`; // e.g. "el-magnate/chapter-1.html"
+    const chapterFilePath = `${novelId}/${chapterId}.html`; 
     const chapterContent = await fetchFileContent(chapterFilePath);
 
     const fullChapter: Chapter = {
       id: chapterMeta.id,
-      title: chapterMeta.title, // Using the generated title
+      title: chapterMeta.title, 
       order: chapterMeta.order,
       content: chapterContent,
       path: chapterFilePath,
