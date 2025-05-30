@@ -62,7 +62,14 @@ export default function NovelDetailClient({ novel }: NovelDetailClientProps) {
               <CardTitle className="text-xl">Summary</CardTitle>
             </CardHeader>
             <CardContent>
-              <p className="text-foreground/80 leading-relaxed whitespace-pre-line">{novel.summary}</p>
+              <div className="text-foreground/80 leading-relaxed">
+                {novel.summary.split('\n').map((line, index, array) => (
+                  <span key={index}>
+                    {line}
+                    {index < array.length - 1 && <br />}
+                  </span>
+                ))}
+              </div>
             </CardContent>
           </Card>
 
