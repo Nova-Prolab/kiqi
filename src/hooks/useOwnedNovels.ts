@@ -60,9 +60,10 @@ export function useOwnedNovels() {
   }, [isMounted]);
 
   const isNovelOwned = useCallback((novelId: string): boolean => {
-    if (!isMounted) return false; // Default to not owned if not mounted to prevent hydration issues
+    if (!isMounted) return false; 
     return ownedNovelIds.includes(novelId);
   }, [isMounted, ownedNovelIds]);
 
-  return { addOwnedNovel, removeOwnedNovel, isNovelOwned, getOwnedNovelIds: () => ownedNovelIds, isMounted };
+  return { addOwnedNovel, removeOwnedNovel, isNovelOwned, ownedNovelIds, isMounted };
 }
+

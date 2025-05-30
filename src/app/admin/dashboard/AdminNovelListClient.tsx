@@ -54,20 +54,18 @@ function DeleteButtonContent() {
 
 
 export default function AdminNovelListClient({ novels: allFetchedNovels }: AdminNovelListClientProps) {
-  const { getOwnedNovelIds, removeOwnedNovel, isMounted } = useOwnedNovels();
+  const { ownedNovelIds, removeOwnedNovel, isMounted } = useOwnedNovels();
   const [deleteState, deleteFormAction] = useActionState(deleteNovelAction, initialDeleteState);
   const { toast } = useToast();
   
-  // State to hold only the novels owned in this browser
   const [ownedNovelsToDisplay, setOwnedNovelsToDisplay] = useState<Novel[]>([]);
 
   useEffect(() => {
     if (isMounted) {
-      const ownedIds = getOwnedNovelIds();
-      const filtered = allFetchedNovels.filter(novel => ownedIds.includes(novel.id));
+      const filtered = allFetchedNovels.filter(novel => ownedNovelIds.includes(novel.id));
       setOwnedNovelsToDisplay(filtered);
     }
-  }, [isMounted, allFetchedNovels, getOwnedNovelIds]);
+  }, [isMounted, allFetchedNovels, ownedNovelIds]);
 
 
   useEffect(() => {
@@ -79,15 +77,14 @@ export default function AdminNovelListClient({ novels: allFetchedNovels }: Admin
       });
       if (deleteState.success && deleteState.deletedNovelId) {
         removeOwnedNovel(deleteState.deletedNovelId);
-        // The list will re-filter in the next effect if allFetchedNovels or ownedIds change
+        // The list will re-filter in the next effect as ownedNovelIds changes
         // Or, we can directly update ownedNovelsToDisplay here:
-        setOwnedNovelsToDisplay(prev => prev.filter(n => n.id !== deleteState.deletedNovelId));
+        // setOwnedNovelsToDisplay(prev => prev.filter(n => n.id !== deleteState.deletedNovelId));
       }
     }
   }, [deleteState, toast, removeOwnedNovel]);
   
   if (!isMounted) {
-    // Render a loading skeleton or null while waiting for isMounted and localStorage access
     return (
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         {[...Array(3)].map((_, i) => (
@@ -123,8 +120,6 @@ export default function AdminNovelListClient({ novels: allFetchedNovels }: Admin
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
       {ownedNovelsToDisplay.map((novel) => {
-        // Since we are only displaying owned novels, 'owned' will always be true here.
-        // The useOwnedNovels hook is primarily used above to filter the list.
         return (
           <Card key={novel.id} className="flex flex-col border-primary/30">
             <CardHeader className="flex-row gap-4 items-start">
