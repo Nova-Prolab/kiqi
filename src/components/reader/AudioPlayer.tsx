@@ -1,8 +1,9 @@
+
 'use client';
 
 import { useTextToSpeech } from '@/hooks/useTextToSpeech';
 import { Button } from '@/components/ui/button';
-import { Play, Pause, SquareIcon, AlertCircle, Volume2 } from 'lucide-react'; // Changed Square to SquareIcon
+import { Play, Pause, SquareIcon, AlertCircle } from 'lucide-react';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { useEffect, useState } from 'react';
 
@@ -14,15 +15,34 @@ const stripHtmlForTTS = (html: string): string => {
   if (typeof window === 'undefined') return html; 
   try {
     const doc = new DOMParser().parseFromString(html, 'text/html');
-    // Improve text extraction by joining text nodes, preserving some paragraph structure
-    let text = "";
-    doc.body.querySelectorAll('p, h1, h2, h3, h4, h5, h6, li, blockquote').forEach(el => {
-      text += (el.textContent || "") + ". "; // Add a period to help with sentence breaks
+    const parts: string[] = [];
+    // Iterate over common block elements that usually contain readable text
+    doc.body.querySelectorAll('p, h1, h2, h3, h4, h5, h6, li, blockquote, div').forEach(el => {
+      // Check if the element itself might be a container not meant for direct reading
+      // This is a heuristic; complex layouts might need more specific selectors
+      if (el.matches('div') && el.querySelector('p, h1, h2, h3, h4, h5, h6, li, blockquote')) {
+        // If it's a div containing other readable blocks, skip the div's direct textContent
+        // to avoid duplicating text from its children.
+        return;
+      }
+      const content = (el.textContent || "").trim();
+      if (content) { // Only add if there's actual textual content
+        parts.push(content);
+      }
     });
-    if (!text) { // Fallback if no block elements found
-        text = doc.body.textContent || "";
+
+    let text = parts.join(". "); // Join content parts with a period and space
+    if (parts.length > 0 && !text.endsWith('.')) { // Ensure a final period if text was formed from parts
+        text += ".";
     }
-    return text.replace(/\s+/g, ' ').trim(); // Normalize whitespace
+
+
+    if (!text && doc.body.textContent) { // Fallback if no specific block elements with content found
+        text = (doc.body.textContent || "").trim();
+    }
+    
+    // Normalize whitespace and ensure it's a clean string
+    return text.replace(/\s+/g, ' ').trim();
   } catch (e) {
     console.error("Error stripping HTML for TTS:", e);
     return html; // Fallback to original if parsing fails
