@@ -6,7 +6,7 @@ import Link from 'next/link';
 import type { Novel } from '@/lib/types';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { List, ChevronRight, BookOpen, ArrowLeft, Tag, CalendarDays, UserCircle, FileText, Clock } from 'lucide-react';
+import { List, ChevronRight, BookOpen, ArrowLeft, Tag, CalendarDays, UserCircle, Clock } from 'lucide-react'; // Removed FileText
 import { Separator } from '@/components/ui/separator';
 import { Badge } from '@/components/ui/badge';
 import React, { useState, useEffect, useMemo } from 'react';
@@ -24,9 +24,10 @@ export default function NovelDetailClient({ novel }: NovelDetailClientProps) {
   const [isSummaryExpanded, setIsSummaryExpanded] = useState(false);
   const [isLongSummary, setIsLongSummary] = useState(false);
 
-  // Process summary to handle literal '\\n' and then split into lines
   const processedSummaryContent = useMemo(() => {
-    return novel.summary.replace(/\\n/g, '\n');
+    // First, replace literal '\\n' with actual '\n'
+    const summaryWithActualNewlines = novel.summary.replace(/\\n/g, '\n');
+    return summaryWithActualNewlines;
   }, [novel.summary]);
 
   const summaryLines = useMemo(() => processedSummaryContent.split('\n'), [processedSummaryContent]);
@@ -139,18 +140,13 @@ export default function NovelDetailClient({ novel }: NovelDetailClientProps) {
                         </Link>
                     </div>
                 )}
-                 {novel.lastUpdateDate && ( // Changed from fecha_lanzamiento
+                 {novel.lastUpdateDate && (
                     <div className="flex items-center text-sm">
                         <Clock className="mr-2 h-4 w-4 text-muted-foreground" />
                         <strong>Última Actualización:</strong><span className="ml-2">{novel.lastUpdateDate}</span>
                     </div>
                 )}
-                {novel.totalWordCount && (
-                    <div className="flex items-center text-sm">
-                        <FileText className="mr-2 h-4 w-4 text-muted-foreground" />
-                        <strong>Palabras:</strong><span className="ml-2">{novel.totalWordCount.toLocaleString()}</span>
-                    </div>
-                )}
+                {/* Removed Total Word Count Display */}
                 {novel.etiquetas && novel.etiquetas.length > 0 && (
                     <div className="flex items-start text-sm">
                         <Tag className="mr-2 h-4 w-4 text-muted-foreground mt-0.5" />
@@ -189,7 +185,6 @@ export default function NovelDetailClient({ novel }: NovelDetailClientProps) {
                           <p className="font-medium text-foreground group-hover:text-primary transition-colors">
                             {chapter.title} 
                           </p>
-                           {/* Optionally, display chapter-specific word count if available on chapter object */}
                         </div>
                         <ChevronRight className="h-5 w-5 text-muted-foreground group-hover:text-primary transition-colors" />
                       </CardContent>
