@@ -1,6 +1,6 @@
 
 import Link from 'next/link';
-import { BookMarked, PlusCircle } from 'lucide-react';
+import { BookMarked, PlusCircle, Settings } from 'lucide-react'; // Added Settings
 import { ModeToggle } from '@/components/layout/ModeToggle';
 import { Button } from '@/components/ui/button';
 
@@ -26,10 +26,10 @@ export default function AppHeader() {
           */}
         </nav>
         <div className="flex items-center justify-end space-x-2">
-          <Button variant="ghost" size="sm" asChild title="Crear Nueva Novela">
-            <Link href="/admin/create-novel">
-              <PlusCircle className="h-5 w-5" />
-              <span className="sr-only sm:not-sr-only sm:ml-2">Crear</span>
+          <Button variant="ghost" size="sm" asChild title="Panel de Administración">
+            <Link href="/admin/dashboard">
+              <Settings className="h-5 w-5" />
+              <span className="sr-only sm:not-sr-only sm:ml-2">Administrar</span>
             </Link>
           </Button>
           <ModeToggle />
