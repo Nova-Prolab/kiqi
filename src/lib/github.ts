@@ -45,8 +45,8 @@ async function fetchFromGitHub<T>(path: string): Promise<T> {
     'Accept': 'application/vnd.github.v3+json',
   };
 
-  // Temporarily disabling cache for debugging. 
-  // For production, consider a longer revalidation period e.g., next: { revalidate: 3600 }
+  // Using 'no-store' to ensure fresh data during debugging, especially for info.json and cover images.
+  // For production, consider a revalidation strategy e.g., next: { revalidate: 3600 }
   const response = await fetch(url, { headers, cache: 'no-store' }); 
 
   if (!response.ok) {
@@ -103,14 +103,22 @@ export async function fetchNovels(): Promise<Novel[]> {
       try {
         info = JSON.parse(infoJsonContent);
       } catch (parseError: any) {
-        console.error(`Error parsing info.json for novel '${novelId}' (fetched from path: ${infoJsonFile.path}): ${parseError.message}`);
-        console.error(`Content of problematic info.json for '${novelId}' as fetched from GitHub:\n---\n${infoJsonContent}\n---`);
-        console.warn(`Skipping novel '${novelId}' due to invalid info.json.`);
+        console.error(`Error parsing info.json for novel ${novelId} (path: ${infoJsonFile.path}): ${parseError.message}`);
+        console.error(`Content of problematic info.json for ${novelId}:\n---\n${infoJsonContent}\n---`);
+        console.warn(`Skipping novel ${novelId} due to invalid info.json.`);
         continue; 
       }
 
       const coverImageFile = novelContents.find(f => f.name === 'cover.png' && f.type === 'file'); 
-      const coverImage = coverImageFile ? getRawContentUrl(coverImageFile.path) : 'https://placehold.co/300x450.png?text=No+Cover';
+      let coverImage: string;
+      if (coverImageFile) {
+        coverImage = getRawContentUrl(coverImageFile.path);
+        console.log(`Cover image found for ${novelId}: ${coverImageFile.path}. URL: ${coverImage}`);
+      } else {
+        coverImage = 'https://placehold.co/300x450.png?text=No+Cover';
+        console.warn(`Cover image 'cover.png' NOT found for novel ${novelId} at path ${novelPath}/cover.png. Using placeholder.`);
+      }
+      
 
       const chapterFiles = novelContents
         .filter(f => f.type === 'file' && f.name.startsWith('chapter-') && f.name.endsWith('.html'))
@@ -136,7 +144,7 @@ export async function fetchNovels(): Promise<Novel[]> {
         author: info.autor,
         summary: info.descripcion,
         coverImage: coverImage,
-        githubRepoUrl: `https://github.com/${owner}/${repoName}/tree/${DEFAULT_BRANCH}/${novelPath}`,
+        // githubRepoUrl: `https://github.com/${owner}/${repoName}/tree/${DEFAULT_BRANCH}/${novelPath}`, // Removed as requested
         chapters: chaptersMetadata,
         fecha_lanzamiento: info.fecha_lanzamiento,
         etiquetas: info.etiquetas,
@@ -182,13 +190,20 @@ export async function fetchNovelById(id: string): Promise<Novel | undefined> {
     try {
       info = JSON.parse(infoJsonContent);
     } catch (parseError: any) {
-      console.error(`Error parsing info.json for novel '${id}' (fetched from path: ${infoJsonFile.path}): ${parseError.message}`);
-      console.error(`Content of problematic info.json for '${id}' as fetched from GitHub:\n---\n${infoJsonContent}\n---`);
+      console.error(`Error parsing info.json for novel '${id}' (path: ${infoJsonFile.path}): ${parseError.message}`);
+      console.error(`Content of problematic info.json for '${id}':\n---\n${infoJsonContent}\n---`);
       return undefined;
     }
 
     const coverImageFile = novelContents.find(f => f.name === 'cover.png' && f.type === 'file');
-    const coverImage = coverImageFile ? getRawContentUrl(coverImageFile.path) : 'https://placehold.co/300x450.png?text=No+Cover';
+    let coverImage: string;
+      if (coverImageFile) {
+        coverImage = getRawContentUrl(coverImageFile.path);
+        console.log(`Cover image found for ${id} (detail view): ${coverImageFile.path}. URL: ${coverImage}`);
+      } else {
+        coverImage = 'https://placehold.co/300x450.png?text=No+Cover';
+        console.warn(`Cover image 'cover.png' NOT found for novel ${id} (detail view) at path ${id}/cover.png. Using placeholder.`);
+      }
 
     const chapterFiles = novelContents
       .filter(f => f.type === 'file' && f.name.startsWith('chapter-') && f.name.endsWith('.html'))
@@ -214,7 +229,7 @@ export async function fetchNovelById(id: string): Promise<Novel | undefined> {
       author: info.autor,
       summary: info.descripcion,
       coverImage: coverImage,
-      githubRepoUrl: `https://github.com/${owner}/${repoName}/tree/${DEFAULT_BRANCH}/${id}`,
+      // githubRepoUrl: `https://github.com/${owner}/${repoName}/tree/${DEFAULT_BRANCH}/${id}`, // Removed as requested
       chapters: chaptersMetadata,
       fecha_lanzamiento: info.fecha_lanzamiento,
       etiquetas: info.etiquetas,
