@@ -6,7 +6,7 @@ import Link from 'next/link';
 import type { Novel } from '@/lib/types';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { List, ChevronRight, BookOpen, ArrowLeft, Tag, CalendarDays, UserCircle } from 'lucide-react';
+import { List, ChevronRight, BookOpen, ArrowLeft, Tag, CalendarDays, UserCircle, FileText, Clock } from 'lucide-react';
 import { Separator } from '@/components/ui/separator';
 import { Badge } from '@/components/ui/badge';
 import React, { useState, useEffect, useMemo } from 'react';
@@ -24,8 +24,8 @@ export default function NovelDetailClient({ novel }: NovelDetailClientProps) {
   const [isSummaryExpanded, setIsSummaryExpanded] = useState(false);
   const [isLongSummary, setIsLongSummary] = useState(false);
 
+  // Process summary to handle literal '\\n' and then split into lines
   const processedSummaryContent = useMemo(() => {
-    // Primero, reemplazar las secuencias literales '\\n' con caracteres de nueva línea '\n'
     return novel.summary.replace(/\\n/g, '\n');
   }, [novel.summary]);
 
@@ -71,7 +71,7 @@ export default function NovelDetailClient({ novel }: NovelDetailClientProps) {
             <Button size="lg" className="w-full" asChild>
               <Link href={`/novels/${novel.id}/chapters/${firstChapter.id}`}>
                 <BookOpen className="mr-2 h-5 w-5" />
-                Start Reading (Chapter {firstChapter.order})
+                Empezar a Leer (Cap. {firstChapter.order})
               </Link>
             </Button>
           )}
@@ -82,7 +82,7 @@ export default function NovelDetailClient({ novel }: NovelDetailClientProps) {
             <h1 className="text-3xl sm:text-4xl font-bold tracking-tight text-primary">{novel.title}</h1>
             <p className="text-lg sm:text-xl text-muted-foreground mt-1">
               por{' '}
-              <Link href={`/?q=${encodeURIComponent('Autor:' + novel.author)}`} className="text-primary hover:underline font-medium">
+              <Link href={`/?q=Autor:${encodeURIComponent(novel.author)}`} className="text-primary hover:underline font-medium">
                 {novel.author}
               </Link>
             </p>
@@ -90,7 +90,7 @@ export default function NovelDetailClient({ novel }: NovelDetailClientProps) {
           
           <Card className="border">
             <CardHeader>
-              <CardTitle className="text-xl">Summary</CardTitle>
+              <CardTitle className="text-xl">Sumario</CardTitle>
             </CardHeader>
             <CardContent>
               <div className="text-foreground/80 leading-relaxed">
@@ -100,7 +100,7 @@ export default function NovelDetailClient({ novel }: NovelDetailClientProps) {
                     {index < displayedSummaryLines.length - 1 && <br />}
                   </React.Fragment>
                 ))}
-                {isLongSummary && !isSummaryExpanded && (
+                {isLongSummary && !isSummaryExpanded && ! (summaryLines.length <= MAX_INITIAL_SUMMARY_LINES) && (
                   <span className="text-muted-foreground">...</span>
                 )}
               </div>
@@ -118,15 +118,15 @@ export default function NovelDetailClient({ novel }: NovelDetailClientProps) {
 
           <Card className="border">
             <CardHeader>
-                <CardTitle className="text-xl">Details</CardTitle>
+                <CardTitle className="text-xl">Detalles</CardTitle>
             </CardHeader>
             <CardContent className="space-y-3">
                 {novel.categoria && (
                     <div className="flex items-center text-sm">
                         <List className="mr-2 h-4 w-4 text-muted-foreground" />
                         <strong>Categoría:</strong>
-                        <Link href={`/?q=${encodeURIComponent('Categoría:' + novel.categoria)}`} className="ml-2 text-primary hover:underline">
-                            {novel.categoria}
+                        <Link href={`/?q=Categoría:${encodeURIComponent(novel.categoria)}`} className="ml-2">
+                            <Badge variant="outline" className="cursor-pointer hover:bg-accent/80 hover:text-accent-foreground">{novel.categoria}</Badge>
                         </Link>
                     </div>
                 )}
@@ -134,15 +134,21 @@ export default function NovelDetailClient({ novel }: NovelDetailClientProps) {
                     <div className="flex items-center text-sm">
                         <UserCircle className="mr-2 h-4 w-4 text-muted-foreground" />
                         <strong>Traductor:</strong>
-                        <Link href={`/?q=${encodeURIComponent('Traductor:' + novel.traductor)}`} className="ml-2 text-primary hover:underline">
+                        <Link href={`/?q=Traductor:${encodeURIComponent(novel.traductor)}`} className="ml-2 text-primary hover:underline">
                             {novel.traductor}
                         </Link>
                     </div>
                 )}
-                 {novel.fecha_lanzamiento && (
+                 {novel.lastUpdateDate && ( // Changed from fecha_lanzamiento
                     <div className="flex items-center text-sm">
-                        <CalendarDays className="mr-2 h-4 w-4 text-muted-foreground" />
-                        <strong>Lanzamiento:</strong><span className="ml-2">{novel.fecha_lanzamiento}</span>
+                        <Clock className="mr-2 h-4 w-4 text-muted-foreground" />
+                        <strong>Última Actualización:</strong><span className="ml-2">{novel.lastUpdateDate}</span>
+                    </div>
+                )}
+                {novel.totalWordCount && (
+                    <div className="flex items-center text-sm">
+                        <FileText className="mr-2 h-4 w-4 text-muted-foreground" />
+                        <strong>Palabras:</strong><span className="ml-2">{novel.totalWordCount.toLocaleString()}</span>
                     </div>
                 )}
                 {novel.etiquetas && novel.etiquetas.length > 0 && (
@@ -151,7 +157,7 @@ export default function NovelDetailClient({ novel }: NovelDetailClientProps) {
                         <strong>Etiquetas:</strong>
                         <div className="ml-2 flex flex-wrap gap-1">
                             {novel.etiquetas.map(tag => (
-                                <Link key={tag} href={`/?q=${encodeURIComponent('Etiqueta:' + tag)}`} legacyBehavior>
+                                <Link key={tag} href={`/?q=Etiqueta:${encodeURIComponent(tag)}`} legacyBehavior>
                                     <Badge variant="secondary" className="cursor-pointer hover:bg-accent/80 hover:text-accent-foreground">{tag}</Badge>
                                 </Link>
                             ))}
@@ -169,7 +175,7 @@ export default function NovelDetailClient({ novel }: NovelDetailClientProps) {
       <section>
         <h2 className="text-2xl sm:text-3xl font-semibold mb-6 flex items-center text-primary">
           <List className="mr-3 h-6 w-6 sm:h-7 sm:w-7" />
-          Chapters
+          Capítulos ({sortedChapters.length})
         </h2>
         {sortedChapters.length > 0 ? (
           <div className="space-y-3">
@@ -183,6 +189,7 @@ export default function NovelDetailClient({ novel }: NovelDetailClientProps) {
                           <p className="font-medium text-foreground group-hover:text-primary transition-colors">
                             {chapter.title} 
                           </p>
+                           {/* Optionally, display chapter-specific word count if available on chapter object */}
                         </div>
                         <ChevronRight className="h-5 w-5 text-muted-foreground group-hover:text-primary transition-colors" />
                       </CardContent>
@@ -192,7 +199,7 @@ export default function NovelDetailClient({ novel }: NovelDetailClientProps) {
               ))}
           </div>
         ) : (
-          <p className="text-muted-foreground">No chapters available for this novel yet.</p>
+          <p className="text-muted-foreground">No hay capítulos disponibles para esta novela todavía.</p>
         )}
       </section>
     </div>

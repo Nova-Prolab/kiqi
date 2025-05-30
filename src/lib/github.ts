@@ -1,5 +1,5 @@
 
-import type { Novel, Chapter } from './types';
+import type { Novel, Chapter, InfoJson } from './types'; // Added InfoJson import
 
 const GITHUB_API_BASE = 'https://api.github.com';
 const DEFAULT_BRANCH = 'main'; 
@@ -18,16 +18,6 @@ interface GitHubFile {
   encoding?: 'base64';
 }
 
-interface InfoJson {
-  titulo: string;
-  descripcion: string;
-  fecha_lanzamiento?: string;
-  etiquetas?: string[];
-  categoria?: string;
-  autor: string;
-  traductor?: string;
-}
-
 async function fetchFromGitHub<T>(path: string): Promise<T> {
   const pat = process.env.GITHUB_PAT;
   const owner = process.env.GITHUB_REPO_OWNER;
@@ -44,6 +34,7 @@ async function fetchFromGitHub<T>(path: string): Promise<T> {
     'Accept': 'application/vnd.github.v3+json',
   };
 
+  // Forcing no-cache for development/debugging, revert or adjust for production
   const response = await fetch(url, { headers, cache: 'no-store' }); 
 
   if (!response.ok) {
@@ -68,6 +59,13 @@ function getRawContentUrl(filePath: string): string {
   return `https://raw.githubusercontent.com/${owner}/${repo}/${DEFAULT_BRANCH}/${filePath}`;
 }
 
+function countWordsInHtml(htmlContent: string): number {
+  if (!htmlContent) return 0;
+  const textContent = htmlContent.replace(/<[^>]*>?/gm, '');
+  const words = textContent.trim().replace(/\s+/g, ' ').split(' ');
+  return words.filter(word => word.length > 0).length;
+}
+
 export async function fetchNovels(): Promise<Novel[]> {
   const owner = process.env.GITHUB_REPO_OWNER;
   const repoName = process.env.GITHUB_REPO_NAME;
@@ -85,7 +83,7 @@ export async function fetchNovels(): Promise<Novel[]> {
   for (const dir of novelDirs) {
     try {
       const novelId = dir.name;
-      const novelPath = dir.path; // This is the path to the novel's folder, e.g., "el-magnate"
+      const novelPath = dir.path;
       
       const novelContents = await fetchFromGitHub<GitHubFile[]>(`contents/${novelPath}?ref=${DEFAULT_BRANCH}`);
       
@@ -100,8 +98,8 @@ export async function fetchNovels(): Promise<Novel[]> {
       try {
         info = JSON.parse(infoJsonContent);
       } catch (parseError: any) {
-        console.error(`[GitHub Lib] Error parsing info.json for novel '${novelId}' (path: '${infoJsonFile.path}'): ${parseError.message}`);
-        console.error(`[GitHub Lib] Content of problematic info.json for '${novelId}':\n---\n${infoJsonContent}\n---`);
+        console.error(`[GitHub Lib] Error parsing info.json for novel ${novelId} (path: ${infoJsonFile.path}): ${parseError.message}`);
+        console.error(`[GitHub Lib] Content of problematic info.json for ${novelId}:\n---\n${infoJsonContent}\n---`);
         console.warn(`[GitHub Lib] Skipping novel '${novelId}' due to invalid info.json.`);
         continue; 
       }
@@ -116,7 +114,6 @@ export async function fetchNovels(): Promise<Novel[]> {
         console.warn(`[GitHub Lib] Novel '${novelId}': 'cover.png' NOT found directly in folder '${novelPath}'. Searched for path: '${novelPath}/cover.png'. Using placeholder.`);
       }
       
-
       const chapterFiles = novelContents
         .filter(f => f.type === 'file' && f.name.startsWith('chapter-') && f.name.endsWith('.html'))
         .sort((a, b) => {
@@ -128,13 +125,9 @@ export async function fetchNovels(): Promise<Novel[]> {
       const chaptersMetadata: Pick<Chapter, 'id' | 'title' | 'order'>[] = chapterFiles.map(file => {
         const orderMatch = file.name.match(/chapter-(\d+)\.html$/);
         const order = orderMatch ? parseInt(orderMatch[1]) : 0;
-        // Attempt to create a more descriptive title if possible, otherwise default
-        const simpleTitle = file.name.replace('.html', '').replace(/-/g, ' ');
-        const capitalizedTitle = simpleTitle.charAt(0).toUpperCase() + simpleTitle.slice(1);
-
         return {
           id: file.name.replace('.html', ''), 
-          title: `Chapter ${order}`, // Default title, can be improved if chapter titles are in HTML or info.json
+          title: `Chapter ${order}`,
           order: order,
         };
       });
@@ -150,6 +143,8 @@ export async function fetchNovels(): Promise<Novel[]> {
         etiquetas: info.etiquetas,
         categoria: info.categoria,
         traductor: info.traductor,
+        lastUpdateDate: info.fecha_lanzamiento, // Using fecha_lanzamiento as lastUpdateDate
+        // totalWordCount will be calculated in fetchNovelById if needed there
       });
     } catch (error) {
       console.error(`[GitHub Lib] Error processing novel directory '${dir.name}':`, error);
@@ -169,7 +164,7 @@ export async function fetchNovelById(id: string): Promise<Novel | undefined> {
   
   try {
     let novelContents: GitHubFile[];
-    const novelFolderPath = id; // The novelId is the folder path from the root
+    const novelFolderPath = id;
 
     try {
         novelContents = await fetchFromGitHub<GitHubFile[]>(`contents/${novelFolderPath}?ref=${DEFAULT_BRANCH}`);
@@ -200,7 +195,7 @@ export async function fetchNovelById(id: string): Promise<Novel | undefined> {
     const coverImageFile = novelContents.find(f => f.name === 'cover.png' && f.type === 'file');
     let coverImage: string;
       if (coverImageFile) {
-        coverImage = getRawContentUrl(coverImageFile.path); // coverImageFile.path is already novelId/cover.png
+        coverImage = getRawContentUrl(coverImageFile.path);
         console.log(`[GitHub Lib] Novel Detail '${id}': Found 'cover.png' at path '${coverImageFile.path}'. Generated URL: ${coverImage}`);
       } else {
         coverImage = 'https://placehold.co/300x450.png?text=No+Cover';
@@ -225,6 +220,17 @@ export async function fetchNovelById(id: string): Promise<Novel | undefined> {
       };
     });
 
+    let totalWordCount = 0;
+    for (const chapterMeta of chaptersMetadata) {
+      try {
+        const chapterFilePath = `${novelFolderPath}/${chapterMeta.id}.html`;
+        const chapterContent = await fetchFileContent(chapterFilePath);
+        totalWordCount += countWordsInHtml(chapterContent);
+      } catch (wordCountError) {
+        console.warn(`[GitHub Lib] Could not fetch or count words for chapter ${chapterMeta.id} of novel ${id}:`, wordCountError);
+      }
+    }
+
     return {
       id: id,
       title: info.titulo,
@@ -236,6 +242,8 @@ export async function fetchNovelById(id: string): Promise<Novel | undefined> {
       etiquetas: info.etiquetas,
       categoria: info.categoria,
       traductor: info.traductor,
+      lastUpdateDate: info.fecha_lanzamiento,
+      totalWordCount: totalWordCount > 0 ? totalWordCount : undefined, // Only set if words were actually counted
     };
 
   } catch (error) {
@@ -245,7 +253,7 @@ export async function fetchNovelById(id: string): Promise<Novel | undefined> {
 }
 
 export async function fetchChapter(novelId: string, chapterId: string): Promise<{ novel: Novel; chapter: Chapter } | undefined> {
-  const novel = await fetchNovelById(novelId);
+  const novel = await fetchNovelById(novelId); // This will now also fetch word count for the novel, which is not ideal for chapter page but acceptable.
   if (!novel) {
     return undefined;
   }
@@ -273,5 +281,3 @@ export async function fetchChapter(novelId: string, chapterId: string): Promise<
     return undefined;
   }
 }
-
-    

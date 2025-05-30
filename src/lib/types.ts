@@ -1,3 +1,4 @@
+
 export interface Chapter {
   id: string; // e.g., "chapter-1"
   title: string; // e.g., "Chapter 1" (can be generated)
@@ -20,6 +21,10 @@ export interface Novel {
   etiquetas?: string[];
   categoria?: string;
   traductor?: string;
+
+  // Calculated fields
+  totalWordCount?: number;
+  lastUpdateDate?: string; // Will use fecha_lanzamiento for this
 }
 
 // For Reader Settings Context
