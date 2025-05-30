@@ -1,24 +1,17 @@
 
 'use client';
 
-import { useActionState, useEffect, useRef, useState } from 'react';
+import { useActionState, useEffect, useRef, useState, useTransition } from 'react';
 import { useFormStatus } from 'react-dom';
 import { saveChapterAction } from '@/actions/novelAdminActions';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea'; // Import Textarea
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
-import { FilePlus2, Loader2, CheckCircle, AlertTriangle, Edit3 } from 'lucide-react';
+import { Loader2, CheckCircle, AlertTriangle, Edit3 } from 'lucide-react';
 import Link from 'next/link';
-import dynamic from 'next/dynamic';
-import 'react-quill/dist/quill.snow.css'; // Import Quill styles
-
-// Dynamically import ReactQuill to avoid SSR issues
-const ReactQuill = dynamic(() => import('react-quill'), { 
-  ssr: false,
-  loading: () => <div className="p-4 border rounded-md bg-muted min-h-[300px] animate-pulse flex items-center justify-center text-muted-foreground">Cargando editor...</div> 
-});
 
 interface ManageNovelChaptersProps {
   novelId: string;
@@ -51,28 +44,10 @@ export default function ManageNovelChapters({ novelId, novelTitle }: ManageNovel
   const [state, formAction] = useActionState(saveChapterAction, initialChapterSaveState);
   const { toast } = useToast();
   const formRef = useRef<HTMLFormElement>(null);
-  const [chapterContent, setChapterContent] = useState(''); // For ReactQuill
+  const [isPending, startTransition] = useTransition(); // For form reset
 
-  const quillModules = {
-    toolbar: [
-      [{ 'header': [1, 2, 3, 4, 5, 6, false] }],
-      ['bold', 'italic', 'underline', 'strike', 'blockquote'],
-      [{'list': 'ordered'}, {'list': 'bullet'}, {'indent': '-1'}, {'indent': '+1'}],
-      ['link', /* 'image' - image upload needs a handler */],
-      [{ 'color': [] }, { 'background': [] }], // Color and background color
-      [{ 'font': [] }], // Font family
-      [{ 'align': [] }], // Text alignment
-      ['clean'] // Remove formatting
-    ],
-  };
-
-  const quillFormats = [
-    'header',
-    'bold', 'italic', 'underline', 'strike', 'blockquote',
-    'list', 'bullet', 'indent',
-    'link', /* 'image', */
-    'color', 'background', 'font', 'align'
-  ];
+  // State for chapter content is no longer needed here if Textarea value is directly read by FormData
+  // const [chapterContent, setChapterContent] = useState(''); 
 
   useEffect(() => {
     if (state?.message) {
@@ -84,9 +59,10 @@ export default function ManageNovelChapters({ novelId, novelTitle }: ManageNovel
       });
 
       if (state.success) {
-        // Reset form, including ReactQuill content
-        formRef.current?.reset(); 
-        setChapterContent(''); // Clear ReactQuill content
+        startTransition(() => {
+          formRef.current?.reset();
+          // No need to clear a separate chapterContent state for Textarea
+        });
       }
     }
   }, [state, toast]);
@@ -96,10 +72,11 @@ export default function ManageNovelChapters({ novelId, novelTitle }: ManageNovel
       <CardHeader>
         <CardTitle className="flex items-center text-xl">
           <Edit3 className="mr-3 h-6 w-6 text-primary" />
-          Escribir/Editar Capítulo para: <span className="ml-2 font-semibold">{novelTitle}</span>
+          Escribir Capítulo para: <span className="ml-2 font-semibold">{novelTitle}</span>
         </CardTitle>
         <CardDescription>
-          Escribe el contenido del capítulo usando el editor. Si guardas un capítulo con un número existente, se sobrescribirá.
+          Escribe el contenido del capítulo. Si guardas un capítulo con un número existente, se sobrescribirá.
+          Cada salto de línea en el área de texto se convertirá en un nuevo párrafo.
         </CardDescription>
       </CardHeader>
       <form action={formAction} ref={formRef}>
@@ -115,6 +92,7 @@ export default function ManageNovelChapters({ novelId, novelTitle }: ManageNovel
                 min="1"
                 placeholder="Ej: 1"
                 required
+                disabled={isPending}
               />
                <p className="text-xs text-muted-foreground">Este número se usará para el nombre del archivo y el orden.</p>
             </div>
@@ -125,6 +103,7 @@ export default function ManageNovelChapters({ novelId, novelTitle }: ManageNovel
                 name="chapterTitle"
                 type="text"
                 placeholder="Ej: El Comienzo de la Aventura"
+                disabled={isPending}
               />
               <p className="text-xs text-muted-foreground">Si se proporciona, se añadirá como un encabezado H1 al inicio del capítulo.</p>
             </div>
@@ -132,20 +111,16 @@ export default function ManageNovelChapters({ novelId, novelTitle }: ManageNovel
 
           <div className="space-y-2">
             <Label htmlFor="chapterContent">Contenido del Capítulo</Label>
-            {/* Hidden input to send ReactQuill content with the form */}
-            <input type="hidden" name="chapterContent" value={chapterContent} />
-            <div className="bg-card rounded-md border">
-              <ReactQuill 
-                theme="snow" 
-                value={chapterContent} 
-                onChange={setChapterContent}
-                modules={quillModules}
-                formats={quillFormats}
-                placeholder="Escribe el contenido del capítulo aquí..."
-                className="min-h-[400px] [&_.ql-editor]:min-h-[350px] [&_.ql-toolbar]:rounded-t-md [&_.ql-container]:rounded-b-md"
-              />
-            </div>
-             <p className="text-xs text-muted-foreground mt-1">Usa las herramientas del editor para dar formato a tu texto.</p>
+            <Textarea
+              id="chapterContent"
+              name="chapterContent"
+              placeholder="Escribe el contenido del capítulo aquí. Cada nueva línea será un nuevo párrafo en el HTML final."
+              rows={15} // Adjust rows as needed
+              required
+              disabled={isPending}
+              className="min-h-[400px] resize-y"
+            />
+             <p className="text-xs text-muted-foreground mt-1">El texto se guardará como HTML simple (párrafos).</p>
           </div>
         </CardContent>
         <CardFooter className="flex flex-col items-start sm:flex-row sm:justify-end gap-4 pt-6">
@@ -153,7 +128,7 @@ export default function ManageNovelChapters({ novelId, novelTitle }: ManageNovel
         </CardFooter>
       </form>
 
-      {state?.message && (
+      {state?.message && !isPending && ( // Only show feedback if not transitioning (form reset)
         <div className="p-4 mt-4 text-sm rounded-md">
           {state.success && state.chapterPath && (
             <div className="bg-green-50 dark:bg-green-900/30 border border-green-300 dark:border-green-700 p-4 rounded-md text-green-700 dark:text-green-300">

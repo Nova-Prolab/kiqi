@@ -69,7 +69,7 @@ export async function createNovelAction(
   const infoJson: InfoJson = {
     titulo: data.title,
     autor: data.author,
-    descripcion: data.description.replace(/\r\n|\r|\n/g, '\\n'), // Keep this for newlines in JSON string
+    descripcion: data.description.replace(/\r\n|\r|\n/g, '\\n'),
     coverImageUrl: data.coverImageUrl || undefined,
     categoria: data.category || undefined,
     etiquetas: tagsArray,
@@ -108,7 +108,7 @@ const saveChapterSchema = z.object({
   novelId: z.string().min(1, "El ID de la novela es obligatorio."),
   chapterNumber: z.coerce.number().int().positive("El número de capítulo debe ser un entero positivo."),
   chapterTitle: z.string().optional(),
-  chapterContent: z.string().min(1, "El contenido del capítulo no puede estar vacío."), // This will now be HTML content
+  chapterContent: z.string().min(1, "El contenido del capítulo no puede estar vacío."),
 });
 
 interface SaveChapterState {
@@ -125,7 +125,7 @@ export async function saveChapterAction(
     novelId: formData.get('novelId') as string,
     chapterNumber: formData.get('chapterNumber') as string, 
     chapterTitle: formData.get('chapterTitle') as string | undefined,
-    chapterContent: formData.get('chapterContent') as string, // Expecting HTML string
+    chapterContent: formData.get('chapterContent') as string,
   };
 
   const validatedFields = saveChapterSchema.safeParse(rawFormData);
@@ -142,22 +142,18 @@ export async function saveChapterAction(
 
   const { novelId, chapterNumber, chapterTitle, chapterContent } = validatedFields.data;
   
-  // The chapterContent is now direct HTML from React-Quill
-  // We no longer need to split by \n or wrap in <p> tags here.
-  
-  if (!chapterContent.trim() || chapterContent.trim() === '<p><br></p>') { // React-Quill empty content
+  if (!chapterContent.trim()) {
     return {
         message: "El contenido del capítulo está vacío.",
         success: false,
     }
   }
 
-  let finalHtmlContent = chapterContent;
+  const lines = chapterContent.split(/\r\n|\r|\n/).filter(line => line.trim() !== '');
+  let htmlContent = lines.map(line => `<p>${line.trim()}</p>`).join('\n');
+
   if (chapterTitle && chapterTitle.trim() !== '') {
-    // Prepend H1 title if provided and not already in content (basic check)
-    if (!chapterContent.trim().toLowerCase().startsWith('<h1>')) {
-       finalHtmlContent = `<h1>${chapterTitle.trim()}</h1>\n${chapterContent}`;
-    }
+    htmlContent = `<h1>${chapterTitle.trim()}</h1>\n${htmlContent}`;
   }
 
   const chapterFilename = `chapter-${chapterNumber}.html`;
@@ -165,9 +161,8 @@ export async function saveChapterAction(
   const commitMessage = `feat: Add/Update chapter ${chapterNumber} for ${novelId}`;
 
   try {
-    // Check if file exists to get SHA for update, otherwise it's a create
     const existingFileSha = await getFileSha(filePathInRepo);
-    await createFileInRepo(filePathInRepo, finalHtmlContent, commitMessage, existingFileSha || undefined);
+    await createFileInRepo(filePathInRepo, htmlContent, commitMessage, existingFileSha || undefined);
 
     revalidatePath(`/novels/${novelId}`);
     revalidatePath(`/novels/${novelId}/chapters/chapter-${chapterNumber}`); 
@@ -187,7 +182,6 @@ export async function saveChapterAction(
   }
 }
 
-// Action to delete a novel (soft delete by removing info.json)
 const deleteNovelSchema = z.object({
   novelId: z.string().min(1, "El ID de la novela es obligatorio."),
   infoJsonSha: z.string().min(1, "El SHA del archivo info.json es obligatorio para la eliminación.")
@@ -229,7 +223,6 @@ export async function deleteNovelAction(
     
     revalidatePath('/');
     revalidatePath('/admin/dashboard');
-    // No need to revalidate /novels/${novelId} as it should 404
 
     return {
       message: `La información de la novela '${novelId}' ha sido eliminada (info.json). Los archivos de capítulo permanecen en el repositorio y deben eliminarse manualmente si es necesario.`,
