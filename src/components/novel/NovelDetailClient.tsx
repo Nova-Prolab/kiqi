@@ -9,17 +9,37 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { List, ChevronRight, BookOpen, ArrowLeft, Tag, CalendarDays, UserCircle } from 'lucide-react';
 import { Separator } from '@/components/ui/separator';
 import { Badge } from '@/components/ui/badge';
+import React, { useState, useEffect, useMemo } from 'react';
 
 interface NovelDetailClientProps {
   novel: Novel;
 }
 
+const MAX_INITIAL_SUMMARY_LINES = 6;
+
 export default function NovelDetailClient({ novel }: NovelDetailClientProps) {
   const sortedChapters = novel.chapters?.sort((a,b) => a.order - b.order) || [];
   const firstChapter = sortedChapters.length > 0 ? sortedChapters[0] : null;
 
-  // Process summary to ensure \n are treated as newlines
-  const processedSummary = novel.summary.replace(/\\n/g, '\n');
+  const [isSummaryExpanded, setIsSummaryExpanded] = useState(false);
+  const [isLongSummary, setIsLongSummary] = useState(false);
+
+  // Process summary to ensure \n are treated as newlines and split into lines
+  const processedSummaryContent = novel.summary.replace(/\\n/g, '\n');
+  const summaryLines = useMemo(() => processedSummaryContent.split('\n'), [processedSummaryContent]);
+
+  useEffect(() => {
+    if (summaryLines.length > MAX_INITIAL_SUMMARY_LINES) {
+      setIsLongSummary(true);
+    } else {
+      setIsLongSummary(false);
+      setIsSummaryExpanded(false); // Reset expansion if summary becomes short
+    }
+  }, [summaryLines]);
+
+  const displayedSummaryLines = isLongSummary && !isSummaryExpanded 
+    ? summaryLines.slice(0, MAX_INITIAL_SUMMARY_LINES) 
+    : summaryLines;
 
   return (
     <div className="space-y-8">
@@ -66,13 +86,25 @@ export default function NovelDetailClient({ novel }: NovelDetailClientProps) {
             </CardHeader>
             <CardContent>
               <div className="text-foreground/80 leading-relaxed">
-                {processedSummary.split('\n').map((line, index, array) => (
-                  <span key={index}>
+                {displayedSummaryLines.map((line, index) => (
+                  <React.Fragment key={index}>
                     {line}
-                    {index < array.length - 1 && <br />}
-                  </span>
+                    {index < displayedSummaryLines.length - 1 && <br />}
+                  </React.Fragment>
                 ))}
+                {isLongSummary && !isSummaryExpanded && (
+                  <span className="text-muted-foreground">...</span>
+                )}
               </div>
+              {isLongSummary && (
+                <Button
+                  variant="link"
+                  className="p-0 h-auto text-sm mt-2 text-primary hover:text-primary/80"
+                  onClick={() => setIsSummaryExpanded(!isSummaryExpanded)}
+                >
+                  {isSummaryExpanded ? 'Ver menos' : 'Ver más'}
+                </Button>
+              )}
             </CardContent>
           </Card>
 
