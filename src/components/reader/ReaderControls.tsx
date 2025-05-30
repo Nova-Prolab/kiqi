@@ -30,6 +30,9 @@ interface ReaderControlsProps {
   forceTranslationMenuOpen?: boolean;
   isTranslationApplied: boolean;
   onRevertToOriginal: () => void;
+  // New props for immersive visibility control
+  isVisibleInImmersiveMode: boolean;
+  onHoverStateChange: (isHovering: boolean) => void;
 }
 
 const FONT_SIZES: { label: string, value: ReaderFontSize }[] = [
@@ -60,7 +63,9 @@ export default function ReaderControls({
   onTranslateRequest,
   forceTranslationMenuOpen = false,
   isTranslationApplied,
-  onRevertToOriginal
+  onRevertToOriginal,
+  isVisibleInImmersiveMode,
+  onHoverStateChange
 }: ReaderControlsProps) {
   const { 
     theme, 
@@ -140,13 +145,19 @@ export default function ReaderControls({
   const translateButtonTooltip = isTranslationApplied ? "Ver Texto Original" : "Traducir Capítulo";
   const TranslateIcon = isTranslationApplied ? BookText : Languages;
 
+  const baseClasses = "reader-controls p-2 bg-card/90 backdrop-blur-sm shadow-md border-b transition-transform duration-300 ease-in-out";
+  let immersiveSpecificClasses = "";
+  if (isImmersive) {
+    immersiveSpecificClasses = `fixed top-0 left-0 right-0 z-[110] transform ${isVisibleInImmersiveMode ? 'translate-y-0' : '-translate-y-full'}`;
+  } else {
+    immersiveSpecificClasses = "sticky top-0 z-40 rounded-t-lg border-x";
+  }
+
   return (
     <div 
-      className={`reader-controls p-2 bg-card/90 backdrop-blur-sm shadow-md border-b 
-                  ${isImmersive 
-                    ? 'fixed top-0 left-0 right-0 z-[110] transform -translate-y-full hover:translate-y-0 focus-within:translate-y-0 transition-transform duration-300 ease-in-out' 
-                    : 'sticky top-0 z-40 rounded-t-lg border-x'
-                  }`}
+      className={`${baseClasses} ${immersiveSpecificClasses}`}
+      onMouseEnter={() => isImmersive && onHoverStateChange(true)}
+      onMouseLeave={() => isImmersive && onHoverStateChange(false)}
     >
       <div className="mx-auto flex items-center justify-between gap-1 max-w-4xl px-2 sm:px-0">
         
@@ -181,7 +192,7 @@ export default function ReaderControls({
                 <TooltipContent><p>Ajustes de Apariencia</p></TooltipContent>
               </Tooltip>
             </TooltipProvider>
-            <DropdownMenuContent align="center" className="w-72">
+            <DropdownMenuContent align="center" className="w-80"> {/* Increased width */}
               <DropdownMenuLabel>Tamaño de Fuente</DropdownMenuLabel>
               <DropdownMenuRadioGroup value={fontSize} onValueChange={(value) => setFontSize(value as ReaderFontSize)}>
                 {FONT_SIZES.map(fs => (
@@ -207,7 +218,7 @@ export default function ReaderControls({
                   <DropdownMenuItem onSelect={(e) => e.preventDefault()} className="focus:bg-transparent">
                     <div className="w-full space-y-3 py-1">
                       <div className="flex items-center gap-2">
-                        <label htmlFor="custom-bg-color" className="text-sm text-popover-foreground shrink-0">Fondo:</label>
+                        <label htmlFor="custom-bg-color" className="text-sm text-popover-foreground shrink-0 w-12">Fondo:</label>
                         <input
                           id="custom-bg-color"
                           type="color"
@@ -225,7 +236,7 @@ export default function ReaderControls({
                         />
                       </div>
                       <div className="flex items-center gap-2">
-                        <label htmlFor="custom-fg-color" className="text-sm text-popover-foreground shrink-0">Texto:</label>
+                        <label htmlFor="custom-fg-color" className="text-sm text-popover-foreground shrink-0 w-12">Texto:</label>
                         <input
                           id="custom-fg-color"
                           type="color"
@@ -313,3 +324,4 @@ export default function ReaderControls({
     </div>
   );
 }
+

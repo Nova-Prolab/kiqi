@@ -19,6 +19,8 @@ interface ReaderViewProps {
   currentChapter: Chapter;
 }
 
+const DOUBLE_CLICK_REVEAL_TIMEOUT = 150; // ms
+
 export default function ReaderView({ novel, currentChapter }: ReaderViewProps) {
   const { 
     fontClass, 
@@ -33,6 +35,8 @@ export default function ReaderView({ novel, currentChapter }: ReaderViewProps) {
   const { savePosition, loadPosition } = useReadingPosition(chapterKey);
   
   const scrollViewportRef = useRef<HTMLDivElement>(null); 
+  const doubleClickRevealTimerRef = useRef<NodeJS.Timeout | null>(null);
+
 
   const [isMounted, setIsMounted] = useState(false);
   const [isTranslationDialogOpen, setIsTranslationDialogOpen] = useState(false);
@@ -42,8 +46,18 @@ export default function ReaderView({ novel, currentChapter }: ReaderViewProps) {
   const [effectiveChapterContent, setEffectiveChapterContent] = useState<string>(currentChapter.content);
   const [isTranslationApplied, setIsTranslationApplied] = useState<boolean>(false);
 
+  // State for immersive controls visibility
+  const [isMouseOverImmersiveControls, setIsMouseOverImmersiveControls] = useState(false);
+  const [forceShowImmersiveControlsByDoubleClick, setForceShowImmersiveControlsByDoubleClick] = useState(false);
+
+
   useEffect(() => {
     setIsMounted(true);
+    return () => {
+      if (doubleClickRevealTimerRef.current) {
+        clearTimeout(doubleClickRevealTimerRef.current);
+      }
+    };
   }, []);
 
   useEffect(() => {
@@ -52,6 +66,10 @@ export default function ReaderView({ novel, currentChapter }: ReaderViewProps) {
     if (scrollViewportRef.current) {
       scrollViewportRef.current.scrollTop = 0;
     }
+    // Reset immersive control states on chapter change
+    setIsMouseOverImmersiveControls(false); 
+    setForceShowImmersiveControlsByDoubleClick(false);
+
     const timer = setTimeout(() => {
         if (!isMounted || !scrollViewportRef.current) return;
         const scrollableElement = scrollViewportRef.current;
@@ -105,6 +123,10 @@ export default function ReaderView({ novel, currentChapter }: ReaderViewProps) {
 
   const handleToggleImmersive = () => {
     setIsImmersive(!isImmersive);
+    if (!isImmersive) { // Entering immersive mode
+      setIsMouseOverImmersiveControls(false); 
+      setForceShowImmersiveControlsByDoubleClick(false);
+    }
   };
 
   const handleOpenTranslationDialog = (language: TranslateChapterInput['targetLanguage']) => {
@@ -133,6 +155,21 @@ export default function ReaderView({ novel, currentChapter }: ReaderViewProps) {
       scrollViewportRef.current.scrollTop = 0;
     }
   };
+
+  const handleImmersiveTopAreaDoubleClick = () => {
+    if (!isImmersive) return;
+    setForceShowImmersiveControlsByDoubleClick(true);
+    if (doubleClickRevealTimerRef.current) {
+      clearTimeout(doubleClickRevealTimerRef.current);
+    }
+    doubleClickRevealTimerRef.current = setTimeout(() => {
+      setForceShowImmersiveControlsByDoubleClick(false);
+    }, DOUBLE_CLICK_REVEAL_TIMEOUT);
+  };
+
+  const actualImmersiveControlsVisible = isImmersive 
+    ? (isMouseOverImmersiveControls || forceShowImmersiveControlsByDoubleClick) 
+    : true; // Controls always "visible" (sticky) in non-immersive
 
   const readingAreaStyle: React.CSSProperties = {};
   if (theme === 'custom' && customBackground) {
@@ -171,6 +208,13 @@ export default function ReaderView({ novel, currentChapter }: ReaderViewProps) {
         </Card>
       )}
       
+      {isImmersive && (
+        <div 
+          className="fixed top-0 left-0 w-full h-16 z-[105] cursor-default" // Double click trigger area
+          onDoubleClick={handleImmersiveTopAreaDoubleClick}
+        />
+      )}
+
       <ReaderControls
         chapterHtmlContent={effectiveChapterContent}
         onToggleImmersive={handleToggleImmersive}
@@ -180,6 +224,8 @@ export default function ReaderView({ novel, currentChapter }: ReaderViewProps) {
         forceTranslationMenuOpen={translationControlsOpen}
         isTranslationApplied={isTranslationApplied}
         onRevertToOriginal={handleRevertToOriginal}
+        isVisibleInImmersiveMode={actualImmersiveControlsVisible}
+        onHoverStateChange={setIsMouseOverImmersiveControls}
       />
 
       <ScrollArea 
