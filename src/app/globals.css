@@ -40,9 +40,9 @@
     --chart-4: 43 74% 66%;
     --chart-5: 27 87% 67%;
 
-    /* Custom reading pane variables */
-    --reading-pane-background: hsl(var(--background));
-    --reading-pane-foreground: hsl(var(--foreground));
+    /* Default reading pane variables (matching light theme) */
+    --reading-pane-background: 0 0% 96%;
+    --reading-pane-foreground: 0 0% 10%;
     --font-serif: var(--font-lora); 
     --font-sans: var(--font-geist-sans);
   }
@@ -82,9 +82,9 @@
     --chart-4: 280 65% 60%;
     --chart-5: 340 75% 55%;
 
-    /* Custom reading pane variables for dark mode */
-    --reading-pane-background: hsl(var(--background));
-    --reading-pane-foreground: hsl(var(--foreground));
+    /* Default reading pane variables for dark mode (matching dark theme) */
+    --reading-pane-background: 0 0% 13%;
+    --reading-pane-foreground: 0 0% 80%;
   }
 }
 
@@ -97,28 +97,40 @@
     font-family: var(--font-sans); /* Default to sans-serif for UI */
   }
 
+  .reading-content-area {
+    font-family: var(--font-serif);
+    background-color: hsl(var(--reading-pane-background));
+    color: hsl(var(--reading-pane-foreground));
+  }
+
   .reading-content-area.theme-light {
     --reading-pane-background: 0 0% 96%; /* Slightly off-white like #F5F5F5 */
     --reading-pane-foreground: 0 0% 10%; /* Dark gray text */
-    background-color: var(--reading-pane-background);
-    color: var(--reading-pane-foreground);
-    font-family: var(--font-serif);
   }
 
   .reading-content-area.theme-dark {
     --reading-pane-background: 0 0% 13%; /* Dark gray like #212121 */
     --reading-pane-foreground: 0 0% 80%; /* Light gray text */
-    background-color: var(--reading-pane-background);
-    color: var(--reading-pane-foreground);
-    font-family: var(--font-serif);
   }
 
   .reading-content-area.theme-sepia {
     --reading-pane-background: 39 31% 85%; /* Sepia bg #FAF0E6 (Linen) to #DBCFBD */
     --reading-pane-foreground: 30 34% 26%; /* Sepia text #594739 */
-    background-color: var(--reading-pane-background);
-    color: var(--reading-pane-foreground);
-    font-family: var(--font-serif);
+  }
+
+  .reading-content-area.theme-midnight {
+    --reading-pane-background: 220 25% 8%; /* Approx #0A0F1A */
+    --reading-pane-foreground: 198 80% 80%; /* Approx #A0D8F5 */
+  }
+
+  .reading-content-area.theme-paper {
+    --reading-pane-background: 45 80% 98%; /* Approx #FDFBF6 */
+    --reading-pane-foreground: 30 10% 25%; /* Approx #4A443F */
+  }
+  
+  .reading-content-area.theme-forest {
+    --reading-pane-background: 150 18% 20%; /* Approx #2A3D32 */
+    --reading-pane-foreground: 50 50% 90%; /* Approx #F0EACF */
   }
 }
 

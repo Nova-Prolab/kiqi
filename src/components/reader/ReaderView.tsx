@@ -20,7 +20,15 @@ interface ReaderViewProps {
 }
 
 export default function ReaderView({ novel, currentChapter }: ReaderViewProps) {
-  const { fontClass, themeClass, isImmersive, setIsImmersive } = useReaderSettings();
+  const { 
+    fontClass, 
+    themeClass, 
+    isImmersive, 
+    setIsImmersive, 
+    theme, 
+    customBackground, 
+    customForeground 
+  } = useReaderSettings();
   const chapterKey = `${novel.id}_${currentChapter.id}`;
   const { savePosition, loadPosition } = useReadingPosition(chapterKey);
   
@@ -38,27 +46,22 @@ export default function ReaderView({ novel, currentChapter }: ReaderViewProps) {
     setIsMounted(true);
   }, []);
 
-  // Reset effective content and translation state when chapter changes
   useEffect(() => {
     setEffectiveChapterContent(currentChapter.content);
     setIsTranslationApplied(false);
-    // Reset scroll position for new chapter
     if (scrollViewportRef.current) {
       scrollViewportRef.current.scrollTop = 0;
     }
-    // Load saved position for new chapter after a brief delay to ensure DOM update
-    // This also handles initial load.
     const timer = setTimeout(() => {
         if (!isMounted || !scrollViewportRef.current) return;
         const scrollableElement = scrollViewportRef.current;
-        const position = loadPosition(); // loadPosition is for the new chapterKey
+        const position = loadPosition();
         if (position !== null) {
           scrollableElement.scrollTop = position;
         }
-    }, 50); // Small delay
+    }, 50);
 
     return () => clearTimeout(timer);
-
   }, [currentChapter.id, currentChapter.content, novel.id, isMounted, loadPosition]);
 
 
@@ -77,8 +80,6 @@ export default function ReaderView({ novel, currentChapter }: ReaderViewProps) {
     if (!isMounted || !scrollViewportRef.current) return;
     const scrollableElement = scrollViewportRef.current;
     
-    // Initial position setting is handled by the chapter change useEffect
-    // This useEffect is now only for saving position on scroll
     const handleScroll = () => {
       if (scrollableElement) {
         debouncedSavePosition(scrollableElement.scrollTop);
@@ -120,7 +121,6 @@ export default function ReaderView({ novel, currentChapter }: ReaderViewProps) {
   const handleApplyTranslation = (translatedHtml: string) => {
     setEffectiveChapterContent(translatedHtml);
     setIsTranslationApplied(true);
-    // After applying translation, it might be good to scroll to top
     if (scrollViewportRef.current) {
       scrollViewportRef.current.scrollTop = 0;
     }
@@ -133,6 +133,14 @@ export default function ReaderView({ novel, currentChapter }: ReaderViewProps) {
       scrollViewportRef.current.scrollTop = 0;
     }
   };
+
+  const readingAreaStyle: React.CSSProperties = {};
+  if (theme === 'custom' && customBackground) {
+    readingAreaStyle.backgroundColor = customBackground;
+  }
+  if (theme === 'custom' && customForeground) {
+    readingAreaStyle.color = customForeground;
+  }
 
   if (!isMounted) {
     return (
@@ -164,7 +172,7 @@ export default function ReaderView({ novel, currentChapter }: ReaderViewProps) {
       )}
       
       <ReaderControls
-        chapterHtmlContent={effectiveChapterContent} // Use effective content
+        chapterHtmlContent={effectiveChapterContent}
         onToggleImmersive={handleToggleImmersive}
         isImmersive={isImmersive}
         novelId={novel.id}
@@ -179,7 +187,8 @@ export default function ReaderView({ novel, currentChapter }: ReaderViewProps) {
         viewportRef={scrollViewportRef} 
       >
         <div
-          className={`reading-content-area ${themeClass} ${fontClass} p-6 md:p-10 lg:p-12 prose prose-sm sm:prose md:prose-lg max-w-4xl mx-auto selection:bg-accent selection:text-accent-foreground`}
+          className={`reading-content-area ${theme !== 'custom' ? themeClass : ''} ${fontClass} p-6 md:p-10 lg:p-12 prose prose-sm sm:prose md:prose-lg max-w-4xl mx-auto selection:bg-accent selection:text-accent-foreground`}
+          style={readingAreaStyle}
           dangerouslySetInnerHTML={chapterContentToDisplay}
         />
         
@@ -213,7 +222,7 @@ export default function ReaderView({ novel, currentChapter }: ReaderViewProps) {
       <TranslationDialog
         isOpen={isTranslationDialogOpen}
         onOpenChange={setIsTranslationDialogOpen}
-        originalHtmlContent={currentChapter.content} // Always translate from original
+        originalHtmlContent={currentChapter.content}
         targetLanguage={selectedTargetLanguage}
         onLanguageChangeRequest={handleRequestLanguageChange}
         onApplyTranslation={handleApplyTranslation}

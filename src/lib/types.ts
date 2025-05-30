@@ -36,11 +36,13 @@ export interface Novel {
 }
 
 // For Reader Settings Context
-export type ReaderTheme = 'light' | 'dark' | 'sepia';
+export type ReaderTheme = 'light' | 'dark' | 'sepia' | 'midnight' | 'paper' | 'forest' | 'custom';
 export type ReaderFontSize = 'sm' | 'base' | 'lg' | 'xl' | '2xl';
 
 export interface ReaderSettings {
   theme: ReaderTheme;
   fontSize: ReaderFontSize;
-  isImmersive: boolean; // Added immersive mode state
+  isImmersive: boolean;
+  customBackground?: string;
+  customForeground?: string;
 }
