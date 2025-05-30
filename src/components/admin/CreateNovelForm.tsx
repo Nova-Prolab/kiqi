@@ -1,7 +1,7 @@
 
 'use client';
 
-import { useActionState } from 'react';
+import { useActionState, useEffect } from 'react';
 import { useFormStatus } from 'react-dom';
 import { createNovelAction } from '@/actions/novelAdminActions';
 import { Button } from '@/components/ui/button';
@@ -9,12 +9,13 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
-import { useEffect } from 'react';
 import { useToast } from '@/hooks/use-toast';
 import Link from 'next/link';
 import { ArrowLeft, CheckCircle, AlertTriangle, BookPlus } from 'lucide-react';
-import ManageNovelChapters from './ManageNovelChapters';
-import { useOwnedNovels } from '@/hooks/useOwnedNovels'; // Import the new hook
+// ManageNovelChapters is now directly linked from the admin dashboard or after creation.
+// We don't need to show it here directly after creating novel info.
+// import ManageNovelChapters from './ManageNovelChapters'; 
+import { useOwnedNovels } from '@/hooks/useOwnedNovels';
 
 const initialNovelState = {
   message: '',
@@ -27,7 +28,7 @@ function SubmitNovelButton() {
   const { pending } = useFormStatus();
   return (
     <Button type="submit" disabled={pending} className="w-full sm:w-auto">
-      {pending ? 'Creando Novela...' : 'Crear Archivo de Información'}
+      {pending ? 'Creando Información...' : 'Crear Información de Novela'}
     </Button>
   );
 }
@@ -35,11 +36,12 @@ function SubmitNovelButton() {
 export default function CreateNovelForm() {
   const [novelState, formAction] = useActionState(createNovelAction, initialNovelState);
   const { toast } = useToast();
-  const { addOwnedNovel } = useOwnedNovels(); // Use the hook
+  const { addOwnedNovel } = useOwnedNovels();
 
   useEffect(() => {
     if (novelState?.message) {
-      if (novelState.message.startsWith('Novela') || novelState.message.startsWith('Error al crear la novela') || novelState.message.startsWith('Error de validación:')) {
+      // Only toast for info creation, chapter management has its own feedback.
+      if (novelState.message.startsWith('Información de la novela') || novelState.message.startsWith('Error al crear la información') || novelState.message.startsWith('Error de validación:')) {
         toast({
           title: novelState.success ? 'Éxito en Creación de Información' : 'Error en Creación de Información',
           description: novelState.message,
@@ -47,7 +49,7 @@ export default function CreateNovelForm() {
         });
       }
       if (novelState.success && novelState.novelId) {
-        addOwnedNovel(novelState.novelId); // Add to localStorage on success
+        addOwnedNovel(novelState.novelId);
       }
     }
   }, [novelState, toast, addOwnedNovel]);
@@ -68,7 +70,7 @@ export default function CreateNovelForm() {
           </CardTitle>
           <CardDescription>
             Completa los detalles para añadir una nueva novela.
-            Esto creará el archivo de información de la novela. Después podrás añadir capítulos.
+            Esto creará el archivo de información de la novela. Después podrás gestionar sus capítulos.
           </CardDescription>
         </CardHeader>
         <form action={formAction}>
@@ -109,8 +111,8 @@ export default function CreateNovelForm() {
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
               <div className="space-y-2">
                 <Label htmlFor="tags">Etiquetas (separadas por comas)</Label>
-                <Input id="tags" name="tags" placeholder="Ej: magia, aventura, dragones (la etiqueta 'destacado' será ignorada)" />
-                 <p className="text-xs text-muted-foreground">La etiqueta 'destacado' no se puede añadir desde aquí.</p>
+                <Input id="tags" name="tags" placeholder="Ej: magia, aventura, dragones" />
+                 <p className="text-xs text-muted-foreground">La etiqueta 'destacado' será ignorada si se añade aquí.</p>
               </div>
               <div className="space-y-2">
                 <Label htmlFor="translator">Traductor (si aplica)</Label>
@@ -139,7 +141,10 @@ export default function CreateNovelForm() {
           <CardContent className="text-sm text-green-600 dark:text-green-400 space-y-2">
             <p>{novelState.message}</p>
             <p>
-              Ahora puedes <Link href={`/novels/${novelState.novelId}`} className="underline hover:text-primary">ver la página de la novela</Link> o añadir capítulos a continuación.
+              Ahora puedes <Link href={`/novels/${novelState.novelId}`} className="underline hover:text-primary">ver la página de la novela</Link> o{' '}
+              <Link href={`/admin/novels/${novelState.novelId}/add-chapter`} className="underline hover:text-primary">
+                ir a gestionar sus capítulos
+              </Link>.
             </p>
              <p className="text-xs text-muted-foreground">Recuerda: La novela ha sido marcada como "tuya" en este navegador. Solo tú verás opciones de gestión adicionales para ella en el panel.</p>
           </CardContent>
@@ -159,8 +164,9 @@ export default function CreateNovelForm() {
         </Card>
       )}
 
+      {/* The ManageNovelChapters component is no longer rendered directly here.
+          User is guided via a link to the dedicated chapter management page. */}
       {novelState?.success && novelState.novelId && novelState.novelTitle && (
-        // Redirect to the manage chapters page or display ManageNovelChapters component directly
          <div className="mt-8">
             <Button asChild variant="secondary">
                 <Link href={`/admin/novels/${novelState.novelId}/add-chapter`}>
@@ -168,7 +174,6 @@ export default function CreateNovelForm() {
                 </Link>
             </Button>
         </div>
-        // <ManageNovelChapters novelId={novelState.novelId} novelTitle={novelState.novelTitle} />
       )}
     </div>
   );

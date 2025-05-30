@@ -69,7 +69,7 @@ export async function createNovelAction(
   const infoJson: InfoJson = {
     titulo: data.title,
     autor: data.author,
-    descripcion: data.description.replace(/\r\n|\r|\n/g, '\\n'),
+    descripcion: data.description.replace(/\r\n|\r|\n/g, '\\n'), // Keep this for newlines in JSON string
     coverImageUrl: data.coverImageUrl || undefined,
     categoria: data.category || undefined,
     etiquetas: tagsArray,
@@ -89,7 +89,7 @@ export async function createNovelAction(
     revalidatePath(`/novels/${novelId}`);
 
     return { 
-      message: `Novela '${data.title}' creada con éxito con ID '${novelId}'. El archivo de información ha sido añadido.`, 
+      message: `Información de la novela '${data.title}' creada con éxito con ID '${novelId}'. Ahora puedes añadir capítulos.`, 
       success: true, 
       novelId,
       novelTitle: data.title 
@@ -98,7 +98,7 @@ export async function createNovelAction(
     console.error("Error creating novel info.json:", error);
     const errorMessage = error instanceof Error ? error.message : "Error desconocido al crear el archivo de información de la novela.";
     return {
-      message: `Error al crear la novela: ${errorMessage}`,
+      message: `Error al crear la información de la novela: ${errorMessage}`,
       success: false,
     };
   }
@@ -108,7 +108,7 @@ const saveChapterSchema = z.object({
   novelId: z.string().min(1, "El ID de la novela es obligatorio."),
   chapterNumber: z.coerce.number().int().positive("El número de capítulo debe ser un entero positivo."),
   chapterTitle: z.string().optional(),
-  chapterContent: z.string().min(1, "El contenido del capítulo no puede estar vacío."),
+  chapterContent: z.string().min(1, "El contenido del capítulo no puede estar vacío."), // This will now be HTML content
 });
 
 interface SaveChapterState {
@@ -125,7 +125,7 @@ export async function saveChapterAction(
     novelId: formData.get('novelId') as string,
     chapterNumber: formData.get('chapterNumber') as string, 
     chapterTitle: formData.get('chapterTitle') as string | undefined,
-    chapterContent: formData.get('chapterContent') as string,
+    chapterContent: formData.get('chapterContent') as string, // Expecting HTML string
   };
 
   const validatedFields = saveChapterSchema.safeParse(rawFormData);
@@ -142,23 +142,22 @@ export async function saveChapterAction(
 
   const { novelId, chapterNumber, chapterTitle, chapterContent } = validatedFields.data;
   
-  const htmlContent = chapterContent
-    .split('\\n') // Handle escaped newlines from textarea if any, or just regular newlines
-    .map(line => line.trim())
-    .filter(line => line !== '') 
-    .map(line => `<p>${line}</p>`)
-    .join('\n');
+  // The chapterContent is now direct HTML from React-Quill
+  // We no longer need to split by \n or wrap in <p> tags here.
   
-  if (!htmlContent.trim()) {
+  if (!chapterContent.trim() || chapterContent.trim() === '<p><br></p>') { // React-Quill empty content
     return {
-        message: "El contenido del capítulo resultó vacío después de procesar.",
+        message: "El contenido del capítulo está vacío.",
         success: false,
     }
   }
 
-  let finalHtmlContent = htmlContent;
+  let finalHtmlContent = chapterContent;
   if (chapterTitle && chapterTitle.trim() !== '') {
-    finalHtmlContent = `<h1>${chapterTitle.trim()}</h1>\n${htmlContent}`;
+    // Prepend H1 title if provided and not already in content (basic check)
+    if (!chapterContent.trim().toLowerCase().startsWith('<h1>')) {
+       finalHtmlContent = `<h1>${chapterTitle.trim()}</h1>\n${chapterContent}`;
+    }
   }
 
   const chapterFilename = `chapter-${chapterNumber}.html`;
