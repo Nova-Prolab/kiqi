@@ -34,9 +34,9 @@ export default function NovelBrowser({ initialNovels }: NovelBrowserProps) {
     // Basic skeleton or loading state to avoid hydration issues
     return (
       <div className="space-y-8">
-        <section className="py-12 px-4">
+        <section className="py-8 sm:py-10 px-4">
           <div className="max-w-xl mx-auto">
-            <div className="h-12 bg-muted rounded-lg animate-pulse"></div>
+            <div className="h-16 bg-muted rounded-xl animate-pulse"></div>
           </div>
         </section>
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
@@ -55,14 +55,14 @@ export default function NovelBrowser({ initialNovels }: NovelBrowserProps) {
 
   return (
     <div className="space-y-10">
-      <section className="py-12 sm:py-16 px-6">
+      <section className="py-8 sm:py-10 px-6">
         <div className="max-w-2xl mx-auto">
           <div className="relative">
-            <Search className="absolute left-3.5 top-1/2 h-5 w-5 -translate-y-1/2 text-muted-foreground" />
+            <Search className="absolute left-4 top-1/2 h-6 w-6 -translate-y-1/2 text-muted-foreground" />
             <Input
               type="search"
               placeholder="Buscar novelas por título o autor..."
-              className="w-full pl-12 pr-4 py-3 rounded-lg shadow-lg text-base focus:ring-2 focus:ring-primary border-border"
+              className="w-full pl-14 pr-6 py-4 rounded-xl shadow-xl text-lg focus:ring-2 focus:ring-primary border-border"
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               aria-label="Buscar novelas"

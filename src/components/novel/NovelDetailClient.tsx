@@ -1,3 +1,4 @@
+
 'use client';
 
 import Image from 'next/image';
@@ -5,7 +6,7 @@ import Link from 'next/link';
 import type { Novel } from '@/lib/types';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { List, ChevronRight, BookOpen, Github } from 'lucide-react';
+import { List, ChevronRight, BookOpen, Github, ArrowLeft } from 'lucide-react';
 import { Separator } from '@/components/ui/separator';
 
 interface NovelDetailClientProps {
@@ -32,6 +33,15 @@ export default function NovelDetailClient({ novel }: NovelDetailClientProps) {
 
   return (
     <div className="space-y-8">
+      <div className="mb-6">
+        <Button variant="outline" asChild>
+          <Link href="/">
+            <ArrowLeft className="mr-2 h-4 w-4" />
+            Todas las novelas
+          </Link>
+        </Button>
+      </div>
+
       <section className="grid md:grid-cols-3 gap-8 items-start">
         <div className="md:col-span-1">
           <Card className="overflow-hidden shadow-lg rounded-lg border">
