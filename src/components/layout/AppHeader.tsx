@@ -1,6 +1,8 @@
+
 import Link from 'next/link';
-import { BookMarked } from 'lucide-react';
+import { BookMarked, PlusCircle } from 'lucide-react';
 import { ModeToggle } from '@/components/layout/ModeToggle';
+import { Button } from '@/components/ui/button';
 
 export default function AppHeader() {
   return (
@@ -12,7 +14,7 @@ export default function AppHeader() {
             Literary Nexus
           </span>
         </Link>
-        <nav className="flex items-center space-x-4 lg:space-x-6">
+        <nav className="flex items-center space-x-4 lg:space-x-6 flex-grow">
            {/* Example Nav Link:
            <Link
             href="/novels"
@@ -23,7 +25,13 @@ export default function AppHeader() {
           </Link> 
           */}
         </nav>
-        <div className="flex flex-1 items-center justify-end space-x-4">
+        <div className="flex items-center justify-end space-x-2">
+          <Button variant="ghost" size="sm" asChild title="Crear Nueva Novela">
+            <Link href="/admin/create-novel">
+              <PlusCircle className="h-5 w-5" />
+              <span className="sr-only sm:not-sr-only sm:ml-2">Crear</span>
+            </Link>
+          </Button>
           <ModeToggle />
         </div>
       </div>

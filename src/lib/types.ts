@@ -32,7 +32,7 @@ export interface Novel {
   etiquetas?: string[];
   categoria?: string;
   traductor?: string;
-  lastUpdateDate?: string; // Will use fecha_lanzamiento for this
+  lastUpdateDate?: string;
 }
 
 // For Reader Settings Context
@@ -47,6 +47,7 @@ export type ReaderFontFamily =
   | 'pt-serif' 
   | 'eb-garamond'
   | 'vollkorn'
+  | 'bitter'
   | 'open-sans'
   | 'lato'
   | 'roboto'
@@ -60,8 +61,8 @@ export interface ReaderSettings {
   isImmersive: boolean;
   customBackground?: string;
   customForeground?: string;
-  fontFamily: ReaderFontFamily; // Selected font family key
-  customFontFamily?: string; // User-defined font family name
+  fontFamily: ReaderFontFamily;
+  customFontFamily?: string;
 }
 
 // For Recently Read Chapters
@@ -78,4 +79,14 @@ export interface StoredRecentlyReadData {
   [novelId: string]: RecentChapterInfo[];
 }
 
-    
+// For Create Novel Form
+export interface CreateNovelInput {
+  title: string;
+  author: string;
+  description: string;
+  coverImageUrl?: string;
+  category?: string;
+  tags?: string; // Comma-separated string
+  translator?: string;
+  releaseDate?: string;
+}
