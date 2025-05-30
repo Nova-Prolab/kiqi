@@ -45,7 +45,9 @@ async function fetchFromGitHub<T>(path: string): Promise<T> {
     'Accept': 'application/vnd.github.v3+json',
   };
 
-  const response = await fetch(url, { headers, next: { revalidate: 3600 } }); // Revalidate every hour
+  // Temporarily disabling cache for debugging. 
+  // For production, consider a longer revalidation period e.g., next: { revalidate: 3600 }
+  const response = await fetch(url, { headers, cache: 'no-store' }); 
 
   if (!response.ok) {
     const errorData = await response.json().catch(() => ({ message: response.statusText }));
@@ -92,7 +94,7 @@ export async function fetchNovels(): Promise<Novel[]> {
       
       const infoJsonFile = novelContents.find(f => f.name === 'info.json' && f.type === 'file');
       if (!infoJsonFile) {
-        console.warn(`Skipping novel ${novelId}: info.json not found.`);
+        console.warn(`Skipping novel ${novelId}: info.json not found at path ${novelPath}/info.json.`);
         continue;
       }
 
@@ -101,13 +103,13 @@ export async function fetchNovels(): Promise<Novel[]> {
       try {
         info = JSON.parse(infoJsonContent);
       } catch (parseError: any) {
-        console.error(`Error parsing info.json for novel ${novelId} (path: ${infoJsonFile.path}): ${parseError.message}`);
-        console.error(`Content of problematic info.json for ${novelId}:\n---\n${infoJsonContent}\n---`);
-        console.warn(`Skipping novel ${novelId} due to invalid info.json.`);
+        console.error(`Error parsing info.json for novel '${novelId}' (fetched from path: ${infoJsonFile.path}): ${parseError.message}`);
+        console.error(`Content of problematic info.json for '${novelId}' as fetched from GitHub:\n---\n${infoJsonContent}\n---`);
+        console.warn(`Skipping novel '${novelId}' due to invalid info.json.`);
         continue; 
       }
 
-      const coverImageFile = novelContents.find(f => f.name === 'cover.png' && f.type === 'file'); // Assuming cover.png
+      const coverImageFile = novelContents.find(f => f.name === 'cover.png' && f.type === 'file'); 
       const coverImage = coverImageFile ? getRawContentUrl(coverImageFile.path) : 'https://placehold.co/300x450.png?text=No+Cover';
 
       const chapterFiles = novelContents
@@ -121,12 +123,9 @@ export async function fetchNovels(): Promise<Novel[]> {
       const chaptersMetadata: Pick<Chapter, 'id' | 'title' | 'order'>[] = chapterFiles.map(file => {
         const orderMatch = file.name.match(/chapter-(\d+)\.html$/);
         const order = orderMatch ? parseInt(orderMatch[1]) : 0;
-        // Attempt to extract title from HTML content (e.g., from <h1>) if available
-        // This part is complex and might require actual HTML parsing if titles are embedded
-        // For now, keeping it simple as "Chapter X"
         return {
-          id: file.name.replace('.html', ''), // e.g. "chapter-1"
-          title: `Chapter ${order}`, // Generic title
+          id: file.name.replace('.html', ''), 
+          title: `Chapter ${order}`, 
           order: order,
         };
       });
@@ -166,7 +165,7 @@ export async function fetchNovelById(id: string): Promise<Novel | undefined> {
         novelContents = await fetchFromGitHub<GitHubFile[]>(`contents/${id}?ref=${DEFAULT_BRANCH}`);
     } catch (error: any) {
         if (error.message && error.message.includes('404')) {
-            console.warn(`Novel with id ${id} not found (404).`);
+            console.warn(`Novel with id '${id}' not found in GitHub repository (404).`);
             return undefined;
         }
         throw error; 
@@ -174,7 +173,7 @@ export async function fetchNovelById(id: string): Promise<Novel | undefined> {
 
     const infoJsonFile = novelContents.find(f => f.name === 'info.json' && f.type === 'file');
     if (!infoJsonFile) {
-      console.warn(`Novel ${id}: info.json not found.`);
+      console.warn(`Novel '${id}': info.json not found at path ${id}/info.json.`);
       return undefined;
     }
 
@@ -183,8 +182,8 @@ export async function fetchNovelById(id: string): Promise<Novel | undefined> {
     try {
       info = JSON.parse(infoJsonContent);
     } catch (parseError: any) {
-      console.error(`Error parsing info.json for novel ${id} (path: ${infoJsonFile.path}): ${parseError.message}`);
-      console.error(`Content of problematic info.json for ${id}:\n---\n${infoJsonContent}\n---`);
+      console.error(`Error parsing info.json for novel '${id}' (fetched from path: ${infoJsonFile.path}): ${parseError.message}`);
+      console.error(`Content of problematic info.json for '${id}' as fetched from GitHub:\n---\n${infoJsonContent}\n---`);
       return undefined;
     }
 
@@ -245,6 +244,8 @@ export async function fetchChapter(novelId: string, chapterId: string): Promise<
     const chapterFilePath = `${novelId}/${chapterId}.html`; 
     const chapterContent = await fetchFileContent(chapterFilePath);
 
+    // Here, we could attempt to parse the chapter title from chapterContent if desired
+    // For now, it uses the generic "Chapter X" from chapterMeta
     const fullChapter: Chapter = {
       id: chapterMeta.id,
       title: chapterMeta.title, 
