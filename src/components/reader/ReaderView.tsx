@@ -158,7 +158,7 @@ export default function ReaderView({ novel, currentChapter }: ReaderViewProps) {
   }
 
   return (
-    <div className={`reader-container flex flex-col h-[calc(100vh-var(--header-height,8rem))] bg-background transition-default ${isImmersive ? 'immersive fixed inset-0 z-[100] pt-16' : 'relative'}`}>
+    <div className={`reader-container flex flex-col bg-background transition-default ${isImmersive ? 'immersive fixed inset-0 z-[100]' : 'relative h-[calc(100vh-var(--header-height,8rem))]'}`}>
       {!isImmersive && (
         <Card className="m-2 mb-0 shadow rounded-b-none border-b-0">
           <header className="p-4">
@@ -183,7 +183,7 @@ export default function ReaderView({ novel, currentChapter }: ReaderViewProps) {
       />
 
       <ScrollArea 
-        className={`flex-grow ${isImmersive ? 'h-full' : 'm-2 mt-0 rounded-t-none shadow'}`}
+        className={`flex-grow ${isImmersive ? 'h-full pt-16' : 'm-2 mt-0 rounded-t-none shadow'}`} // Added pt-16 for immersive mode
         viewportRef={scrollViewportRef} 
       >
         <div
