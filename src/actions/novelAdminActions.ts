@@ -2,7 +2,7 @@
 'use server';
 
 import { z } from 'zod';
-import { createFileInRepo } from '@/lib/github';
+import { createFileInRepo, deleteFileInRepo, getFileSha } from '@/lib/github';
 import type { InfoJson, CreateNovelInput } from '@/lib/types';
 import { revalidatePath } from 'next/cache';
 
@@ -38,7 +38,7 @@ export async function createNovelAction(
     description: formData.get('description') as string,
     coverImageUrl: formData.get('coverImageUrl') as string | undefined,
     category: formData.get('category') as string | undefined,
-    tags: formData.get('tags') as string | undefined, // Will be comma-separated
+    tags: formData.get('tags') as string | undefined,
     translator: formData.get('translator') as string | undefined,
     releaseDate: formData.get('releaseDate') as string | undefined,
   };
@@ -60,7 +60,6 @@ export async function createNovelAction(
     return { message: "No se pudo generar un ID para la novela a partir del título.", success: false };
   }
 
-  // Filter out "destacado" tag (case-insensitive)
   const tagsArray = data.tags 
     ? data.tags.split(',')
         .map(tag => tag.trim())
@@ -70,7 +69,7 @@ export async function createNovelAction(
   const infoJson: InfoJson = {
     titulo: data.title,
     autor: data.author,
-    descripcion: data.description.replace(/\r\n|\r|\n/g, '\\n'), // Ensure newlines are escaped for JSON
+    descripcion: data.description.replace(/\r\n|\r|\n/g, '\\n'),
     coverImageUrl: data.coverImageUrl || undefined,
     categoria: data.category || undefined,
     etiquetas: tagsArray,
@@ -83,10 +82,10 @@ export async function createNovelAction(
   const commitMessage = `feat: Add new novel - ${data.title}`;
 
   try {
-    console.log(`[AdminAction] Attempting to create file: ${filePath} for novel ID: ${novelId}`);
     await createFileInRepo(filePath, infoJsonContent, commitMessage);
     
     revalidatePath('/');
+    revalidatePath('/admin/dashboard');
     revalidatePath(`/novels/${novelId}`);
 
     return { 
@@ -105,8 +104,6 @@ export async function createNovelAction(
   }
 }
 
-
-// Schema for chapter saving
 const saveChapterSchema = z.object({
   novelId: z.string().min(1, "El ID de la novela es obligatorio."),
   chapterNumber: z.coerce.number().int().positive("El número de capítulo debe ser un entero positivo."),
@@ -126,7 +123,7 @@ export async function saveChapterAction(
 ): Promise<SaveChapterState> {
   const rawFormData = {
     novelId: formData.get('novelId') as string,
-    chapterNumber: formData.get('chapterNumber') as string, // Will be coerced by Zod
+    chapterNumber: formData.get('chapterNumber') as string, 
     chapterTitle: formData.get('chapterTitle') as string | undefined,
     chapterContent: formData.get('chapterContent') as string,
   };
@@ -144,13 +141,12 @@ export async function saveChapterAction(
   }
 
   const { novelId, chapterNumber, chapterTitle, chapterContent } = validatedFields.data;
-  // chapterTitle is also in validatedFields.data but not directly used for filename or basic HTML structure
-
-  // Convert plain text content to simple HTML: wrap each non-empty line in <p> tags
+  
   const htmlContent = chapterContent
-    .split('\n')
-    .filter(line => line.trim() !== '') // Filter out lines that are only whitespace
-    .map(line => `<p>${line.trim()}</p>`)
+    .split('\\n') // Handle escaped newlines from textarea if any, or just regular newlines
+    .map(line => line.trim())
+    .filter(line => line !== '') 
+    .map(line => `<p>${line}</p>`)
     .join('\n');
   
   if (!htmlContent.trim()) {
@@ -160,26 +156,25 @@ export async function saveChapterAction(
     }
   }
 
-  // Construct the chapter title for HTML if provided
   let finalHtmlContent = htmlContent;
   if (chapterTitle && chapterTitle.trim() !== '') {
     finalHtmlContent = `<h1>${chapterTitle.trim()}</h1>\n${htmlContent}`;
   }
-
 
   const chapterFilename = `chapter-${chapterNumber}.html`;
   const filePathInRepo = `${novelId}/${chapterFilename}`;
   const commitMessage = `feat: Add/Update chapter ${chapterNumber} for ${novelId}`;
 
   try {
-    console.log(`[ChapterSaveAction] Attempting to save chapter: ${filePathInRepo}`);
-    await createFileInRepo(filePathInRepo, finalHtmlContent, commitMessage);
+    // Check if file exists to get SHA for update, otherwise it's a create
+    const existingFileSha = await getFileSha(filePathInRepo);
+    await createFileInRepo(filePathInRepo, finalHtmlContent, commitMessage, existingFileSha || undefined);
 
     revalidatePath(`/novels/${novelId}`);
-    revalidatePath(`/novels/${novelId}/chapters/chapter-${chapterNumber}`); // Revalidate specific chapter page
+    revalidatePath(`/novels/${novelId}/chapters/chapter-${chapterNumber}`); 
 
     return {
-      message: `Capítulo ${chapterNumber} guardado con éxito para la novela '${novelId}'.`,
+      message: `Capítulo ${chapterNumber} ${existingFileSha ? 'actualizado' : 'guardado'} con éxito para la novela '${novelId}'.`,
       success: true,
       chapterPath: `/novels/${novelId}/chapters/chapter-${chapterNumber}`,
     };
@@ -193,5 +188,61 @@ export async function saveChapterAction(
   }
 }
 
+// Action to delete a novel (soft delete by removing info.json)
+const deleteNovelSchema = z.object({
+  novelId: z.string().min(1, "El ID de la novela es obligatorio."),
+  infoJsonSha: z.string().min(1, "El SHA del archivo info.json es obligatorio para la eliminación.")
+});
 
+interface DeleteNovelState {
+  message: string;
+  success: boolean;
+  deletedNovelId?: string;
+}
+
+export async function deleteNovelAction(
+  prevState: DeleteNovelState | null,
+  formData: FormData
+): Promise<DeleteNovelState> {
+  const rawFormData = {
+    novelId: formData.get('novelId') as string,
+    infoJsonSha: formData.get('infoJsonSha') as string,
+  };
+
+  const validatedFields = deleteNovelSchema.safeParse(rawFormData);
+
+  if (!validatedFields.success) {
+    const fieldErrors = validatedFields.error.flatten().fieldErrors;
+    const errorMessages = Object.values(fieldErrors).flat().join(' ');
+    console.error("Delete novel validation errors:", fieldErrors);
+    return {
+      message: `Error de validación al eliminar: ${errorMessages}`,
+      success: false,
+    };
+  }
+
+  const { novelId, infoJsonSha } = validatedFields.data;
+  const filePath = `${novelId}/info.json`;
+  const commitMessage = `feat: Delete novel info for ${novelId}`;
+
+  try {
+    await deleteFileInRepo(filePath, commitMessage, infoJsonSha);
     
+    revalidatePath('/');
+    revalidatePath('/admin/dashboard');
+    // No need to revalidate /novels/${novelId} as it should 404
+
+    return {
+      message: `La información de la novela '${novelId}' ha sido eliminada (info.json). Los archivos de capítulo permanecen en el repositorio y deben eliminarse manualmente si es necesario.`,
+      success: true,
+      deletedNovelId: novelId,
+    };
+  } catch (error) {
+    console.error(`Error deleting novel info.json for ${novelId}:`, error);
+    const errorMessage = error instanceof Error ? error.message : "Error desconocido al eliminar el archivo de información de la novela.";
+    return {
+      message: `Error al eliminar la novela: ${errorMessage}`,
+      success: false,
+    };
+  }
+}

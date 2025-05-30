@@ -1,8 +1,8 @@
 
 'use client';
 
-import { useActionState } from 'react'; // Corrected from useFormState
-import { useFormStatus } from 'react-dom'; // Corrected import for useFormStatus
+import { useActionState } from 'react';
+import { useFormStatus } from 'react-dom';
 import { createNovelAction } from '@/actions/novelAdminActions';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -14,6 +14,7 @@ import { useToast } from '@/hooks/use-toast';
 import Link from 'next/link';
 import { ArrowLeft, CheckCircle, AlertTriangle, BookPlus } from 'lucide-react';
 import ManageNovelChapters from './ManageNovelChapters';
+import { useOwnedNovels } from '@/hooks/useOwnedNovels'; // Import the new hook
 
 const initialNovelState = {
   message: '',
@@ -34,10 +35,10 @@ function SubmitNovelButton() {
 export default function CreateNovelForm() {
   const [novelState, formAction] = useActionState(createNovelAction, initialNovelState);
   const { toast } = useToast();
+  const { addOwnedNovel } = useOwnedNovels(); // Use the hook
 
   useEffect(() => {
     if (novelState?.message) {
-      // Only toast for novel info creation, chapter management will have its own feedback
       if (novelState.message.startsWith('Novela') || novelState.message.startsWith('Error al crear la novela') || novelState.message.startsWith('Error de validación:')) {
         toast({
           title: novelState.success ? 'Éxito en Creación de Información' : 'Error en Creación de Información',
@@ -45,15 +46,18 @@ export default function CreateNovelForm() {
           variant: novelState.success ? 'default' : 'destructive',
         });
       }
+      if (novelState.success && novelState.novelId) {
+        addOwnedNovel(novelState.novelId); // Add to localStorage on success
+      }
     }
-  }, [novelState, toast]);
+  }, [novelState, toast, addOwnedNovel]);
 
   return (
     <div className="max-w-2xl mx-auto">
        <Button variant="outline" asChild className="mb-6">
-          <Link href="/">
+          <Link href="/admin/dashboard">
             <ArrowLeft className="mr-2 h-4 w-4" />
-            Volver al Inicio
+            Volver al Panel
           </Link>
         </Button>
       <Card>
@@ -105,7 +109,8 @@ export default function CreateNovelForm() {
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
               <div className="space-y-2">
                 <Label htmlFor="tags">Etiquetas (separadas por comas)</Label>
-                <Input id="tags" name="tags" placeholder="Ej: magia, aventura, dragones" />
+                <Input id="tags" name="tags" placeholder="Ej: magia, aventura, dragones (la etiqueta 'destacado' será ignorada)" />
+                 <p className="text-xs text-muted-foreground">La etiqueta 'destacado' no se puede añadir desde aquí.</p>
               </div>
               <div className="space-y-2">
                 <Label htmlFor="translator">Traductor (si aplica)</Label>
@@ -134,8 +139,9 @@ export default function CreateNovelForm() {
           <CardContent className="text-sm text-green-600 dark:text-green-400 space-y-2">
             <p>{novelState.message}</p>
             <p>
-              Ahora puedes <Link href={`/novels/${novelState.novelId}`} className="underline hover:text-primary">ver la página de la novela</Link> (puede tardar unos segundos en reflejar los cambios) o añadir capítulos a continuación.
+              Ahora puedes <Link href={`/novels/${novelState.novelId}`} className="underline hover:text-primary">ver la página de la novela</Link> o añadir capítulos a continuación.
             </p>
+             <p className="text-xs text-muted-foreground">Recuerda: La novela ha sido marcada como "tuya" en este navegador. Solo tú verás opciones de gestión adicionales para ella en el panel.</p>
           </CardContent>
         </Card>
       )}
@@ -154,7 +160,15 @@ export default function CreateNovelForm() {
       )}
 
       {novelState?.success && novelState.novelId && novelState.novelTitle && (
-        <ManageNovelChapters novelId={novelState.novelId} novelTitle={novelState.novelTitle} />
+        // Redirect to the manage chapters page or display ManageNovelChapters component directly
+         <div className="mt-8">
+            <Button asChild variant="secondary">
+                <Link href={`/admin/novels/${novelState.novelId}/add-chapter`}>
+                    Ir a Gestionar Capítulos para {novelState.novelTitle}
+                </Link>
+            </Button>
+        </div>
+        // <ManageNovelChapters novelId={novelState.novelId} novelTitle={novelState.novelTitle} />
       )}
     </div>
   );

@@ -1,10 +1,10 @@
 
 export interface Chapter {
   id: string; // e.g., "chapter-1"
-  title: string; // e.g., "Chapter 1" (can be generated)
+  title: string; 
   order: number;
-  content: string; // Full chapter content, expected to be HTML string
-  path?: string; // Path to the chapter file in the repo, e.g. "el-magnate/chapter-1.html"
+  content: string; 
+  path?: string; 
 }
 
 export interface InfoJson {
@@ -24,15 +24,15 @@ export interface Novel {
   author: string;
   coverImage: string;
   summary: string;
-  githubRepoUrl?: string;
   chapters: Pick<Chapter, 'id' | 'title' | 'order'>[];
+  infoJsonSha?: string; // SHA of the info.json file, useful for updates/deletes
 
   // Fields from info.json
   fecha_lanzamiento?: string;
   etiquetas?: string[];
   categoria?: string;
   traductor?: string;
-  lastUpdateDate?: string;
+  lastUpdateDate?: string; 
 }
 
 // For Reader Settings Context
@@ -59,20 +59,20 @@ export interface ReaderSettings {
   theme: ReaderTheme;
   fontSize: ReaderFontSize;
   isImmersive: boolean;
-  customBackground?: string;
-  customForeground?: string;
   fontFamily: ReaderFontFamily;
   customFontFamily?: string;
+  customBackground?: string;
+  customForeground?: string;
 }
 
 // For Recently Read Chapters
 export interface RecentChapterInfo {
-  id: string; // chapter id e.g. "chapter-1"
-  title: string; // chapter title
-  order: number; // chapter order
+  id: string; 
+  title: string; 
+  order: number; 
   novelId: string; 
   novelTitle: string; 
-  timestamp: number; // For sorting by recency
+  timestamp: number; 
 }
 
 export interface StoredRecentlyReadData {
