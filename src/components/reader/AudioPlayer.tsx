@@ -3,36 +3,32 @@
 
 import { useTextToSpeech } from '@/hooks/useTextToSpeech';
 import { Button } from '@/components/ui/button';
-import { Play, Pause, SquareIcon, AlertCircle } from 'lucide-react';
+import { Play, Pause, SquareIcon, AlertCircle, VolumeX } from 'lucide-react'; // Added VolumeX
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
-import { useEffect, useState, useMemo } from 'react';
+import { useEffect, useMemo } from 'react';
 
 interface AudioPlayerProps {
   textToRead: string; // Expected to be HTML content
 }
 
 const stripHtmlForTTS = (html: string): string => {
-  if (typeof window === 'undefined' || !html) return ""; 
+  if (typeof window === 'undefined' || !html) return "";
   try {
     const doc = new DOMParser().parseFromString(html, 'text/html');
     const parts: string[] = [];
     
-    // Iterate over common block elements that usually contain readable text
-    // This selector is a heuristic and might need adjustment for very complex HTML structures
     doc.body.querySelectorAll('p, h1, h2, h3, h4, h5, h6, li, blockquote, div:not(:has(p, h1, h2, h3, h4, h5, h6, li, blockquote))').forEach(el => {
       const content = (el.textContent || "").trim();
-      if (content) { // Only add if there's actual textual content
+      if (content) {
         parts.push(content);
       }
     });
 
     let text = parts.join(". "); 
-    // Ensure a final period if text was formed from parts and it doesn't end with punctuation.
     if (parts.length > 0 && text.length > 0 && !/[.?!]$/.test(text)) { 
         text += ".";
     }
 
-    // Fallback if no specific block elements with content found, but body has text
     if (!text && doc.body.textContent) { 
         text = (doc.body.textContent || "").trim();
         if (text.length > 0 && !/[.?!]$/.test(text)) {
@@ -40,26 +36,24 @@ const stripHtmlForTTS = (html: string): string => {
         }
     }
     
-    // Normalize whitespace and ensure it's a clean string
     return text.replace(/\s+/g, ' ').trim();
   } catch (e) {
     console.error("Error stripping HTML for TTS:", e);
-    return html; // Fallback to original if parsing fails, though this might not be ideal for TTS
+    return html; 
   }
 };
 
 
 export default function AudioPlayer({ textToRead }: AudioPlayerProps) {
-  const { speak, pause, resume, stop, isSpeaking, isPaused, isSupported } = useTextToSpeech();
+  const { speak, pause, resume, stop, isSpeaking, isPaused, isSupported, lastError } = useTextToSpeech();
   
   const plainText = useMemo(() => stripHtmlForTTS(textToRead), [textToRead]);
 
-  // Stop TTS when component unmounts or textToRead changes significantly (which changes plainText)
   useEffect(() => {
     return () => {
-      stop(); // This calls speechSynthesis.cancel()
+      stop(); 
     };
-  }, [stop, plainText]); // Re-run if plainText changes to stop previous speech
+  }, [stop, plainText]);
 
 
   if (!isSupported) {
@@ -79,9 +73,26 @@ export default function AudioPlayer({ textToRead }: AudioPlayerProps) {
     );
   }
 
+  if (lastError) {
+    return (
+      <TooltipProvider delayDuration={100}>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <Button variant="ghost" size="icon" disabled className="text-destructive">
+              <VolumeX />
+            </Button>
+          </TooltipTrigger>
+          <TooltipContent>
+            <p className="text-destructive">Error de Text-to-Speech. Intenta de nuevo o revisa la configuración de tu navegador/SO.</p>
+            <p className="text-xs text-muted-foreground max-w-xs break-words">{lastError}</p>
+          </TooltipContent>
+        </Tooltip>
+      </TooltipProvider>
+    );
+  }
+
   const handlePlayPause = () => {
     if (!plainText) {
-      // console.warn("AudioPlayer: Attempted to play but plainText is empty.");
       return;
     }
     if (isSpeaking) {
@@ -95,11 +106,11 @@ export default function AudioPlayer({ textToRead }: AudioPlayerProps) {
     }
   };
 
-  let title = "Reproducir narración";
+  let playPauseTitle = "Reproducir narración";
   if(isSpeaking) {
-    title = isPaused ? "Reanudar narración" : "Pausar narración";
+    playPauseTitle = isPaused ? "Reanudar narración" : "Pausar narración";
   } else if (!plainText) {
-    title = "No hay texto para narrar";
+    playPauseTitle = "No hay texto para narrar";
   }
 
 
@@ -112,14 +123,14 @@ export default function AudioPlayer({ textToRead }: AudioPlayerProps) {
               variant="ghost" 
               size="icon" 
               onClick={handlePlayPause} 
-              aria-label={title} 
-              disabled={!plainText}
+              aria-label={playPauseTitle} 
+              disabled={!plainText || !!lastError}
             >
               {isSpeaking && !isPaused ? <Pause /> : <Play />}
             </Button>
           </TooltipTrigger>
           <TooltipContent>
-            <p>{title}</p>
+            <p>{playPauseTitle}</p>
           </TooltipContent>
         </Tooltip>
       </TooltipProvider>
@@ -132,7 +143,7 @@ export default function AudioPlayer({ textToRead }: AudioPlayerProps) {
                 size="icon" 
                 onClick={stop} 
                 aria-label="Detener narración"
-                disabled={!isSpeaking} // Only enable stop if it's speaking or paused
+                disabled={!isSpeaking || !!lastError}
               >
               <SquareIcon /> 
             </Button>
@@ -145,3 +156,4 @@ export default function AudioPlayer({ textToRead }: AudioPlayerProps) {
     </div>
   );
 }
+
