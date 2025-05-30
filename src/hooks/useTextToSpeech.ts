@@ -1,5 +1,5 @@
 
-"use client";
+'use client';
 
 import { useState, useEffect, useCallback } from 'react';
 
@@ -12,23 +12,26 @@ export function useTextToSpeech() {
   useEffect(() => {
     if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
       setIsSupported(true);
-      if (window.speechSynthesis.speaking || window.speechSynthesis.paused) {
-        window.speechSynthesis.cancel();
+      // Ensure any previous speech is cancelled on mount/unmount
+      const synth = window.speechSynthesis;
+      if (synth.speaking || synth.paused) {
+        synth.cancel();
       }
 
       const logVoices = () => {
-        const voices = window.speechSynthesis.getVoices();
+        const voices = synth.getVoices();
         if (voices.length === 0) {
-          // console.warn("SpeechSynthesis: No voices initially available. Waiting for voiceschanged event or direct call to getVoices() later.");
+          // console.warn("SpeechSynthesis: No voices initially available. Waiting for voiceschanged event.");
         } else {
           // console.log("SpeechSynthesis: Available voices:", voices.map(v => ({ name: v.name, lang: v.lang, default: v.default })));
         }
       };
       
-      if (window.speechSynthesis.getVoices().length === 0) {
-        window.speechSynthesis.onvoiceschanged = logVoices;
+      // Voices might load asynchronously
+      if (synth.getVoices().length === 0) {
+        synth.onvoiceschanged = logVoices;
       } else {
-        logVoices();
+        logVoices(); // Log voices if already available
       }
 
     } else {
@@ -37,17 +40,18 @@ export function useTextToSpeech() {
 
     return () => {
       if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
-        window.speechSynthesis.onvoiceschanged = null; 
+        window.speechSynthesis.onvoiceschanged = null; // Clean up event listener
         if (window.speechSynthesis.speaking || window.speechSynthesis.paused) {
-          window.speechSynthesis.cancel(); 
+          window.speechSynthesis.cancel(); // Cancel speech on unmount
         }
       }
-      setCurrentUtterance(null); 
+      setCurrentUtterance(null); // Clear current utterance state
     };
   }, []);
 
   const handleError = useCallback((event: Event) => {
     if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
+      // It's good practice to cancel, though the error itself often implies synthesis has stopped.
       window.speechSynthesis.cancel();
     }
 
@@ -63,13 +67,14 @@ export function useTextToSpeech() {
     
     setIsSpeaking(false);
     setIsPaused(false);
-    setCurrentUtterance(null); 
+    setCurrentUtterance(null); // Clear utterance on error
   }, []);
 
 
   useEffect(() => {
-    const utterance = currentUtterance; 
+    const utterance = currentUtterance; // Local variable for cleanup
     if (!isSupported || !utterance) {
+      // If no utterance, ensure states are reset
       if (!utterance) { 
         setIsSpeaking(false);
         setIsPaused(false);
@@ -80,13 +85,14 @@ export function useTextToSpeech() {
     const handleEnd = () => {
       setIsSpeaking(false);
       setIsPaused(false);
-      setCurrentUtterance(null); 
+      setCurrentUtterance(null); // Clear utterance on natural end
     };
     
     utterance.onend = handleEnd;
-    utterance.onerror = handleError; 
+    utterance.onerror = handleError; // Assign the memoized handleError
     
     return () => {
+      // Cleanup for this specific utterance instance when it changes or component unmounts
       utterance.onend = null;
       utterance.onerror = null;
     };
@@ -102,13 +108,12 @@ export function useTextToSpeech() {
         console.warn("SpeechSynthesis: Speak called with empty or whitespace-only text. Cannot speak.");
         return;
     }
-
+    
     if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
       if (window.speechSynthesis.speaking || window.speechSynthesis.paused) {
         window.speechSynthesis.cancel();
       }
     }
-    
     setCurrentUtterance(null); 
 
     setTimeout(() => {
@@ -116,24 +121,21 @@ export function useTextToSpeech() {
       
       if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
         const voices = window.speechSynthesis.getVoices();
-        if (voices.length > 0) {
-          let selectedVoice = voices.find(voice => voice.default && voice.lang.startsWith('es')); 
-          if (!selectedVoice) selectedVoice = voices.find(voice => voice.lang.startsWith('es-')); 
-          if (!selectedVoice) selectedVoice = voices.find(voice => voice.default && voice.lang.startsWith('en')); 
-          if (!selectedVoice) selectedVoice = voices.find(voice => voice.lang.startsWith('en-')); 
-          if (!selectedVoice) selectedVoice = voices.find(voice => voice.default); 
-          if (!selectedVoice) selectedVoice = voices[0];
-
-          if (selectedVoice) {
-            newUtterance.voice = selectedVoice;
-            newUtterance.lang = selectedVoice.lang;
-            // console.log(`SpeechSynthesis: Attempting to use voice: ${selectedVoice.name} (${selectedVoice.lang}) for text: "${text.substring(0,30)}..."`);
-          } else {
-            // This case should ideally not be reached if voices.length > 0
-            // console.warn("SpeechSynthesis: No suitable voice found despite voices being available. Using browser default implicit voice selection.");
-          }
+        if (voices.length === 0) {
+            console.warn("SpeechSynthesis: CRITICAL - No TTS voices were found at the moment of trying to speak. This is a likely cause for 'synthesis-failed' errors. Please check browser/OS voice settings.");
         } else {
-          console.warn("SpeechSynthesis: CRITICAL - No TTS voices were found at the moment of trying to speak. This is a likely cause for 'synthesis-failed' errors. Please check browser/OS voice settings.");
+            let selectedVoice = voices.find(voice => voice.default && voice.lang.startsWith('es')); 
+            if (!selectedVoice) selectedVoice = voices.find(voice => voice.lang.startsWith('es-')); 
+            if (!selectedVoice) selectedVoice = voices.find(voice => voice.default && voice.lang.startsWith('en')); 
+            if (!selectedVoice) selectedVoice = voices.find(voice => voice.lang.startsWith('en-')); 
+            if (!selectedVoice) selectedVoice = voices.find(voice => voice.default); 
+            if (!selectedVoice) selectedVoice = voices[0]; 
+
+            if (selectedVoice) {
+                newUtterance.voice = selectedVoice;
+                newUtterance.lang = selectedVoice.lang; 
+                // console.log(`SpeechSynthesis: Attempting to use voice: ${selectedVoice.name} (${selectedVoice.lang})`);
+            }
         }
         window.speechSynthesis.speak(newUtterance);
       }
