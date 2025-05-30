@@ -10,6 +10,7 @@ export function useTextToSpeech() {
   const [utterance, setUtterance] = useState<SpeechSynthesisUtterance | null>(null);
 
   useEffect(() => {
+    // Initial check for support and cleanup any lingering speech from page reloads
     if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
       setIsSupported(true);
       if (window.speechSynthesis.speaking || window.speechSynthesis.paused) {
@@ -19,19 +20,19 @@ export function useTextToSpeech() {
       setIsSupported(false);
     }
 
-    // Global cleanup on unmount of a component instance using this hook
+    // Global cleanup for when the component using this hook unmounts
     return () => {
       if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
         if (speechSynthesis.speaking || speechSynthesis.paused) {
-          speechSynthesis.cancel();
+          speechSynthesis.cancel(); // Stop speech if the component is unmounted
         }
       }
     };
-  }, []);
+  }, []); // Runs once on mount, and cleanup on unmount
 
   useEffect(() => {
     if (!isSupported || !utterance) {
-      // If utterance becomes null, ensure speaking state is false.
+      // If utterance becomes null (e.g., after stop() or before a new speak()), ensure speaking state is reset.
       if (!utterance) {
         setIsSpeaking(false);
         setIsPaused(false);
@@ -68,7 +69,6 @@ export function useTextToSpeech() {
     return () => {
       utterance.onend = null;
       utterance.onerror = null;
-      // Note: speechSynthesis.cancel() is handled in speak/stop and global unmount
     };
   }, [utterance, isSupported]);
 
@@ -89,15 +89,20 @@ export function useTextToSpeech() {
       const newUtterance = new SpeechSynthesisUtterance(text);
       // You could try to set voice/lang here if desired, e.g.:
       // const voices = speechSynthesis.getVoices();
-      // if (voices.length > 0) newUtterance.voice = voices[0]; // Or a preferred voice
+      // if (voices.length > 0) {
+      //   const preferredVoice = voices.find(v => v.lang.startsWith(document.documentElement.lang || 'en'));
+      //   if (preferredVoice) newUtterance.voice = preferredVoice;
+      //   else if (voices.some(v => v.default)) newUtterance.voice = voices.find(v => v.default) || voices[0];
+      //   else if (voices.length > 0) newUtterance.voice = voices[0];
+      // }
       // newUtterance.lang = document.documentElement.lang || 'en-US';
       
       setUtterance(newUtterance); // This triggers the useEffect to attach new handlers
       speechSynthesis.speak(newUtterance);
       setIsSpeaking(true);
       setIsPaused(false);
-    }, 0); // setTimeout with 0ms defers execution to next tick
-  }, [isSupported]); // `speak` is now stable if `isSupported` is stable.
+    }, 0);
+  }, [isSupported]);
 
   const pause = useCallback(() => {
     if (!isSupported || !isSpeaking || isPaused) return;
@@ -118,7 +123,7 @@ export function useTextToSpeech() {
     }
     // Setting utterance to null will also reset isSpeaking and isPaused via its effect
     setUtterance(null); 
-  }, [isSupported]); // `stop` is now stable if `isSupported` is stable.
+  }, [isSupported]);
 
 
   return { speak, pause, resume, stop, isSpeaking, isPaused, isSupported };
