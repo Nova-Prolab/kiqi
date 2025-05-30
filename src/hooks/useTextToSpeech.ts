@@ -69,7 +69,7 @@ export function useTextToSpeech() {
     setIsSpeaking(false);
     setIsPaused(false);
     setCurrentUtterance(null); // Clear the problematic utterance
-  }, [setLastError, setIsSpeaking, setIsPaused, setCurrentUtterance]);
+  }, []); // No dependencies, as it only uses its arguments and global/static functions
 
 
   useEffect(() => {
@@ -95,10 +95,12 @@ export function useTextToSpeech() {
     
     // Cleanup for this specific utterance when it changes or component unmounts
     return () => {
-      utterance.onend = null;
-      utterance.onerror = null;
+      if (utterance) {
+        utterance.onend = null;
+        utterance.onerror = null;
+      }
     };
-  }, [currentUtterance, isSupported, handleError, setLastError, setIsSpeaking, setIsPaused]);
+  }, [currentUtterance, isSupported, handleError]);
 
 
   const speak = useCallback((text: string) => {
@@ -123,43 +125,47 @@ export function useTextToSpeech() {
     // Use setTimeout to allow React to process the setCurrentUtterance(null) state update
     // before creating and speaking the new utterance. This helps ensure event listeners are fresh.
     setTimeout(() => {
-      const newUtterance = new SpeechSynthesisUtterance(text);
-      
-      if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
-        const voices = window.speechSynthesis.getVoices();
-        if (voices.length === 0) {
-            const noVoiceError = "SpeechSynthesis: CRITICAL - No TTS voices were found. Cannot speak.";
-            console.warn(noVoiceError);
-            setLastError(noVoiceError); // Set error state if no voices are found
-            setIsSpeaking(false);
-            setIsPaused(false);
-            return; // Do not proceed if no voices
-        } else {
-            // Attempt to select a suitable voice
-            let selectedVoice = voices.find(voice => voice.default && voice.lang.startsWith('es')); // Prioritize default Spanish
-            if (!selectedVoice) selectedVoice = voices.find(voice => voice.lang.startsWith('es-')); // Any Spanish
-            if (!selectedVoice) selectedVoice = voices.find(voice => voice.default && voice.lang.startsWith('en')); // Default English
-            if (!selectedVoice) selectedVoice = voices.find(voice => voice.lang.startsWith('en-')); // Any English
-            if (!selectedVoice) selectedVoice = voices.find(voice => voice.default); // Any default voice
-            if (!selectedVoice && voices.length > 0) selectedVoice = voices[0]; // Fallback to the first available voice
+      // Double-check support within the timeout in case something changed
+      if (typeof window === 'undefined' || !('speechSynthesis' in window)) {
+        console.warn("SpeechSynthesis: Environment changed or TTS became unsupported before speaking.");
+        return;
+      }
 
-            if (selectedVoice) {
-                newUtterance.voice = selectedVoice;
-                newUtterance.lang = selectedVoice.lang; // Explicitly set lang for the utterance
-            } else {
-                 // This case should ideally not be reached if voices.length > 0
-                 const noSpecificVoiceError = "SpeechSynthesis: No suitable voice found after filtering, browser default will be used if any.";
-                 console.warn(noSpecificVoiceError);
-            }
-        }
-        window.speechSynthesis.speak(newUtterance);
+      const newUtterance = new SpeechSynthesisUtterance(text);
+      const voices = window.speechSynthesis.getVoices();
+
+      if (voices.length === 0) {
+          const noVoiceError = "SpeechSynthesis: CRITICAL - No TTS voices were found when trying to speak. Cannot speak.";
+          console.warn(noVoiceError);
+          setLastError(noVoiceError); // Set error state if no voices are found
+          setIsSpeaking(false);
+          setIsPaused(false);
+          return; // Do not proceed if no voices
       }
       
+      // Attempt to select a suitable voice
+      let selectedVoice = voices.find(voice => voice.default && voice.lang.startsWith('es')); // Prioritize default Spanish
+      if (!selectedVoice) selectedVoice = voices.find(voice => voice.lang.startsWith('es-')); // Any Spanish
+      if (!selectedVoice) selectedVoice = voices.find(voice => voice.default && voice.lang.startsWith('en')); // Default English
+      if (!selectedVoice) selectedVoice = voices.find(voice => voice.lang.startsWith('en-')); // Any English
+      if (!selectedVoice) selectedVoice = voices.find(voice => voice.default); // Any default voice
+      if (!selectedVoice && voices.length > 0) selectedVoice = voices[0]; // Fallback to the first available voice
+
+      if (selectedVoice) {
+          newUtterance.voice = selectedVoice;
+          newUtterance.lang = selectedVoice.lang; // Explicitly set lang for the utterance
+      } else {
+           // This case should ideally not be reached if voices.length > 0
+           const noSpecificVoiceError = "SpeechSynthesis: No suitable voice found after filtering, browser default will be used if any.";
+           console.warn(noSpecificVoiceError);
+      }
+      
+      window.speechSynthesis.speak(newUtterance);
       setCurrentUtterance(newUtterance); // Set the new utterance
       setIsSpeaking(true);
       setIsPaused(false);
     }, 0); 
-  }, [isSupported, handleError, setLastError, setIsSpeaking, setIsPaused, setCurrentUtterance]); // Dependencies for useCallback
+  }, [isSupported]); // Dependencies for useCallback
 
   const pause = useCallback(() => {
     if (!isSupported || !isSpeaking || isPaused) return;
@@ -167,7 +173,7 @@ export function useTextToSpeech() {
       window.speechSynthesis.pause();
     }
     setIsPaused(true);
-  }, [isSupported, isSpeaking, isPaused, setIsPaused]);
+  }, [isSupported, isSpeaking, isPaused]);
 
   const resume = useCallback(() => {
     if (!isSupported || !isSpeaking || !isPaused) return;
@@ -175,7 +181,7 @@ export function useTextToSpeech() {
       window.speechSynthesis.resume();
     }
     setIsPaused(false);
-  }, [isSupported, isSpeaking, isPaused, setIsPaused]);
+  }, [isSupported, isSpeaking, isPaused]);
 
   const stop = useCallback(() => {
     if (!isSupported) return;
@@ -189,7 +195,7 @@ export function useTextToSpeech() {
     setCurrentUtterance(null); 
     // Optionally clear lastError on stop, or let it persist until a new speak attempt
     // setLastError(null); 
-  }, [isSupported, setIsSpeaking, setIsPaused, setCurrentUtterance]);
+  }, [isSupported]);
 
 
   return { speak, pause, resume, stop, isSpeaking, isPaused, isSupported, lastError };
