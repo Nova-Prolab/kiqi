@@ -5,14 +5,14 @@ import { useReaderSettings } from '@/contexts/ReaderSettingsContext';
 import type { ReaderTheme, ReaderFontSize } from '@/lib/types';
 import { Button } from '@/components/ui/button';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger, DropdownMenuRadioGroup, DropdownMenuRadioItem } from '@/components/ui/dropdown-menu';
-import { Settings2, TextQuote, Minimize, Maximize, Sun, Moon, Coffee, BookOpen, Languages, BookText, Palette, FileTextIcon, Trees, MoonStar, Paintbrush } from 'lucide-react';
+import { Settings2, TextQuote, Minimize, Maximize, Sun, Moon, Coffee, Languages, BookText, Palette, FileTextIcon, Trees, MoonStar, Paintbrush, BookOpen } from 'lucide-react';
 import React, { useState, useEffect, ChangeEvent } from 'react';
 import ChapterSummaryDialog from './ChapterSummaryDialog';
 import AudioPlayer from './AudioPlayer';
 import Link from 'next/link';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import type { TranslateChapterInput } from '@/ai/flows/translate-chapter-flow';
-import { Input } from '@/components/ui/input'; // Importar Input
+import { Input } from '@/components/ui/input';
 
 const TARGET_LANGUAGES: {label: string, value: TranslateChapterInput['targetLanguage']}[] = [
   { label: "English", value: "English" },
@@ -50,7 +50,6 @@ const THEMES: { label: string, value: ReaderTheme, icon: React.ElementType }[] =
   { label: 'Custom', value: 'custom', icon: Paintbrush },
 ];
 
-// Helper para validar si es un color HEX válido (simple)
 const isValidHexColor = (color: string) => /^#[0-9A-F]{6}$/i.test(color);
 
 export default function ReaderControls({ 
@@ -125,7 +124,6 @@ export default function ReaderControls({
     }
   };
 
-
   const handleLanguageSelect = (language: TranslateChapterInput['targetLanguage']) => {
     onTranslateRequest(language);
     setIsTranslateMenuOpen(false); 
@@ -143,7 +141,13 @@ export default function ReaderControls({
   const TranslateIcon = isTranslationApplied ? BookText : Languages;
 
   return (
-    <div className={`reader-controls p-2 bg-card/90 backdrop-blur-sm shadow-md border-b transition-all duration-300 ${isImmersive ? 'opacity-0 hover:opacity-100 fixed top-0 left-0 right-0 z-[110] pt-2' : 'sticky top-0 z-40 rounded-t-lg border-x'}`}>
+    <div 
+      className={`reader-controls p-2 bg-card/90 backdrop-blur-sm shadow-md border-b 
+                  ${isImmersive 
+                    ? 'fixed top-0 left-0 right-0 z-[110] transform -translate-y-full hover:translate-y-0 focus-within:translate-y-0 transition-transform duration-300 ease-in-out' 
+                    : 'sticky top-0 z-40 rounded-t-lg border-x'
+                  }`}
+    >
       <div className="mx-auto flex items-center justify-between gap-1 max-w-4xl px-2 sm:px-0">
         
         <div className="flex items-center gap-0.5 min-w-[40px]">
@@ -177,7 +181,7 @@ export default function ReaderControls({
                 <TooltipContent><p>Ajustes de Apariencia</p></TooltipContent>
               </Tooltip>
             </TooltipProvider>
-            <DropdownMenuContent align="center" className="w-72"> {/* Aumentado el ancho para los inputs */}
+            <DropdownMenuContent align="center" className="w-72">
               <DropdownMenuLabel>Tamaño de Fuente</DropdownMenuLabel>
               <DropdownMenuRadioGroup value={fontSize} onValueChange={(value) => setFontSize(value as ReaderFontSize)}>
                 {FONT_SIZES.map(fs => (

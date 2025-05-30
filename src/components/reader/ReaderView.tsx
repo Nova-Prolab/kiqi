@@ -183,7 +183,7 @@ export default function ReaderView({ novel, currentChapter }: ReaderViewProps) {
       />
 
       <ScrollArea 
-        className={`flex-grow ${isImmersive ? 'h-full pt-16' : 'm-2 mt-0 rounded-t-none shadow'}`} // Added pt-16 for immersive mode
+        className={`flex-grow ${isImmersive ? 'h-full' : 'm-2 mt-0 rounded-t-none shadow'}`} 
         viewportRef={scrollViewportRef} 
       >
         <div
