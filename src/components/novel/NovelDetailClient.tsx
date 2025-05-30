@@ -5,7 +5,7 @@ import Image from 'next/image';
 import Link from 'next/link';
 import type { Novel } from '@/lib/types';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { List, ChevronRight, BookOpen, ArrowLeft, Tag, CalendarDays, UserCircle } from 'lucide-react';
 import { Separator } from '@/components/ui/separator';
 import { Badge } from '@/components/ui/badge';
@@ -24,8 +24,11 @@ export default function NovelDetailClient({ novel }: NovelDetailClientProps) {
   const [isSummaryExpanded, setIsSummaryExpanded] = useState(false);
   const [isLongSummary, setIsLongSummary] = useState(false);
 
-  // Process summary to ensure \n are treated as newlines and split into lines
-  const processedSummaryContent = novel.summary.replace(/\\n/g, '\n');
+  const processedSummaryContent = useMemo(() => {
+    // Primero, reemplazar las secuencias literales '\\n' con caracteres de nueva línea '\n'
+    return novel.summary.replace(/\\n/g, '\n');
+  }, [novel.summary]);
+
   const summaryLines = useMemo(() => processedSummaryContent.split('\n'), [processedSummaryContent]);
 
   useEffect(() => {
@@ -33,7 +36,7 @@ export default function NovelDetailClient({ novel }: NovelDetailClientProps) {
       setIsLongSummary(true);
     } else {
       setIsLongSummary(false);
-      setIsSummaryExpanded(false); // Reset expansion if summary becomes short
+      setIsSummaryExpanded(false); 
     }
   }, [summaryLines]);
 
@@ -77,7 +80,12 @@ export default function NovelDetailClient({ novel }: NovelDetailClientProps) {
         <div className="md:col-span-2 space-y-6">
           <header>
             <h1 className="text-3xl sm:text-4xl font-bold tracking-tight text-primary">{novel.title}</h1>
-            <p className="text-lg sm:text-xl text-muted-foreground mt-1">by {novel.author}</p>
+            <p className="text-lg sm:text-xl text-muted-foreground mt-1">
+              por{' '}
+              <Link href={`/?q=${encodeURIComponent('Autor:' + novel.author)}`} className="text-primary hover:underline font-medium">
+                {novel.author}
+              </Link>
+            </p>
           </header>
           
           <Card className="border">
@@ -116,13 +124,19 @@ export default function NovelDetailClient({ novel }: NovelDetailClientProps) {
                 {novel.categoria && (
                     <div className="flex items-center text-sm">
                         <List className="mr-2 h-4 w-4 text-muted-foreground" />
-                        <strong>Categoría:</strong><span className="ml-2">{novel.categoria}</span>
+                        <strong>Categoría:</strong>
+                        <Link href={`/?q=${encodeURIComponent('Categoría:' + novel.categoria)}`} className="ml-2 text-primary hover:underline">
+                            {novel.categoria}
+                        </Link>
                     </div>
                 )}
                 {novel.traductor && (
                     <div className="flex items-center text-sm">
                         <UserCircle className="mr-2 h-4 w-4 text-muted-foreground" />
-                        <strong>Traductor:</strong><span className="ml-2">{novel.traductor}</span>
+                        <strong>Traductor:</strong>
+                        <Link href={`/?q=${encodeURIComponent('Traductor:' + novel.traductor)}`} className="ml-2 text-primary hover:underline">
+                            {novel.traductor}
+                        </Link>
                     </div>
                 )}
                  {novel.fecha_lanzamiento && (
@@ -136,7 +150,11 @@ export default function NovelDetailClient({ novel }: NovelDetailClientProps) {
                         <Tag className="mr-2 h-4 w-4 text-muted-foreground mt-0.5" />
                         <strong>Etiquetas:</strong>
                         <div className="ml-2 flex flex-wrap gap-1">
-                            {novel.etiquetas.map(tag => <Badge key={tag} variant="secondary">{tag}</Badge>)}
+                            {novel.etiquetas.map(tag => (
+                                <Link key={tag} href={`/?q=${encodeURIComponent('Etiqueta:' + tag)}`} legacyBehavior>
+                                    <Badge variant="secondary" className="cursor-pointer hover:bg-accent/80 hover:text-accent-foreground">{tag}</Badge>
+                                </Link>
+                            ))}
                         </div>
                     </div>
                 )}
