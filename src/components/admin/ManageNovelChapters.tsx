@@ -1,7 +1,8 @@
 
 'use client';
 
-import { useActionState, useFormStatus } from 'react';
+import { useActionState } from 'react'; // Corrected from useFormState
+import { useFormStatus } from 'react-dom'; // Corrected import for useFormStatus
 import { saveChapterAction } from '@/actions/novelAdminActions';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';

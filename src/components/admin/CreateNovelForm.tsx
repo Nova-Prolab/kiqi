@@ -1,7 +1,8 @@
 
 'use client';
 
-import { useActionState, useFormStatus } from 'react';
+import { useActionState } from 'react'; // Corrected from useFormState
+import { useFormStatus } from 'react-dom'; // Corrected import for useFormStatus
 import { createNovelAction } from '@/actions/novelAdminActions';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -12,7 +13,7 @@ import { useEffect } from 'react';
 import { useToast } from '@/hooks/use-toast';
 import Link from 'next/link';
 import { ArrowLeft, CheckCircle, AlertTriangle, BookPlus } from 'lucide-react';
-import ManageNovelChapters from './ManageNovelChapters'; // Import the new component
+import ManageNovelChapters from './ManageNovelChapters';
 
 const initialNovelState = {
   message: '',
