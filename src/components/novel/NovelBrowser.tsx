@@ -16,6 +16,22 @@ interface NovelBrowserProps {
   initialNovels: Novel[];
 }
 
+const PREDEFINED_CATEGORIES: string[] = [
+  "Acción", "Aventura", "Ciencia Ficción", "Fantasía", "Romance", 
+  "Misterio", "Suspense", "Terror", "Comedia", "Drama", 
+  "Histórico", "Urbano", "Wuxia", "Xianxia", "Realismo Mágico", 
+  "Cyberpunk", "Steampunk", "LitRPG", "GameLit", "Post-apocalíptico",
+  "Sobrenatural", "Escolar"
+];
+
+const PREDEFINED_TAGS: string[] = [
+  "destacado", "magia", "espadas", "reencarnación", "sistema", 
+  "cultivo", "harén", "protagonista astuto", "protagonista OP", "academia", 
+  "monstruos", "tecnología avanzada", "viajes en el tiempo", "isekai", "supervivencia", 
+  "venganza", "comedia romántica", "drama psicológico", "construcción de mundos", "elementos de juego",
+  "artes marciales", "no humano", "política"
+];
+
 export default function NovelBrowser({ initialNovels }: NovelBrowserProps) {
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
@@ -33,7 +49,7 @@ export default function NovelBrowser({ initialNovels }: NovelBrowserProps) {
   }, [initialNovels]);
 
   const uniqueCategories = useMemo(() => {
-    const categories = new Set<string>();
+    const categories = new Set<string>(PREDEFINED_CATEGORIES);
     initialNovels.forEach(novel => {
       if (novel.categoria) {
         categories.add(novel.categoria);
@@ -43,7 +59,7 @@ export default function NovelBrowser({ initialNovels }: NovelBrowserProps) {
   }, [initialNovels]);
 
   const uniqueTags = useMemo(() => {
-    const tags = new Set<string>();
+    const tags = new Set<string>(PREDEFINED_TAGS);
     initialNovels.forEach(novel => {
       novel.etiquetas?.forEach(tag => tags.add(tag));
     });
@@ -241,3 +257,4 @@ export default function NovelBrowser({ initialNovels }: NovelBrowserProps) {
     </div>
   );
 }
+
