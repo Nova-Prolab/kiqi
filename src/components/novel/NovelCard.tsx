@@ -1,3 +1,4 @@
+
 import Link from 'next/link';
 import Image from 'next/image';
 import type { Novel } from '@/lib/types';
@@ -11,29 +12,34 @@ interface NovelCardProps {
 export default function NovelCard({ novel }: NovelCardProps) {
   return (
     <Link href={`/novels/${novel.id}`} passHref legacyBehavior>
-      <a className="block h-full">
-        <Card className="h-full flex flex-col overflow-hidden hover:shadow-xl transition-shadow duration-300 ease-in-out group rounded-lg border">
-          <CardHeader className="p-0 relative aspect-[2/3] w-full overflow-hidden rounded-t-lg">
+      <a className="block h-full group">
+        <Card className="h-full flex flex-col overflow-hidden hover:shadow-xl transition-shadow duration-300 ease-in-out rounded-lg border bg-card">
+          <CardHeader className="p-0 relative aspect-[3/4] w-full overflow-hidden"> {/* Adjusted aspect ratio for slightly taller feel if desired */}
             <Image
               src={novel.coverImage}
-              alt={`Cover of ${novel.title}`}
-              width={300}
-              height={450}
+              alt={`Portada de ${novel.title}`}
+              width={300} // Base width
+              height={400} // Base height, maintaining 3:4
               className="object-cover w-full h-full group-hover:scale-105 transition-transform duration-300"
-              // data-ai-hint is removed as we expect real cover images
-              // If a placeholder is used (e.g. from fallback in github.ts), it might not have a hint
+              sizes="(max-width: 640px) 50vw, (max-width: 768px) 33vw, (max-width: 1024px) 25vw, (max-width: 1280px) 20vw, 16vw" // Responsive sizes
             />
           </CardHeader>
-          <CardContent className="pt-4 px-4 flex-grow">
-            <CardTitle className="text-lg font-semibold leading-tight group-hover:text-primary transition-colors">
+          <CardContent className="pt-3 px-3 flex-grow">
+            <CardTitle className="text-base font-semibold leading-tight group-hover:text-primary transition-colors line-clamp-2">
               {novel.title}
             </CardTitle>
-            <p className="text-sm text-muted-foreground mt-1">{novel.author}</p>
+            <p className="text-xs text-muted-foreground mt-1 line-clamp-1">{novel.author}</p>
           </CardContent>
-          <CardFooter className="pt-2 pb-4 px-4">
-            <Badge variant="secondary" className="text-xs">
-              {novel.chapters.length} Chapter{novel.chapters.length === 1 ? '' : 's'}
-            </Badge>
+          <CardFooter className="pt-1 pb-3 px-3">
+            {novel.chapters && novel.chapters.length > 0 ? (
+              <Badge variant="secondary" className="text-xs">
+                {novel.chapters.length} Cap.
+              </Badge>
+            ) : (
+              <Badge variant="outline" className="text-xs">
+                Próximamente
+              </Badge>
+            )}
           </CardFooter>
         </Card>
       </a>
