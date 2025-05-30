@@ -1,7 +1,7 @@
 
 'use client';
 
-import { useFormState, useFormStatus } from 'react-dom';
+import { useActionState, useFormStatus } from 'react';
 import { createNovelAction } from '@/actions/novelAdminActions';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -11,8 +11,8 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { useEffect } from 'react';
 import { useToast } from '@/hooks/use-toast';
 import Link from 'next/link';
-import { ArrowLeft, CheckCircle, AlertTriangle, BookPlus, UploadCloud } from 'lucide-react';
-import ChapterUploadForm from './ChapterUploadForm'; // Import the new component
+import { ArrowLeft, CheckCircle, AlertTriangle, BookPlus } from 'lucide-react';
+import ManageNovelChapters from './ManageNovelChapters'; // Import the new component
 
 const initialNovelState = {
   message: '',
@@ -25,21 +25,21 @@ function SubmitNovelButton() {
   const { pending } = useFormStatus();
   return (
     <Button type="submit" disabled={pending} className="w-full sm:w-auto">
-      {pending ? 'Creando Novela...' : 'Crear Novela'}
+      {pending ? 'Creando Novela...' : 'Crear Archivo de Información'}
     </Button>
   );
 }
 
 export default function CreateNovelForm() {
-  const [novelState, formAction] = useFormState(createNovelAction, initialNovelState);
+  const [novelState, formAction] = useActionState(createNovelAction, initialNovelState);
   const { toast } = useToast();
 
   useEffect(() => {
     if (novelState?.message) {
-      // Only toast for novel creation, chapter upload will have its own feedback
+      // Only toast for novel info creation, chapter management will have its own feedback
       if (novelState.message.startsWith('Novela') || novelState.message.startsWith('Error al crear la novela') || novelState.message.startsWith('Error de validación:')) {
         toast({
-          title: novelState.success ? 'Éxito en Creación de Novela' : 'Error en Creación de Novela',
+          title: novelState.success ? 'Éxito en Creación de Información' : 'Error en Creación de Información',
           description: novelState.message,
           variant: novelState.success ? 'default' : 'destructive',
         });
@@ -59,11 +59,11 @@ export default function CreateNovelForm() {
         <CardHeader>
           <CardTitle className="flex items-center text-2xl">
             <BookPlus className="mr-3 h-6 w-6 text-primary" />
-            Crear Nueva Novela (info.json)
+            Crear Nueva Novela (Información Básica)
           </CardTitle>
           <CardDescription>
-            Completa los detalles para añadir una nueva novela al repositorio de GitHub.
-            Esto creará la carpeta de la novela y el archivo <code>info.json</code>.
+            Completa los detalles para añadir una nueva novela.
+            Esto creará el archivo de información de la novela. Después podrás añadir capítulos.
           </CardDescription>
         </CardHeader>
         <form action={formAction}>
@@ -83,7 +83,7 @@ export default function CreateNovelForm() {
               <Textarea
                 id="description"
                 name="description"
-                placeholder="Escribe una breve sinopsis de la novela. Usa saltos de línea normales aquí; se convertirán a \\n para el JSON."
+                placeholder="Escribe una breve sinopsis de la novela. Los saltos de línea se conservarán."
                 rows={6}
                 required
               />
@@ -91,7 +91,7 @@ export default function CreateNovelForm() {
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
               <div className="space-y-2">
-                <Label htmlFor="coverImageUrl">URL de Portada (Imgur)</Label>
+                <Label htmlFor="coverImageUrl">URL de Portada (Imgur u otro)</Label>
                 <Input id="coverImageUrl" name="coverImageUrl" type="url" placeholder="Ej: https://i.imgur.com/xxxxxxx.png" />
                  <p className="text-xs text-muted-foreground">Pega la URL directa de la imagen (ej: .png, .jpg).</p>
               </div>
@@ -127,13 +127,13 @@ export default function CreateNovelForm() {
           <CardHeader>
             <CardTitle className="flex items-center text-green-700 dark:text-green-300">
               <CheckCircle className="mr-2 h-5 w-5" />
-              ¡Novela Creada!
+              ¡Información de Novela Creada!
             </CardTitle>
           </CardHeader>
           <CardContent className="text-sm text-green-600 dark:text-green-400 space-y-2">
             <p>{novelState.message}</p>
             <p>
-              Ahora puedes <Link href={`/novels/${novelState.novelId}`} className="underline hover:text-primary">ver la página de la novela</Link> (puede tardar unos segundos en reflejar todos los cambios) o subir archivos de capítulo a continuación.
+              Ahora puedes <Link href={`/novels/${novelState.novelId}`} className="underline hover:text-primary">ver la página de la novela</Link> (puede tardar unos segundos en reflejar los cambios) o añadir capítulos a continuación.
             </p>
           </CardContent>
         </Card>
@@ -143,7 +143,7 @@ export default function CreateNovelForm() {
           <CardHeader>
             <CardTitle className="flex items-center text-red-700 dark:text-red-400">
               <AlertTriangle className="mr-2 h-5 w-5" />
-              Error al Crear Novela
+              Error al Crear Información de Novela
             </CardTitle>
           </CardHeader>
           <CardContent className="text-sm text-red-600 dark:text-red-500">
@@ -153,7 +153,7 @@ export default function CreateNovelForm() {
       )}
 
       {novelState?.success && novelState.novelId && novelState.novelTitle && (
-        <ChapterUploadForm novelId={novelState.novelId} novelTitle={novelState.novelTitle} />
+        <ManageNovelChapters novelId={novelState.novelId} novelTitle={novelState.novelTitle} />
       )}
     </div>
   );
