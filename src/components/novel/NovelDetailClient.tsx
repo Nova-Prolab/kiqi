@@ -6,7 +6,7 @@ import Link from 'next/link';
 import type { Novel } from '@/lib/types';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { List, ChevronRight, BookOpen, ArrowLeft, Tag, CalendarDays, UserCircle, VenetianMask } from 'lucide-react';
+import { List, ChevronRight, BookOpen, ArrowLeft, Tag, CalendarDays, UserCircle } from 'lucide-react';
 import { Separator } from '@/components/ui/separator';
 import { Badge } from '@/components/ui/badge';
 
@@ -17,6 +17,9 @@ interface NovelDetailClientProps {
 export default function NovelDetailClient({ novel }: NovelDetailClientProps) {
   const sortedChapters = novel.chapters?.sort((a,b) => a.order - b.order) || [];
   const firstChapter = sortedChapters.length > 0 ? sortedChapters[0] : null;
+
+  // Process summary to ensure \n are treated as newlines
+  const processedSummary = novel.summary.replace(/\\n/g, '\n');
 
   return (
     <div className="space-y-8">
@@ -63,7 +66,7 @@ export default function NovelDetailClient({ novel }: NovelDetailClientProps) {
             </CardHeader>
             <CardContent>
               <div className="text-foreground/80 leading-relaxed">
-                {novel.summary.split('\n').map((line, index, array) => (
+                {processedSummary.split('\n').map((line, index, array) => (
                   <span key={index}>
                     {line}
                     {index < array.length - 1 && <br />}
