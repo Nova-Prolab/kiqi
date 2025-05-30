@@ -30,14 +30,19 @@ export function useTextToSpeech() {
     };
 
     utterance.onend = handleEnd;
-    utterance.onerror = (event: Event) => { // event is generic Event, needs casting for specific properties
+    utterance.onerror = (event: Event) => { 
       const errorEvent = event as SpeechSynthesisErrorEvent;
-      console.error(
-        'SpeechSynthesisUtterance.onerror - Type:', 
-        errorEvent.error, // This provides the specific error code string (e.g., "synthesis-failed")
-        'Full event object:', 
-        errorEvent
-      );
+      let errorDetails = `SpeechSynthesisUtterance.onerror - Type: "${errorEvent.error}"`;
+      if (errorEvent.charIndex !== undefined) {
+        errorDetails += `, CharIndex: ${errorEvent.charIndex}`;
+      }
+      if (errorEvent.elapsedTime !== undefined) {
+        errorDetails += `, ElapsedTime: ${errorEvent.elapsedTime}ms`;
+      }
+      // For more detailed inspection in a browser console, you might log the event object itself:
+      // console.log("Full SpeechSynthesisErrorEvent object:", errorEvent);
+      console.error(errorDetails);
+      
       setIsSpeaking(false);
       setIsPaused(false);
     };
@@ -52,20 +57,28 @@ export function useTextToSpeech() {
   const speak = useCallback((text: string) => {
     if (!isSupported || !text) return;
 
-    if (speechSynthesis.speaking) {
-      speechSynthesis.cancel(); // Stop any current speech before starting new
+    // Ensure any ongoing speech is fully stopped and utterance state is cleared
+    if (speechSynthesis.speaking || speechSynthesis.paused) {
+      speechSynthesis.cancel();
+    }
+    // It's good practice to also clear our local utterance state if we cancel
+    if (utterance) {
+        utterance.onend = null;
+        utterance.onerror = null;
+        setUtterance(null);
     }
 
+
     const newUtterance = new SpeechSynthesisUtterance(text);
-    // You could try setting a specific voice if default is problematic:
-    // const voices = speechSynthesis.getVoices();
-    // if (voices.length > 0) newUtterance.voice = voices[0]; // Or a preferred voice
-    // newUtterance.lang = "es-ES"; // Or appropriate language
-    setUtterance(newUtterance); // Store the new utterance
+    // Potentially set language for better voice selection, e.g., newUtterance.lang = "es-ES";
+    // This might require ensuring voices are loaded, which can be asynchronous.
+    // For now, we rely on browser defaults which usually work for common languages.
+    
+    setUtterance(newUtterance); 
     speechSynthesis.speak(newUtterance);
     setIsSpeaking(true);
     setIsPaused(false);
-  }, [isSupported]);
+  }, [isSupported, utterance]); // Added utterance to dependency array for the cleanup logic inside speak
 
   const pause = useCallback(() => {
     if (!isSupported || !isSpeaking || isPaused) return;
@@ -80,14 +93,20 @@ export function useTextToSpeech() {
   }, [isSupported, isSpeaking, isPaused]);
 
   const stop = useCallback(() => {
-    if (!isSupported || !isSpeaking && !isPaused) return; // Allow stop if paused but not actively speaking
-    if (speechSynthesis.speaking || speechSynthesis.paused) { // Check actual synthesizer state
-        speechSynthesis.cancel();
+    if (!isSupported) return;
+    // Check actual synthesizer state, not just our local state variables
+    if (speechSynthesis.speaking || speechSynthesis.paused) {
+        speechSynthesis.cancel(); // This should trigger onend for the current utterance
     }
+    // Explicitly reset state here as well, in case onend doesn't fire or is delayed
     setIsSpeaking(false);
     setIsPaused(false);
-    setUtterance(null); 
-  }, [isSupported]); // isSpeaking state removed from deps as it might not reflect synth's true state if an error occurred
+    if (utterance) {
+        utterance.onend = null;
+        utterance.onerror = null;
+        setUtterance(null); 
+    }
+  }, [isSupported, utterance]);
 
   // Global cleanup on unmount of the component using the hook
   useEffect(() => {
