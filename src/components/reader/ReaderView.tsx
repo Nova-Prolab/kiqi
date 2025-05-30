@@ -4,6 +4,7 @@
 import type { Novel, Chapter } from '@/lib/types';
 import { useReaderSettings } from '@/contexts/ReaderSettingsContext';
 import { useReadingPosition } from '@/hooks/useReadingPosition';
+import { useRecentlyRead } from '@/hooks/useRecentlyRead';
 import React, { useEffect, useRef, useState, useCallback } from 'react';
 import ReaderControls from './ReaderControls';
 import { Button } from '@/components/ui/button';
@@ -19,24 +20,24 @@ interface ReaderViewProps {
   currentChapter: Chapter;
 }
 
-const DOUBLE_CLICK_REVEAL_TIMEOUT = 2500; // ms - Increased from 150ms
+const DOUBLE_CLICK_REVEAL_TIMEOUT = 2500;
 
 export default function ReaderView({ novel, currentChapter }: ReaderViewProps) {
-  const { 
-    fontClass, 
-    themeClass, 
-    isImmersive, 
-    setIsImmersive, 
-    theme, 
-    customBackground, 
-    customForeground 
+  const {
+    fontClass,
+    themeClass,
+    isImmersive,
+    setIsImmersive,
+    theme,
+    customBackground,
+    customForeground,
   } = useReaderSettings();
   const chapterKey = `${novel.id}_${currentChapter.id}`;
   const { savePosition, loadPosition } = useReadingPosition(chapterKey);
-  
-  const scrollViewportRef = useRef<HTMLDivElement>(null); 
-  const doubleClickRevealTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const { addRecentlyReadChapter } = useRecentlyRead();
 
+  const scrollViewportRef = useRef<HTMLDivElement>(null);
+  const doubleClickRevealTimerRef = useRef<NodeJS.Timeout | null>(null);
 
   const [isMounted, setIsMounted] = useState(false);
   const [isTranslationDialogOpen, setIsTranslationDialogOpen] = useState(false);
@@ -46,10 +47,8 @@ export default function ReaderView({ novel, currentChapter }: ReaderViewProps) {
   const [effectiveChapterContent, setEffectiveChapterContent] = useState<string>(currentChapter.content);
   const [isTranslationApplied, setIsTranslationApplied] = useState<boolean>(false);
 
-  // State for immersive controls visibility
   const [isMouseOverImmersiveControls, setIsMouseOverImmersiveControls] = useState(false);
   const [forceShowImmersiveControlsByDoubleClick, setForceShowImmersiveControlsByDoubleClick] = useState(false);
-
 
   useEffect(() => {
     setIsMounted(true);
@@ -61,26 +60,35 @@ export default function ReaderView({ novel, currentChapter }: ReaderViewProps) {
   }, []);
 
   useEffect(() => {
+    if (isMounted && novel && currentChapter) {
+      addRecentlyReadChapter({
+        novelId: novel.id,
+        novelTitle: novel.title,
+        id: currentChapter.id,
+        title: currentChapter.title,
+        order: currentChapter.order,
+      });
+    }
+
     setEffectiveChapterContent(currentChapter.content);
-    setIsTranslationApplied(false);
+    setIsTranslationApplied(false); 
     if (scrollViewportRef.current) {
       scrollViewportRef.current.scrollTop = 0;
     }
-    // Reset immersive control states on chapter change
-    setIsMouseOverImmersiveControls(false); 
+    setIsMouseOverImmersiveControls(false);
     setForceShowImmersiveControlsByDoubleClick(false);
 
     const timer = setTimeout(() => {
-        if (!isMounted || !scrollViewportRef.current) return;
-        const scrollableElement = scrollViewportRef.current;
-        const position = loadPosition();
-        if (position !== null) {
-          scrollableElement.scrollTop = position;
-        }
+      if (!isMounted || !scrollViewportRef.current) return;
+      const scrollableElement = scrollViewportRef.current;
+      const position = loadPosition();
+      if (position !== null) {
+        scrollableElement.scrollTop = position;
+      }
     }, 50);
 
     return () => clearTimeout(timer);
-  }, [currentChapter.id, currentChapter.content, novel.id, isMounted, loadPosition]);
+  }, [currentChapter.id, currentChapter.content, novel?.id, novel?.title, currentChapter?.title, currentChapter?.order, isMounted, loadPosition, addRecentlyReadChapter]);
 
 
   const debounceTimeoutRef = useRef<NodeJS.Timeout | null>(null);
@@ -90,14 +98,14 @@ export default function ReaderView({ novel, currentChapter }: ReaderViewProps) {
     }
     debounceTimeoutRef.current = setTimeout(() => {
       savePosition(scrollTop);
-    }, 500); 
+    }, 500);
   }, [savePosition]);
 
 
   useEffect(() => {
     if (!isMounted || !scrollViewportRef.current) return;
     const scrollableElement = scrollViewportRef.current;
-    
+
     const handleScroll = () => {
       if (scrollableElement) {
         debouncedSavePosition(scrollableElement.scrollTop);
@@ -123,8 +131,8 @@ export default function ReaderView({ novel, currentChapter }: ReaderViewProps) {
 
   const handleToggleImmersive = () => {
     setIsImmersive(!isImmersive);
-    if (!isImmersive) { // Entering immersive mode
-      setIsMouseOverImmersiveControls(false); 
+    if (!isImmersive) {
+      setIsMouseOverImmersiveControls(false);
       setForceShowImmersiveControlsByDoubleClick(false);
     }
   };
@@ -133,11 +141,11 @@ export default function ReaderView({ novel, currentChapter }: ReaderViewProps) {
     setSelectedTargetLanguage(language);
     setIsTranslationDialogOpen(true);
   };
-  
+
   const handleRequestLanguageChange = () => {
-    setIsTranslationDialogOpen(false); 
-    setTranslationControlsOpen(true); 
-    setTimeout(() => setTranslationControlsOpen(false), 50); 
+    setIsTranslationDialogOpen(false);
+    setTranslationControlsOpen(true);
+    setTimeout(() => setTranslationControlsOpen(false), 50);
   };
 
   const handleApplyTranslation = (translatedHtml: string) => {
@@ -167,9 +175,9 @@ export default function ReaderView({ novel, currentChapter }: ReaderViewProps) {
     }, DOUBLE_CLICK_REVEAL_TIMEOUT);
   };
 
-  const actualImmersiveControlsVisible = isImmersive 
-    ? (isMouseOverImmersiveControls || forceShowImmersiveControlsByDoubleClick) 
-    : true; // Controls always "visible" (sticky) in non-immersive
+  const actualImmersiveControlsVisible = isImmersive
+    ? (isMouseOverImmersiveControls || forceShowImmersiveControlsByDoubleClick)
+    : true;
 
   const readingAreaStyle: React.CSSProperties = {};
   if (theme === 'custom' && customBackground) {
@@ -189,7 +197,7 @@ export default function ReaderView({ novel, currentChapter }: ReaderViewProps) {
           <div className="h-8 bg-muted rounded mb-2 w-3/4"></div>
           <div className="h-8 bg-muted rounded mb-2 w-1/2"></div>
         </div>
-        <div className="p-4 border-t bg-muted animate-pulse h-16 rounded-b-lg"></div>
+        {/* Footer was removed */}
       </div>
     );
   }
@@ -201,16 +209,16 @@ export default function ReaderView({ novel, currentChapter }: ReaderViewProps) {
           <header className="p-4">
             <h1 className="text-xl md:text-2xl font-bold text-primary truncate">{novel.title}</h1>
             <h2 className="text-md md:text-lg text-muted-foreground truncate">
-              Capítulo {currentChapter.order}: {currentChapter.title} 
+              Capítulo {currentChapter.order}: {currentChapter.title}
               {isTranslationApplied && <span className="text-sm text-accent ml-2">(Traducido)</span>}
             </h2>
           </header>
         </Card>
       )}
-      
+
       {isImmersive && (
-        <div 
-          className="fixed top-0 left-0 w-full h-16 z-[105] cursor-default" // Double click trigger area
+        <div
+          className="fixed top-0 left-0 w-full h-16 z-[105] cursor-default"
           onDoubleClick={handleImmersiveTopAreaDoubleClick}
         />
       )}
@@ -228,16 +236,16 @@ export default function ReaderView({ novel, currentChapter }: ReaderViewProps) {
         onHoverStateChange={setIsMouseOverImmersiveControls}
       />
 
-      <ScrollArea 
-        className={`flex-grow ${isImmersive ? 'h-full' : 'm-2 mt-0 rounded-t-none shadow'}`} 
-        viewportRef={scrollViewportRef} 
+      <ScrollArea
+        className={`flex-grow ${isImmersive ? 'h-full' : 'm-2 mt-0 rounded-t-none shadow'}`}
+        viewportRef={scrollViewportRef}
       >
         <div
           className={`reading-content-area ${theme !== 'custom' ? themeClass : ''} ${fontClass} p-6 md:p-10 lg:p-12 prose prose-sm sm:prose md:prose-lg max-w-4xl mx-auto selection:bg-accent selection:text-accent-foreground`}
           style={readingAreaStyle}
           dangerouslySetInnerHTML={chapterContentToDisplay}
         />
-        
+
         <Card className={`mx-auto max-w-4xl my-6 ${isImmersive ? 'bg-transparent border-none shadow-none text-muted-foreground' : 'shadow rounded-lg border'}`}>
           <nav className="p-4 flex justify-between items-center">
             {prevChapter ? (
@@ -246,11 +254,11 @@ export default function ReaderView({ novel, currentChapter }: ReaderViewProps) {
                   <ChevronLeft className="mr-2 h-4 w-4" /> Anterior
                 </Link>
               </Button>
-            ) : <Button variant="outline" disabled><ChevronLeft className="mr-2 h-4 w-4" /> Anterior</Button> }
-            
+            ) : <Button variant="outline" disabled><ChevronLeft className="mr-2 h-4 w-4" /> Anterior</Button>}
+
             <Button variant="ghost" asChild title="Volver a Detalles de la Novela">
               <Link href={`/novels/${novel.id}`}>
-                <Home className="h-5 w-5"/>
+                <Home className="h-5 w-5" />
               </Link>
             </Button>
 
@@ -260,11 +268,11 @@ export default function ReaderView({ novel, currentChapter }: ReaderViewProps) {
                   Siguiente <ChevronRight className="ml-2 h-4 w-4" />
                 </Link>
               </Button>
-            ) : <Button variant="outline" disabled>Siguiente <ChevronRight className="ml-2 h-4 w-4" /></Button> }
+            ) : <Button variant="outline" disabled>Siguiente <ChevronRight className="ml-2 h-4 w-4" /></Button>}
           </nav>
         </Card>
       </ScrollArea>
-      
+
       <TranslationDialog
         isOpen={isTranslationDialogOpen}
         onOpenChange={setIsTranslationDialogOpen}

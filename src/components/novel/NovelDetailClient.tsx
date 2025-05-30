@@ -3,10 +3,11 @@
 
 import Image from 'next/image';
 import Link from 'next/link';
-import type { Novel } from '@/lib/types';
+import type { Novel, RecentChapterInfo } from '@/lib/types';
+import { useRecentlyRead } from '@/hooks/useRecentlyRead';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { List, ChevronRight, BookOpen, ArrowLeft, Tag, CalendarDays, UserCircle, Clock } from 'lucide-react'; // Removed FileText
+import { List, ChevronRight, BookOpen, ArrowLeft, Tag, CalendarDays, UserCircle, Clock, History, BookCheck } from 'lucide-react';
 import { Separator } from '@/components/ui/separator';
 import { Badge } from '@/components/ui/badge';
 import React, { useState, useEffect, useMemo } from 'react';
@@ -16,19 +17,35 @@ interface NovelDetailClientProps {
 }
 
 const MAX_INITIAL_SUMMARY_LINES = 6;
+const MAX_RECENT_TO_DISPLAY = 3;
 
 export default function NovelDetailClient({ novel }: NovelDetailClientProps) {
-  const sortedChapters = novel.chapters?.sort((a,b) => a.order - b.order) || [];
+  const sortedChapters = useMemo(() => novel.chapters?.sort((a,b) => a.order - b.order) || [], [novel.chapters]);
   const firstChapter = sortedChapters.length > 0 ? sortedChapters[0] : null;
 
   const [isSummaryExpanded, setIsSummaryExpanded] = useState(false);
   const [isLongSummary, setIsLongSummary] = useState(false);
+  const [recentChapterDetails, setRecentChapterDetails] = useState<RecentChapterInfo[]>([]);
+  const { getRecentlyReadChaptersForNovel } = useRecentlyRead();
+  const [isMounted, setIsMounted] = useState(false);
+
+  useEffect(() => {
+    setIsMounted(true);
+  }, []);
+
+  useEffect(() => {
+    if (isMounted && novel?.id) {
+      const recent = getRecentlyReadChaptersForNovel(novel.id);
+      setRecentChapterDetails(recent.slice(0, MAX_RECENT_TO_DISPLAY));
+    }
+  }, [novel?.id, getRecentlyReadChaptersForNovel, isMounted]);
+
 
   const processedSummaryContent = useMemo(() => {
-    // First, replace literal '\\n' with actual '\n'
+    if (!novel?.summary) return "";
     const summaryWithActualNewlines = novel.summary.replace(/\\n/g, '\n');
     return summaryWithActualNewlines;
-  }, [novel.summary]);
+  }, [novel?.summary]);
 
   const summaryLines = useMemo(() => processedSummaryContent.split('\n'), [processedSummaryContent]);
 
@@ -37,12 +54,12 @@ export default function NovelDetailClient({ novel }: NovelDetailClientProps) {
       setIsLongSummary(true);
     } else {
       setIsLongSummary(false);
-      setIsSummaryExpanded(false); 
+      setIsSummaryExpanded(false);
     }
   }, [summaryLines]);
 
-  const displayedSummaryLines = isLongSummary && !isSummaryExpanded 
-    ? summaryLines.slice(0, MAX_INITIAL_SUMMARY_LINES) 
+  const displayedSummaryLines = isLongSummary && !isSummaryExpanded
+    ? summaryLines.slice(0, MAX_INITIAL_SUMMARY_LINES)
     : summaryLines;
 
   return (
@@ -65,7 +82,7 @@ export default function NovelDetailClient({ novel }: NovelDetailClientProps) {
               width={400}
               height={600}
               className="object-cover w-full aspect-[2/3]"
-              priority 
+              priority
             />
           </Card>
            {firstChapter && (
@@ -88,7 +105,7 @@ export default function NovelDetailClient({ novel }: NovelDetailClientProps) {
               </Link>
             </p>
           </header>
-          
+
           <Card className="border">
             <CardHeader>
               <CardTitle className="text-xl">Sumario</CardTitle>
@@ -146,7 +163,6 @@ export default function NovelDetailClient({ novel }: NovelDetailClientProps) {
                         <strong>Última Actualización:</strong><span className="ml-2">{novel.lastUpdateDate}</span>
                     </div>
                 )}
-                {/* Removed Total Word Count Display */}
                 {novel.etiquetas && novel.etiquetas.length > 0 && (
                     <div className="flex items-start text-sm">
                         <Tag className="mr-2 h-4 w-4 text-muted-foreground mt-0.5" />
@@ -162,11 +178,41 @@ export default function NovelDetailClient({ novel }: NovelDetailClientProps) {
                 )}
             </CardContent>
           </Card>
-          
         </div>
       </section>
 
       <Separator />
+
+      {isMounted && recentChapterDetails.length > 0 && (
+        <section>
+          <Card className="border bg-card/50 shadow-sm">
+            <CardHeader>
+              <CardTitle className="text-xl sm:text-2xl flex items-center text-primary/90">
+                <History className="mr-3 h-5 w-5 sm:h-6 sm:w-6" />
+                Leído Recientemente
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
+                {recentChapterDetails.map((chapter) => (
+                  <Button key={`recent-${chapter.id}`} variant="outline" asChild className="justify-start h-auto py-2 px-3 text-left group">
+                    <Link href={`/novels/${novel.id}/chapters/${chapter.id}`}>
+                      <BookCheck className="mr-2 h-4 w-4 text-muted-foreground group-hover:text-primary transition-colors" />
+                      <div className="flex flex-col">
+                        <span className="font-medium text-sm text-foreground group-hover:text-primary transition-colors truncate" title={chapter.title}>
+                          {chapter.title || `Capítulo ${chapter.order}`}
+                        </span>
+                        <span className="text-xs text-muted-foreground">Capítulo {chapter.order}</span>
+                      </div>
+                    </Link>
+                  </Button>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+          <Separator className="my-8" />
+        </section>
+      )}
 
       <section>
         <h2 className="text-2xl sm:text-3xl font-semibold mb-6 flex items-center text-primary">
@@ -183,7 +229,7 @@ export default function NovelDetailClient({ novel }: NovelDetailClientProps) {
                       <CardContent className="p-4 flex items-center justify-between">
                         <div>
                           <p className="font-medium text-foreground group-hover:text-primary transition-colors">
-                            {chapter.title} 
+                            {chapter.title}
                           </p>
                         </div>
                         <ChevronRight className="h-5 w-5 text-muted-foreground group-hover:text-primary transition-colors" />

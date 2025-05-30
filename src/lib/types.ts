@@ -11,7 +11,7 @@ export interface InfoJson {
   titulo: string;
   descripcion: string;
   autor: string;
-  coverImageUrl?: string; 
+  coverImageUrl?: string;
   fecha_lanzamiento?: string;
   etiquetas?: string[];
   categoria?: string;
@@ -19,20 +19,20 @@ export interface InfoJson {
 }
 
 export interface Novel {
-  id: string; 
+  id: string;
   title: string;
   author: string;
-  coverImage: string; 
+  coverImage: string;
   summary: string;
-  githubRepoUrl?: string; 
-  chapters: Pick<Chapter, 'id' | 'title' | 'order'>[]; 
+  githubRepoUrl?: string;
+  chapters: Pick<Chapter, 'id' | 'title' | 'order'>[];
 
   // Fields from info.json
   fecha_lanzamiento?: string;
   etiquetas?: string[];
   categoria?: string;
   traductor?: string;
-  lastUpdateDate?: string; 
+  lastUpdateDate?: string;
 }
 
 // For Reader Settings Context
@@ -45,4 +45,18 @@ export interface ReaderSettings {
   isImmersive: boolean;
   customBackground?: string;
   customForeground?: string;
+}
+
+// For Recently Read Chapters
+export interface RecentChapterInfo {
+  id: string; // chapter id e.g. "chapter-1"
+  title: string; // chapter title
+  order: number; // chapter order
+  novelId: string; 
+  novelTitle: string; 
+  timestamp: number; // For sorting by recency
+}
+
+export interface StoredRecentlyReadData {
+  [novelId: string]: RecentChapterInfo[];
 }
