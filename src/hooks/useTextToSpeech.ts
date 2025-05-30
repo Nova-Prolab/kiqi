@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useState, useEffect, useCallback } from 'react';
@@ -29,20 +30,22 @@ export function useTextToSpeech() {
     };
 
     utterance.onend = handleEnd;
-    utterance.onerror = (event) => {
-      console.error('SpeechSynthesisUtterance.onerror', event);
+    utterance.onerror = (event: Event) => { // event is generic Event, needs casting for specific properties
+      const errorEvent = event as SpeechSynthesisErrorEvent;
+      console.error(
+        'SpeechSynthesisUtterance.onerror - Type:', 
+        errorEvent.error, // This provides the specific error code string (e.g., "synthesis-failed")
+        'Full event object:', 
+        errorEvent
+      );
       setIsSpeaking(false);
       setIsPaused(false);
     };
     
+    // Cleanup for this specific utterance instance when it changes or component unmounts
     return () => {
-      // Clean up specific utterance events
       utterance.onend = null;
       utterance.onerror = null;
-      // Cancel speech if this utterance was speaking
-      if (speechSynthesis.speaking && speechSynthesis. utterance === utterance) {
-        speechSynthesis.cancel();
-      }
     };
   }, [utterance, isSupported]);
 
@@ -54,6 +57,10 @@ export function useTextToSpeech() {
     }
 
     const newUtterance = new SpeechSynthesisUtterance(text);
+    // You could try setting a specific voice if default is problematic:
+    // const voices = speechSynthesis.getVoices();
+    // if (voices.length > 0) newUtterance.voice = voices[0]; // Or a preferred voice
+    // newUtterance.lang = "es-ES"; // Or appropriate language
     setUtterance(newUtterance); // Store the new utterance
     speechSynthesis.speak(newUtterance);
     setIsSpeaking(true);
@@ -73,17 +80,19 @@ export function useTextToSpeech() {
   }, [isSupported, isSpeaking, isPaused]);
 
   const stop = useCallback(() => {
-    if (!isSupported || !isSpeaking) return;
-    speechSynthesis.cancel();
+    if (!isSupported || !isSpeaking && !isPaused) return; // Allow stop if paused but not actively speaking
+    if (speechSynthesis.speaking || speechSynthesis.paused) { // Check actual synthesizer state
+        speechSynthesis.cancel();
+    }
     setIsSpeaking(false);
     setIsPaused(false);
     setUtterance(null); 
-  }, [isSupported, isSpeaking]);
+  }, [isSupported]); // isSpeaking state removed from deps as it might not reflect synth's true state if an error occurred
 
-  // Global cleanup on unmount of the hook user
+  // Global cleanup on unmount of the component using the hook
   useEffect(() => {
     return () => {
-      if (isSupported && speechSynthesis.speaking) {
+      if (isSupported && (speechSynthesis.speaking || speechSynthesis.paused)) {
         speechSynthesis.cancel();
       }
     };
