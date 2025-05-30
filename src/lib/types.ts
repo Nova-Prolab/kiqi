@@ -1,10 +1,10 @@
 
 export interface Chapter {
   id: string; // e.g., "chapter-1"
-  title: string; 
+  title: string;
   order: number;
-  content: string; 
-  path?: string; 
+  content: string;
+  path?: string;
 }
 
 export interface InfoJson {
@@ -16,6 +16,7 @@ export interface InfoJson {
   etiquetas?: string[];
   categoria?: string;
   traductor?: string;
+  creatorId?: string; // ID of the user who created the novel
 }
 
 export interface Novel {
@@ -32,19 +33,20 @@ export interface Novel {
   etiquetas?: string[];
   categoria?: string;
   traductor?: string;
-  lastUpdateDate?: string; 
+  lastUpdateDate?: string;
+  creatorId?: string; // ID of the user who created the novel
 }
 
 // For Reader Settings Context
 export type ReaderTheme = 'light' | 'dark' | 'sepia' | 'midnight' | 'paper' | 'forest' | 'custom';
 export type ReaderFontSize = 'sm' | 'base' | 'lg' | 'xl' | '2xl';
-export type ReaderFontFamily = 
-  | 'system-serif' 
-  | 'system-sans' 
-  | 'lora' 
-  | 'merriweather' 
-  | 'noto-serif' 
-  | 'pt-serif' 
+export type ReaderFontFamily =
+  | 'system-serif'
+  | 'system-sans'
+  | 'lora'
+  | 'merriweather'
+  | 'noto-serif'
+  | 'pt-serif'
   | 'eb-garamond'
   | 'vollkorn'
   | 'bitter'
@@ -67,12 +69,12 @@ export interface ReaderSettings {
 
 // For Recently Read Chapters
 export interface RecentChapterInfo {
-  id: string; 
-  title: string; 
-  order: number; 
-  novelId: string; 
-  novelTitle: string; 
-  timestamp: number; 
+  id: string;
+  title: string;
+  order: number;
+  novelId: string;
+  novelTitle: string;
+  timestamp: number;
 }
 
 export interface StoredRecentlyReadData {
@@ -89,4 +91,11 @@ export interface CreateNovelInput {
   tags?: string; // Comma-separated string
   translator?: string;
   releaseDate?: string;
+  creatorId?: string; // To be passed to the action
+}
+
+// For User "Accounts"
+export interface User {
+  username: string;
+  discordUsername: string;
 }
