@@ -7,13 +7,11 @@ export function useTextToSpeech() {
   const [isSpeaking, setIsSpeaking] = useState(false);
   const [isPaused, setIsPaused] = useState(false);
   const [isSupported, setIsSupported] = useState(false);
-  // Store the current utterance to manage it (e.g., for onend, onerror)
   const [currentUtterance, setCurrentUtterance] = useState<SpeechSynthesisUtterance | null>(null);
 
   useEffect(() => {
     if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
       setIsSupported(true);
-      // Cleanup any lingering speech synthesis from previous page loads or states
       if (window.speechSynthesis.speaking || window.speechSynthesis.paused) {
         window.speechSynthesis.cancel();
       }
@@ -21,7 +19,6 @@ export function useTextToSpeech() {
       const logVoices = () => {
         const voices = window.speechSynthesis.getVoices();
         if (voices.length === 0) {
-          // This is common, voices load asynchronously.
           // console.warn("SpeechSynthesis: No voices initially available. Waiting for voiceschanged event or direct call to getVoices() later.");
         } else {
           // console.log("SpeechSynthesis: Available voices:", voices.map(v => ({ name: v.name, lang: v.lang, default: v.default })));
@@ -38,21 +35,19 @@ export function useTextToSpeech() {
       setIsSupported(false);
     }
 
-    // Cleanup function when the component unmounts or dependencies change
     return () => {
       if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
-        window.speechSynthesis.onvoiceschanged = null; // Remove event listener
+        window.speechSynthesis.onvoiceschanged = null; 
         if (window.speechSynthesis.speaking || window.speechSynthesis.paused) {
-          window.speechSynthesis.cancel(); // Cancel any ongoing speech
+          window.speechSynthesis.cancel(); 
         }
       }
-      setCurrentUtterance(null); // Clear stored utterance
+      setCurrentUtterance(null); 
     };
   }, []);
 
   const handleError = useCallback((event: Event) => {
     if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
-      // It's good practice to cancel, though the error itself might have already stopped it.
       window.speechSynthesis.cancel();
     }
 
@@ -72,11 +67,9 @@ export function useTextToSpeech() {
   }, []);
 
 
-  // Effect to manage event listeners for the current utterance
   useEffect(() => {
-    const utterance = currentUtterance; // Capture currentUtterance for this effect closure
+    const utterance = currentUtterance; 
     if (!isSupported || !utterance) {
-      // If there's no utterance, ensure states are reset (though speak/stop should also handle this)
       if (!utterance) { 
         setIsSpeaking(false);
         setIsPaused(false);
@@ -87,18 +80,15 @@ export function useTextToSpeech() {
     const handleEnd = () => {
       setIsSpeaking(false);
       setIsPaused(false);
-      setCurrentUtterance(null); // Clear the utterance once it's done
+      setCurrentUtterance(null); 
     };
     
     utterance.onend = handleEnd;
-    utterance.onerror = handleError; // Use the memoized handleError
+    utterance.onerror = handleError; 
     
-    // Cleanup for this specific utterance when it changes or component unmounts
     return () => {
       utterance.onend = null;
       utterance.onerror = null;
-      // Don't cancel here if it's just the utterance object changing but speech might be ongoing
-      // Cancellation is handled by speak (before new speech) and stop/unmount.
     };
   }, [currentUtterance, isSupported, handleError]);
 
@@ -109,19 +99,16 @@ export function useTextToSpeech() {
         return;
     }
     if (!text || !text.trim()) {
-        console.warn("SpeechSynthesis: Speak called with empty or whitespace-only text.");
+        console.warn("SpeechSynthesis: Speak called with empty or whitespace-only text. Cannot speak.");
         return;
     }
 
-    // Cancel any ongoing or paused speech before starting anew
     if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
       if (window.speechSynthesis.speaking || window.speechSynthesis.paused) {
         window.speechSynthesis.cancel();
       }
     }
     
-    // Reset currentUtterance state to ensure the useEffect for event listeners re-runs correctly for the new utterance.
-    // Using a timeout allows React to process this state update before we create and set the new utterance.
     setCurrentUtterance(null); 
 
     setTimeout(() => {
@@ -130,30 +117,32 @@ export function useTextToSpeech() {
       if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
         const voices = window.speechSynthesis.getVoices();
         if (voices.length > 0) {
-          // Attempt to select a voice. This order can be adjusted.
-          let selectedVoice = voices.find(voice => voice.default); // Prefer default
-          if (!selectedVoice) selectedVoice = voices.find(voice => voice.lang.startsWith('es')); // Prefer Spanish
-          if (!selectedVoice) selectedVoice = voices.find(voice => voice.lang.startsWith('en')); // Then English
-          if (!selectedVoice) selectedVoice = voices[0]; // Fallback to the first available voice
+          let selectedVoice = voices.find(voice => voice.default && voice.lang.startsWith('es')); 
+          if (!selectedVoice) selectedVoice = voices.find(voice => voice.lang.startsWith('es-')); 
+          if (!selectedVoice) selectedVoice = voices.find(voice => voice.default && voice.lang.startsWith('en')); 
+          if (!selectedVoice) selectedVoice = voices.find(voice => voice.lang.startsWith('en-')); 
+          if (!selectedVoice) selectedVoice = voices.find(voice => voice.default); 
+          if (!selectedVoice) selectedVoice = voices[0];
 
           if (selectedVoice) {
             newUtterance.voice = selectedVoice;
-            newUtterance.lang = selectedVoice.lang; // Explicitly set lang from the selected voice
+            newUtterance.lang = selectedVoice.lang;
             // console.log(`SpeechSynthesis: Attempting to use voice: ${selectedVoice.name} (${selectedVoice.lang}) for text: "${text.substring(0,30)}..."`);
           } else {
-            // console.warn("SpeechSynthesis: No suitable voice found after checking. Using browser default implicit voice selection.");
+            // This case should ideally not be reached if voices.length > 0
+            // console.warn("SpeechSynthesis: No suitable voice found despite voices being available. Using browser default implicit voice selection.");
           }
         } else {
-          // console.warn("SpeechSynthesis: No voices available via getVoices() when trying to speak. Relying on browser default implicit voice selection.");
+          console.warn("SpeechSynthesis: CRITICAL - No TTS voices were found at the moment of trying to speak. This is a likely cause for 'synthesis-failed' errors. Please check browser/OS voice settings.");
         }
         window.speechSynthesis.speak(newUtterance);
       }
       
-      setCurrentUtterance(newUtterance); // Set the new utterance
+      setCurrentUtterance(newUtterance); 
       setIsSpeaking(true);
       setIsPaused(false);
-    }, 0); // setTimeout with 0 delay to allow state to clear first
-  }, [isSupported]); // Dependencies: isSupported. Other states are managed internally or via utterance effect.
+    }, 0); 
+  }, [isSupported, handleError]);
 
   const pause = useCallback(() => {
     if (!isSupported || !isSpeaking || isPaused) return;
@@ -175,11 +164,9 @@ export function useTextToSpeech() {
     if (!isSupported) return;
     if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
       if (window.speechSynthesis.speaking || window.speechSynthesis.paused) {
-          window.speechSynthesis.cancel(); // This will trigger 'onend' or 'onerror' if an utterance was active
+          window.speechSynthesis.cancel(); 
       }
     }
-    // State reset is largely handled by onend/onerror callbacks triggered by cancel()
-    // But as a safeguard, or if cancel() doesn't trigger them (e.g., if nothing was speaking):
     setIsSpeaking(false);
     setIsPaused(false);
     setCurrentUtterance(null); 
