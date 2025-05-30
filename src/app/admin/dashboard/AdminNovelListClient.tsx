@@ -26,13 +26,13 @@ import { useToast } from "@/hooks/use-toast";
 import { useEffect, useState, useMemo } from 'react';
 
 interface AdminNovelListClientProps {
-  novels: Novel[];
+  novels: Novel[]; // Todas las novelas fetcheadas del repo
 }
 
 const initialDeleteState = {
   message: '',
   success: false,
-  deletedNovelId: undefined,
+  deletedNovelId: undefined as string | undefined,
 };
 
 function DeleteButtonContent() {
@@ -55,13 +55,15 @@ function DeleteButtonContent() {
 
 export default function AdminNovelListClient({ novels: allFetchedNovels }: AdminNovelListClientProps) {
   const { ownedNovelIds, removeOwnedNovel, isMounted } = useOwnedNovels();
-  const [deleteState, deleteFormAction] = useActionState(deleteNovelAction, initialDeleteState);
+  const [deleteState, deleteFormAction, isDeletePending] = useActionState(deleteNovelAction, initialDeleteState);
   const { toast } = useToast();
   
+  // Este estado local contendrá solo las novelas que el usuario "posee" en este navegador
   const [ownedNovelsToDisplay, setOwnedNovelsToDisplay] = useState<Novel[]>([]);
 
   useEffect(() => {
     if (isMounted) {
+      // Filtrar las novelas para mostrar solo las que están en ownedNovelIds
       const filtered = allFetchedNovels.filter(novel => ownedNovelIds.includes(novel.id));
       setOwnedNovelsToDisplay(filtered);
     }
@@ -69,22 +71,22 @@ export default function AdminNovelListClient({ novels: allFetchedNovels }: Admin
 
 
   useEffect(() => {
-    if (deleteState?.message) {
+    if (deleteState?.message && !isDeletePending) { // Asegurarse que la acción no esté pendiente
       toast({
         title: deleteState.success ? 'Novela Eliminada (Info)' : 'Error al Eliminar',
         description: deleteState.message,
         variant: deleteState.success ? 'default' : 'destructive',
       });
       if (deleteState.success && deleteState.deletedNovelId) {
+        // removeOwnedNovel actualizará ownedNovelIds, lo que disparará el useEffect anterior
+        // para re-filtrar y actualizar ownedNovelsToDisplay.
         removeOwnedNovel(deleteState.deletedNovelId);
-        // The list will re-filter in the next effect as ownedNovelIds changes
-        // Or, we can directly update ownedNovelsToDisplay here:
-        // setOwnedNovelsToDisplay(prev => prev.filter(n => n.id !== deleteState.deletedNovelId));
       }
     }
-  }, [deleteState, toast, removeOwnedNovel]);
+  }, [deleteState, toast, removeOwnedNovel, isDeletePending]);
   
   if (!isMounted) {
+    // Esqueleto de carga mientras se determina la propiedad
     return (
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         {[...Array(3)].map((_, i) => (
@@ -111,7 +113,7 @@ export default function AdminNovelListClient({ novels: allFetchedNovels }: Admin
           No has creado ninguna novela en este navegador o no se encontraron novelas gestionadas.
         </p>
         <p className="mt-2 text-sm text-muted-foreground">
-          Puedes <Link href="/admin/create-novel" className="text-primary hover:underline">crear una nueva novela</Link> para empezar.
+          Puedes <Link href="/admin/create-novel" className="text-primary hover:underline">crear una nueva novela</Link> para empezar a gestionarla aquí.
         </p>
       </div>
     );
@@ -120,6 +122,13 @@ export default function AdminNovelListClient({ novels: allFetchedNovels }: Admin
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
       {ownedNovelsToDisplay.map((novel) => {
+        // Asegurarse de que novel.infoJsonSha exista y no sea undefined.
+        // fetchNovels ya debería proveer esto. Si no, algo está mal en la carga de datos.
+        const infoSha = novel.infoJsonSha;
+        if (!infoSha) {
+          console.warn(`La novela ${novel.id} no tiene infoJsonSha. No se podrá eliminar.`);
+        }
+
         return (
           <Card key={novel.id} className="flex flex-col border-primary/30">
             <CardHeader className="flex-row gap-4 items-start">
@@ -155,7 +164,7 @@ export default function AdminNovelListClient({ novels: allFetchedNovels }: Admin
                   <Eye className="mr-1.5 h-3.5 w-3.5" /> Ver Novela
                 </Link>
               </Button>
-              <>
+              <> {/* Estos botones solo se muestran para novelas "poseídas" (ya filtradas) */}
                 <Button asChild variant="secondary" className="w-full sm:w-auto text-xs">
                   <Link href={`/admin/novels/${novel.id}/add-chapter`}>
                     <ListChecks className="mr-1.5 h-3.5 w-3.5" /> Gestionar Capítulos
@@ -163,7 +172,7 @@ export default function AdminNovelListClient({ novels: allFetchedNovels }: Admin
                 </Button>
                  <AlertDialog>
                   <AlertDialogTrigger asChild>
-                    <Button variant="destructive" className="w-full sm:w-auto text-xs">
+                    <Button variant="destructive" className="w-full sm:w-auto text-xs" disabled={!infoSha || isDeletePending}>
                       <Trash2 className="mr-1.5 h-3.5 w-3.5" /> Eliminar
                     </Button>
                   </AlertDialogTrigger>
@@ -176,7 +185,7 @@ export default function AdminNovelListClient({ novels: allFetchedNovels }: Admin
                         ¿Estás seguro de que quieres eliminar la información de la novela (<code>info.json</code>) para "{novel.title}"?
                         Esto la hará inaccesible desde la aplicación y la eliminará de tu lista de novelas gestionadas en este navegador.
                         <br />
-                        <strong className="text-destructive-foreground">Los archivos de capítulo NO se eliminarán del repositorio de GitHub y deberán gestionarse manualmente si deseas eliminarlos por completo.</strong>
+                        <strong className="text-destructive-foreground">Los archivos de capítulo NO se eliminarán del repositorio y deberán gestionarse manualmente si deseas eliminarlos por completo.</strong>
                         <br />Esta acción no se puede deshacer desde la web.
                       </AlertDialogDescription>
                     </AlertDialogHeader>
@@ -184,8 +193,8 @@ export default function AdminNovelListClient({ novels: allFetchedNovels }: Admin
                       <AlertDialogCancel>Cancelar</AlertDialogCancel>
                       <form action={deleteFormAction} className="inline-flex">
                           <input type="hidden" name="novelId" value={novel.id} />
-                          <input type="hidden" name="infoJsonSha" value={novel.infoJsonSha || ''} />
-                          <Button type="submit" variant="destructive">
+                          <input type="hidden" name="infoJsonSha" value={infoSha || ''} /> {/* Usar infoSha verificado */}
+                          <Button type="submit" variant="destructive" disabled={isDeletePending}>
                              <DeleteButtonContent/>
                           </Button>
                       </form>
@@ -200,5 +209,4 @@ export default function AdminNovelListClient({ novels: allFetchedNovels }: Admin
     </div>
   );
 }
-
     
