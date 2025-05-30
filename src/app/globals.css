@@ -1,3 +1,4 @@
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -43,8 +44,13 @@
     /* Default reading pane variables (matching light theme) */
     --reading-pane-background: 0 0% 96%;
     --reading-pane-foreground: 0 0% 10%;
-    --font-serif: var(--font-lora); 
+    
+    /* UI Fonts */
     --font-sans: var(--font-geist-sans);
+    --font-mono: var(--font-geist-mono);
+    
+    /* Default Reader Font (can be overridden by ReaderSettingsContext) */
+    --reader-font-family: var(--font-lora), serif;
   }
 
   .dark {
@@ -98,11 +104,13 @@
   }
 
   .reading-content-area {
-    font-family: var(--font-serif);
+    /* Default font family for reading area can be set here or controlled by ReaderView */
+    font-family: var(--reader-font-family); 
     background-color: hsl(var(--reading-pane-background));
     color: hsl(var(--reading-pane-foreground));
   }
 
+  /* Theme-specific text and background for reader */
   .reading-content-area.theme-light {
     --reading-pane-background: 0 0% 96%; /* Slightly off-white like #F5F5F5 */
     --reading-pane-foreground: 0 0% 10%; /* Dark gray text */
@@ -146,3 +154,5 @@
 .prose h1, .prose h2, .prose h3, .prose h4, .prose h5, .prose h6 {
   @apply mt-6 mb-3 font-semibold; /* Adjust heading spacing */
 }
+
+    

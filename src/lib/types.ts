@@ -32,12 +32,27 @@ export interface Novel {
   etiquetas?: string[];
   categoria?: string;
   traductor?: string;
-  lastUpdateDate?: string;
+  lastUpdateDate?: string; // Will use fecha_lanzamiento for this
 }
 
 // For Reader Settings Context
 export type ReaderTheme = 'light' | 'dark' | 'sepia' | 'midnight' | 'paper' | 'forest' | 'custom';
 export type ReaderFontSize = 'sm' | 'base' | 'lg' | 'xl' | '2xl';
+export type ReaderFontFamily = 
+  | 'system-serif' 
+  | 'system-sans' 
+  | 'lora' 
+  | 'merriweather' 
+  | 'noto-serif' 
+  | 'pt-serif' 
+  | 'eb-garamond'
+  | 'vollkorn'
+  | 'open-sans'
+  | 'lato'
+  | 'roboto'
+  | 'source-sans-pro'
+  | 'inter'
+  | 'custom';
 
 export interface ReaderSettings {
   theme: ReaderTheme;
@@ -45,6 +60,8 @@ export interface ReaderSettings {
   isImmersive: boolean;
   customBackground?: string;
   customForeground?: string;
+  fontFamily: ReaderFontFamily; // Selected font family key
+  customFontFamily?: string; // User-defined font family name
 }
 
 // For Recently Read Chapters
@@ -60,3 +77,5 @@ export interface RecentChapterInfo {
 export interface StoredRecentlyReadData {
   [novelId: string]: RecentChapterInfo[];
 }
+
+    

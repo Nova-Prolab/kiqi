@@ -7,7 +7,7 @@ import type { Novel, RecentChapterInfo } from '@/lib/types';
 import { useRecentlyRead } from '@/hooks/useRecentlyRead';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { List, ChevronRight, BookOpen, ArrowLeft, Tag, CalendarDays, UserCircle, Clock, History, BookCheck } from 'lucide-react';
+import { List, ChevronRight, BookOpen, ArrowLeft, Tag, CalendarDays, UserCircle, Clock, History, BookCheck, FileText } from 'lucide-react';
 import { Separator } from '@/components/ui/separator';
 import { Badge } from '@/components/ui/badge';
 import React, { useState, useEffect, useMemo } from 'react';
@@ -43,8 +43,8 @@ export default function NovelDetailClient({ novel }: NovelDetailClientProps) {
 
   const processedSummaryContent = useMemo(() => {
     if (!novel?.summary) return "";
-    const summaryWithActualNewlines = novel.summary.replace(/\\n/g, '\n');
-    return summaryWithActualNewlines;
+    // Replace literal "\\n" with actual newline characters "\n"
+    return novel.summary.replace(/\\n/g, '\n');
   }, [novel?.summary]);
 
   const summaryLines = useMemo(() => processedSummaryContent.split('\n'), [processedSummaryContent]);
@@ -54,7 +54,7 @@ export default function NovelDetailClient({ novel }: NovelDetailClientProps) {
       setIsLongSummary(true);
     } else {
       setIsLongSummary(false);
-      setIsSummaryExpanded(false);
+      setIsSummaryExpanded(false); // Reset expansion if summary is short
     }
   }, [summaryLines]);
 
@@ -108,7 +108,7 @@ export default function NovelDetailClient({ novel }: NovelDetailClientProps) {
 
           <Card className="border">
             <CardHeader>
-              <CardTitle className="text-xl">Sumario</CardTitle>
+              <CardTitle className="text-xl">Descripción</CardTitle>
             </CardHeader>
             <CardContent>
               <div className="text-foreground/80 leading-relaxed">
@@ -246,3 +246,5 @@ export default function NovelDetailClient({ novel }: NovelDetailClientProps) {
     </div>
   );
 }
+
+    

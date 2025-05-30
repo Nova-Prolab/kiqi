@@ -2,10 +2,41 @@
 'use client';
 
 import { useReaderSettings } from '@/contexts/ReaderSettingsContext';
-import type { ReaderTheme, ReaderFontSize } from '@/lib/types';
+import type { ReaderTheme, ReaderFontSize, ReaderFontFamily } from '@/lib/types';
 import { Button } from '@/components/ui/button';
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger, DropdownMenuRadioGroup, DropdownMenuRadioItem } from '@/components/ui/dropdown-menu';
-import { Settings2, TextQuote, Minimize, Maximize, Sun, Moon, Coffee, Languages, BookText, Palette, FileTextIcon, Trees, MoonStar, Paintbrush, BookOpen } from 'lucide-react';
+import { 
+  DropdownMenu, 
+  DropdownMenuContent, 
+  DropdownMenuItem, 
+  DropdownMenuLabel, 
+  DropdownMenuSeparator, 
+  DropdownMenuTrigger, 
+  DropdownMenuRadioGroup, 
+  DropdownMenuRadioItem,
+  DropdownMenuSub,
+  DropdownMenuSubTrigger,
+  DropdownMenuSubContent,
+  DropdownMenuPortal
+} from '@/components/ui/dropdown-menu';
+import { 
+  Settings2, 
+  TextQuote, 
+  Minimize, 
+  Maximize, 
+  Sun, 
+  Moon, 
+  Coffee, 
+  Languages, 
+  BookText, 
+  Palette, 
+  FileTextIcon, 
+  Trees, 
+  MoonStar, 
+  Paintbrush, 
+  BookOpen,
+  Type, // Icon for Font selection
+  CaseSensitive // Icon for custom font input
+} from 'lucide-react';
 import React, { useState, useEffect, ChangeEvent } from 'react';
 import ChapterSummaryDialog from './ChapterSummaryDialog';
 import AudioPlayer from './AudioPlayer';
@@ -13,6 +44,7 @@ import Link from 'next/link';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import type { TranslateChapterInput } from '@/ai/flows/translate-chapter-flow';
 import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 
 const TARGET_LANGUAGES: {label: string, value: TranslateChapterInput['targetLanguage']}[] = [
   { label: "English", value: "English" },
@@ -30,7 +62,6 @@ interface ReaderControlsProps {
   forceTranslationMenuOpen?: boolean;
   isTranslationApplied: boolean;
   onRevertToOriginal: () => void;
-  // New props for immersive visibility control
   isVisibleInImmersiveMode: boolean;
   onHoverStateChange: (isHovering: boolean) => void;
 }
@@ -53,6 +84,25 @@ const THEMES: { label: string, value: ReaderTheme, icon: React.ElementType }[] =
   { label: 'Custom', value: 'custom', icon: Paintbrush },
 ];
 
+const FONT_FAMILIES: { label: string, value: ReaderFontFamily, style?: React.CSSProperties }[] = [
+  { label: 'System Serif', value: 'system-serif', style: { fontFamily: 'serif'} },
+  { label: 'System Sans-serif', value: 'system-sans', style: { fontFamily: 'sans-serif'} },
+  { label: 'Lora', value: 'lora', style: { fontFamily: 'var(--font-lora)'} },
+  { label: 'Merriweather', value: 'merriweather', style: { fontFamily: 'var(--font-merriweather)'} },
+  { label: 'Noto Serif', value: 'noto-serif', style: { fontFamily: 'var(--font-noto-serif)'} },
+  { label: 'PT Serif', value: 'pt-serif', style: { fontFamily: 'var(--font-pt-serif)'} },
+  { label: 'EB Garamond', value: 'eb-garamond', style: { fontFamily: 'var(--font-eb-garamond)'} },
+  { label: 'Vollkorn', value: 'vollkorn', style: { fontFamily: 'var(--font-vollkorn)'} },
+  { label: 'Bitter', value: 'bitter', style: { fontFamily: 'var(--font-bitter)'} },
+  { label: 'Open Sans', value: 'open-sans', style: { fontFamily: 'var(--font-open-sans)'} },
+  { label: 'Lato', value: 'lato', style: { fontFamily: 'var(--font-lato)'} },
+  { label: 'Roboto', value: 'roboto', style: { fontFamily: 'var(--font-roboto)'} },
+  { label: 'Source Sans Pro', value: 'source-sans-pro', style: { fontFamily: 'var(--font-source-sans-pro)'} },
+  { label: 'Inter', value: 'inter', style: { fontFamily: 'var(--font-inter)'} },
+  { label: 'Personalizada', value: 'custom' },
+];
+
+
 const isValidHexColor = (color: string) => /^#[0-9A-F]{6}$/i.test(color);
 
 export default function ReaderControls({ 
@@ -70,16 +120,22 @@ export default function ReaderControls({
   const { 
     theme, 
     fontSize, 
+    fontFamily,
+    customFontFamily,
     setTheme, 
     setFontSize, 
-    customBackground, 
-    customForeground, 
     setCustomBackground, 
-    setCustomForeground 
+    setCustomForeground,
+    setFontFamily,
+    setCustomFontFamily: setCtxCustomFontFamily, // Renamed to avoid conflict
+    customBackground, 
+    customForeground 
   } = useReaderSettings();
+
   const [isSummaryDialogOpen, setIsSummaryDialogOpen] = useState(false);
   const [isTranslateMenuOpen, setIsTranslateMenuOpen] = useState(forceTranslationMenuOpen);
 
+  const [tempCustomFont, setTempCustomFont] = useState(customFontFamily || '');
   const [bgColorInput, setBgColorInput] = useState(customBackground || '#FFFFFF');
   const [fgColorInput, setFgColorInput] = useState(customForeground || '#000000');
 
@@ -96,6 +152,11 @@ export default function ReaderControls({
   useEffect(() => {
     setFgColorInput(customForeground || '#000000');
   }, [customForeground]);
+
+  useEffect(() => {
+    setTempCustomFont(customFontFamily || '');
+  }, [customFontFamily]);
+
 
   const handleCustomBgChange = (e: ChangeEvent<HTMLInputElement>) => {
     const newColor = e.target.value;
@@ -139,6 +200,12 @@ export default function ReaderControls({
       onRevertToOriginal();
     } else {
       setIsTranslateMenuOpen(true);
+    }
+  };
+
+  const handleCustomFontApply = () => {
+    if (tempCustomFont.trim()) {
+      setCtxCustomFontFamily(tempCustomFont.trim());
     }
   };
   
@@ -192,7 +259,7 @@ export default function ReaderControls({
                 <TooltipContent><p>Ajustes de Apariencia</p></TooltipContent>
               </Tooltip>
             </TooltipProvider>
-            <DropdownMenuContent align="center" className="w-80"> {/* Increased width */}
+            <DropdownMenuContent align="center" className="w-80 sm:w-96"> {/* Increased width */}
               <DropdownMenuLabel>Tamaño de Fuente</DropdownMenuLabel>
               <DropdownMenuRadioGroup value={fontSize} onValueChange={(value) => setFontSize(value as ReaderFontSize)}>
                 {FONT_SIZES.map(fs => (
@@ -202,6 +269,40 @@ export default function ReaderControls({
                 ))}
               </DropdownMenuRadioGroup>
               <DropdownMenuSeparator />
+
+              <DropdownMenuLabel>Fuente</DropdownMenuLabel>
+              <DropdownMenuRadioGroup value={fontFamily} onValueChange={(value) => setFontFamily(value as ReaderFontFamily)}>
+                {FONT_FAMILIES.map(ff => (
+                  <DropdownMenuRadioItem key={ff.value} value={ff.value} style={ff.style}>
+                    {ff.label}
+                  </DropdownMenuRadioItem>
+                ))}
+              </DropdownMenuRadioGroup>
+              {fontFamily === 'custom' && (
+                <DropdownMenuItem onSelect={(e) => e.preventDefault()} className="focus:bg-transparent mt-1">
+                  <div className="w-full space-y-1.5 py-1 pl-6">
+                    <Label htmlFor="custom-font-input" className="text-xs text-muted-foreground flex items-center">
+                      <CaseSensitive className="mr-1.5 h-3.5 w-3.5" /> Nombre de la fuente:
+                    </Label>
+                    <div className="flex items-center gap-2">
+                      <Input
+                        id="custom-font-input"
+                        type="text"
+                        placeholder="Ej: Arial, Times New Roman"
+                        value={tempCustomFont}
+                        onChange={(e) => setTempCustomFont(e.target.value)}
+                        className="h-8 text-sm flex-grow"
+                      />
+                       <Button size="sm" variant="outline" onClick={handleCustomFontApply} className="h-8 px-2.5 text-xs">Aplicar</Button>
+                    </div>
+                     <p className="text-xs text-muted-foreground leading-tight pt-0.5">
+                      La fuente debe estar instalada en tu sistema o ser una fuente web.
+                    </p>
+                  </div>
+                </DropdownMenuItem>
+              )}
+              <DropdownMenuSeparator />
+
               <DropdownMenuLabel>Tema</DropdownMenuLabel>
                <DropdownMenuRadioGroup value={theme} onValueChange={(value) => setTheme(value as ReaderTheme)}>
                 {THEMES.map(th => (
@@ -216,9 +317,9 @@ export default function ReaderControls({
                   <DropdownMenuSeparator />
                   <DropdownMenuLabel>Colores Personalizados</DropdownMenuLabel>
                   <DropdownMenuItem onSelect={(e) => e.preventDefault()} className="focus:bg-transparent">
-                    <div className="w-full space-y-3 py-1">
+                    <div className="w-full space-y-3 py-1 pl-6">
                       <div className="flex items-center gap-2">
-                        <label htmlFor="custom-bg-color" className="text-sm text-popover-foreground shrink-0 w-12">Fondo:</label>
+                        <Label htmlFor="custom-bg-color" className="text-sm text-popover-foreground shrink-0 w-12">Fondo:</Label>
                         <input
                           id="custom-bg-color"
                           type="color"
@@ -236,7 +337,7 @@ export default function ReaderControls({
                         />
                       </div>
                       <div className="flex items-center gap-2">
-                        <label htmlFor="custom-fg-color" className="text-sm text-popover-foreground shrink-0 w-12">Texto:</label>
+                        <Label htmlFor="custom-fg-color" className="text-sm text-popover-foreground shrink-0 w-12">Texto:</Label>
                         <input
                           id="custom-fg-color"
                           type="color"
@@ -325,3 +426,4 @@ export default function ReaderControls({
   );
 }
 
+    

@@ -24,14 +24,16 @@ const DOUBLE_CLICK_REVEAL_TIMEOUT = 2500;
 
 export default function ReaderView({ novel, currentChapter }: ReaderViewProps) {
   const {
-    fontClass,
-    themeClass,
+    fontClass, // Font size class
+    themeClass, // Pre-defined theme class
     isImmersive,
     setIsImmersive,
-    theme,
+    theme, // Current theme (string like 'light', 'dark', 'custom')
     customBackground,
     customForeground,
+    readerFontFamilyStyle, // Object like { fontFamily: 'var(--font-lora)' } or { fontFamily: 'Arial, sans-serif'}
   } = useReaderSettings();
+
   const chapterKey = `${novel.id}_${currentChapter.id}`;
   const { savePosition, loadPosition } = useReadingPosition(chapterKey);
   const { addRecentlyReadChapter } = useRecentlyRead();
@@ -131,7 +133,7 @@ export default function ReaderView({ novel, currentChapter }: ReaderViewProps) {
 
   const handleToggleImmersive = () => {
     setIsImmersive(!isImmersive);
-    if (!isImmersive) {
+    if (!isImmersive) { // When turning immersive OFF
       setIsMouseOverImmersiveControls(false);
       setForceShowImmersiveControlsByDoubleClick(false);
     }
@@ -177,17 +179,22 @@ export default function ReaderView({ novel, currentChapter }: ReaderViewProps) {
 
   const actualImmersiveControlsVisible = isImmersive
     ? (isMouseOverImmersiveControls || forceShowImmersiveControlsByDoubleClick)
-    : true;
+    : true; // Controls always "visible" in terms of logic if not immersive
 
-  const readingAreaStyle: React.CSSProperties = {};
+  const readingAreaBaseClasses = `reading-content-area ${fontClass} prose prose-sm sm:prose md:prose-lg max-w-4xl mx-auto selection:bg-accent selection:text-accent-foreground p-6 md:p-10 lg:p-12`;
+  
+  const readingAreaDynamicClasses = theme === 'custom' ? '' : themeClass;
+
+  const readingAreaStyle: React.CSSProperties = { ...readerFontFamilyStyle };
   if (theme === 'custom' && customBackground) {
     readingAreaStyle.backgroundColor = customBackground;
   }
   if (theme === 'custom' && customForeground) {
     readingAreaStyle.color = customForeground;
   }
-
+  
   if (!isMounted) {
+    // Basic skeleton for loading state
     return (
       <div className="flex flex-col h-[calc(100vh-var(--header-height,8rem))]">
         <div className="p-4 border-b bg-muted animate-pulse h-20 rounded-t-lg"></div>
@@ -197,7 +204,6 @@ export default function ReaderView({ novel, currentChapter }: ReaderViewProps) {
           <div className="h-8 bg-muted rounded mb-2 w-3/4"></div>
           <div className="h-8 bg-muted rounded mb-2 w-1/2"></div>
         </div>
-        {/* Footer was removed */}
       </div>
     );
   }
@@ -220,6 +226,7 @@ export default function ReaderView({ novel, currentChapter }: ReaderViewProps) {
         <div
           className="fixed top-0 left-0 w-full h-16 z-[105] cursor-default"
           onDoubleClick={handleImmersiveTopAreaDoubleClick}
+          aria-hidden="true" // For accessibility, as it's just a trigger zone
         />
       )}
 
@@ -241,7 +248,7 @@ export default function ReaderView({ novel, currentChapter }: ReaderViewProps) {
         viewportRef={scrollViewportRef}
       >
         <div
-          className={`reading-content-area ${theme !== 'custom' ? themeClass : ''} ${fontClass} p-6 md:p-10 lg:p-12 prose prose-sm sm:prose md:prose-lg max-w-4xl mx-auto selection:bg-accent selection:text-accent-foreground`}
+          className={`${readingAreaBaseClasses} ${readingAreaDynamicClasses}`}
           style={readingAreaStyle}
           dangerouslySetInnerHTML={chapterContentToDisplay}
         />
@@ -284,3 +291,5 @@ export default function ReaderView({ novel, currentChapter }: ReaderViewProps) {
     </div>
   );
 }
+
+    
