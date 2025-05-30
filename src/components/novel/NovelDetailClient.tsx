@@ -6,7 +6,7 @@ import Link from 'next/link';
 import type { Novel } from '@/lib/types';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { List, ChevronRight, BookOpen, Github, ArrowLeft, Tag, CalendarDays, UserCircle, VenetianMask } from 'lucide-react';
+import { List, ChevronRight, BookOpen, ArrowLeft, Tag, CalendarDays, UserCircle, VenetianMask } from 'lucide-react';
 import { Separator } from '@/components/ui/separator';
 import { Badge } from '@/components/ui/badge';
 
@@ -41,14 +41,6 @@ export default function NovelDetailClient({ novel }: NovelDetailClientProps) {
               priority 
             />
           </Card>
-          {novel.githubRepoUrl && (
-             <Button variant="outline" className="w-full" asChild>
-               <a href={novel.githubRepoUrl} target="_blank" rel="noopener noreferrer">
-                 <Github className="mr-2 h-4 w-4" />
-                 View on GitHub
-               </a>
-             </Button>
-           )}
            {firstChapter && (
             <Button size="lg" className="w-full" asChild>
               <Link href={`/novels/${novel.id}/chapters/${firstChapter.id}`}>
