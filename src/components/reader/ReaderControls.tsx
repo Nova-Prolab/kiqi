@@ -6,12 +6,13 @@ import type { ReaderTheme, ReaderFontSize } from '@/lib/types';
 import { Button } from '@/components/ui/button';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger, DropdownMenuRadioGroup, DropdownMenuRadioItem } from '@/components/ui/dropdown-menu';
 import { Settings2, TextQuote, Minimize, Maximize, Sun, Moon, Coffee, BookOpen, Languages, BookText, Palette, FileTextIcon, Trees, MoonStar, Paintbrush } from 'lucide-react';
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, ChangeEvent } from 'react';
 import ChapterSummaryDialog from './ChapterSummaryDialog';
 import AudioPlayer from './AudioPlayer';
 import Link from 'next/link';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import type { TranslateChapterInput } from '@/ai/flows/translate-chapter-flow';
+import { Input } from '@/components/ui/input'; // Importar Input
 
 const TARGET_LANGUAGES: {label: string, value: TranslateChapterInput['targetLanguage']}[] = [
   { label: "English", value: "English" },
@@ -49,6 +50,9 @@ const THEMES: { label: string, value: ReaderTheme, icon: React.ElementType }[] =
   { label: 'Custom', value: 'custom', icon: Paintbrush },
 ];
 
+// Helper para validar si es un color HEX válido (simple)
+const isValidHexColor = (color: string) => /^#[0-9A-F]{6}$/i.test(color);
+
 export default function ReaderControls({ 
   chapterHtmlContent, 
   onToggleImmersive, 
@@ -72,10 +76,8 @@ export default function ReaderControls({
   const [isSummaryDialogOpen, setIsSummaryDialogOpen] = useState(false);
   const [isTranslateMenuOpen, setIsTranslateMenuOpen] = useState(forceTranslationMenuOpen);
 
-  // State for color picker inputs, local to this component
-  // Initialize with context values or defaults if context values are somehow null/undefined initially
-  const [bgColor, setBgColor] = useState(customBackground || '#FFFFFF');
-  const [fgColor, setFgColor] = useState(customForeground || '#000000');
+  const [bgColorInput, setBgColorInput] = useState(customBackground || '#FFFFFF');
+  const [fgColorInput, setFgColorInput] = useState(customForeground || '#000000');
 
   useEffect(() => {
     if (forceTranslationMenuOpen) {
@@ -83,24 +85,46 @@ export default function ReaderControls({
     }
   }, [forceTranslationMenuOpen]);
   
-  // Sync local color picker state with context if context changes (e.g., loaded from localStorage)
   useEffect(() => {
-    setBgColor(customBackground || '#FFFFFF');
+    setBgColorInput(customBackground || '#FFFFFF');
   }, [customBackground]);
 
   useEffect(() => {
-    setFgColor(customForeground || '#000000');
+    setFgColorInput(customForeground || '#000000');
   }, [customForeground]);
 
-  const handleCustomBgChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setBgColor(e.target.value);
-    setCustomBackground(e.target.value);
+  const handleCustomBgChange = (e: ChangeEvent<HTMLInputElement>) => {
+    const newColor = e.target.value;
+    setBgColorInput(newColor);
+    if (isValidHexColor(newColor)) {
+      setCustomBackground(newColor);
+    }
+  };
+  
+  const handleCustomBgInputChange = (e: ChangeEvent<HTMLInputElement>) => {
+    const newColor = e.target.value;
+    setBgColorInput(newColor);
+    if (isValidHexColor(newColor)) {
+      setCustomBackground(newColor);
+    }
   };
 
-  const handleCustomFgChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setFgColor(e.target.value);
-    setCustomForeground(e.target.value);
+  const handleCustomFgChange = (e: ChangeEvent<HTMLInputElement>) => {
+    const newColor = e.target.value;
+    setFgColorInput(newColor);
+    if (isValidHexColor(newColor)) {
+      setCustomForeground(newColor);
+    }
   };
+
+  const handleCustomFgInputChange = (e: ChangeEvent<HTMLInputElement>) => {
+    const newColor = e.target.value;
+    setFgColorInput(newColor);
+    if (isValidHexColor(newColor)) {
+      setCustomForeground(newColor);
+    }
+  };
+
 
   const handleLanguageSelect = (language: TranslateChapterInput['targetLanguage']) => {
     onTranslateRequest(language);
@@ -153,7 +177,7 @@ export default function ReaderControls({
                 <TooltipContent><p>Ajustes de Apariencia</p></TooltipContent>
               </Tooltip>
             </TooltipProvider>
-            <DropdownMenuContent align="center" className="w-60">
+            <DropdownMenuContent align="center" className="w-72"> {/* Aumentado el ancho para los inputs */}
               <DropdownMenuLabel>Tamaño de Fuente</DropdownMenuLabel>
               <DropdownMenuRadioGroup value={fontSize} onValueChange={(value) => setFontSize(value as ReaderFontSize)}>
                 {FONT_SIZES.map(fs => (
@@ -176,27 +200,42 @@ export default function ReaderControls({
                 <>
                   <DropdownMenuSeparator />
                   <DropdownMenuLabel>Colores Personalizados</DropdownMenuLabel>
-                  {/* Using DropdownMenuItem to contain the inputs to prevent menu close on click */}
                   <DropdownMenuItem onSelect={(e) => e.preventDefault()} className="focus:bg-transparent">
-                    <div className="w-full space-y-2 py-1">
-                      <div className="flex items-center justify-between">
-                        <label htmlFor="custom-bg-color" className="text-sm mr-2 text-popover-foreground">Fondo</label>
+                    <div className="w-full space-y-3 py-1">
+                      <div className="flex items-center gap-2">
+                        <label htmlFor="custom-bg-color" className="text-sm text-popover-foreground shrink-0">Fondo:</label>
                         <input
                           id="custom-bg-color"
                           type="color"
-                          value={bgColor}
+                          value={customBackground || '#FFFFFF'}
                           onChange={handleCustomBgChange}
-                          className="w-10 h-6 p-0 border rounded cursor-pointer"
+                          className="h-8 w-8 p-0 border rounded cursor-pointer"
+                        />
+                        <Input
+                          type="text"
+                          value={bgColorInput}
+                          onChange={handleCustomBgInputChange}
+                          placeholder="#FFFFFF"
+                          className="h-8 text-sm flex-grow"
+                          maxLength={7}
                         />
                       </div>
-                      <div className="flex items-center justify-between">
-                        <label htmlFor="custom-fg-color" className="text-sm mr-2 text-popover-foreground">Texto</label>
+                      <div className="flex items-center gap-2">
+                        <label htmlFor="custom-fg-color" className="text-sm text-popover-foreground shrink-0">Texto:</label>
                         <input
                           id="custom-fg-color"
                           type="color"
-                          value={fgColor}
+                          value={customForeground || '#000000'}
                           onChange={handleCustomFgChange}
-                          className="w-10 h-6 p-0 border rounded cursor-pointer"
+                          className="h-8 w-8 p-0 border rounded cursor-pointer"
+                        />
+                        <Input
+                          type="text"
+                          value={fgColorInput}
+                          onChange={handleCustomFgInputChange}
+                          placeholder="#000000"
+                          className="h-8 text-sm flex-grow"
+                          maxLength={7}
                         />
                       </div>
                     </div>
