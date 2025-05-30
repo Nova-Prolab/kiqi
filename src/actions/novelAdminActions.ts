@@ -28,9 +28,9 @@ function slugify(text: string): string {
 }
 
 export async function createNovelAction(
-  prevState: { message: string; success: boolean; novelId?: string } | null,
+  prevState: { message: string; success: boolean; novelId?: string, novelTitle?: string } | null,
   formData: FormData
-): Promise<{ message: string; success: boolean; novelId?: string }> {
+): Promise<{ message: string; success: boolean; novelId?: string, novelTitle?: string }> {
   
   const rawFormData: CreateNovelInput = {
     title: formData.get('title') as string,
@@ -81,13 +81,16 @@ export async function createNovelAction(
     console.log(`[AdminAction] Attempting to create file: ${filePath} for novel ID: ${novelId}`);
     await createFileInRepo(filePath, infoJsonContent, commitMessage);
     
-    // Revalidate the home page to reflect the new novel
     revalidatePath('/');
-    // Optionally revalidate the (future) novel detail page if it existed or if you want to pre-warm
-    // revalidatePath(`/novels/${novelId}`);
+    revalidatePath(`/novels/${novelId}`);
 
 
-    return { message: `Novela '${data.title}' creada con éxito con ID '${novelId}'. El archivo info.json ha sido añadido al repositorio.`, success: true, novelId };
+    return { 
+      message: `Novela '${data.title}' creada con éxito con ID '${novelId}'. El archivo info.json ha sido añadido al repositorio.`, 
+      success: true, 
+      novelId,
+      novelTitle: data.title 
+    };
   } catch (error) {
     console.error("Error creating novel in GitHub:", error);
     const errorMessage = error instanceof Error ? error.message : "Error desconocido al crear la novela en GitHub.";
@@ -96,4 +99,80 @@ export async function createNovelAction(
       success: false,
     };
   }
+}
+
+
+interface ChapterUploadState {
+  message: string;
+  successFiles: string[];
+  failedFiles: { name: string; error: string }[];
+  isSuccessOverall?: boolean; // True if all files uploaded successfully
+}
+
+export async function handleChapterUploadsAction(
+  prevState: ChapterUploadState | null,
+  formData: FormData
+): Promise<ChapterUploadState> {
+  const novelId = formData.get('novelId') as string;
+  const chapterFiles = formData.getAll('chapterFiles') as File[];
+
+  if (!novelId) {
+    return { message: 'Novel ID no proporcionado.', successFiles: [], failedFiles: [{ name: 'N/A', error: 'Novel ID faltante' }] };
+  }
+  if (!chapterFiles || chapterFiles.length === 0 || (chapterFiles.length === 1 && chapterFiles[0].size === 0)) {
+    return { message: 'No se seleccionaron archivos de capítulo.', successFiles: [], failedFiles: [] };
+  }
+
+  const successFiles: string[] = [];
+  const failedFiles: { name: string; error: string }[] = [];
+
+  for (const file of chapterFiles) {
+    if (file.size === 0) {
+        console.warn(`[ChapterUpload] Skipping empty file: ${file.name}`);
+        continue; // Skip empty files that might be included if no file is selected
+    }
+    if (!file.name.toLowerCase().endsWith('.html')) {
+        console.warn(`[ChapterUpload] Skipping non-HTML file: ${file.name}`);
+        failedFiles.push({ name: file.name, error: 'Solo se permiten archivos .html' });
+        continue;
+    }
+
+    try {
+      const fileContent = await file.text();
+      const filePathInRepo = `${novelId}/${file.name}`;
+      const commitMessage = `feat: Add chapter ${file.name} to ${novelId}`;
+
+      console.log(`[ChapterUpload] Attempting to upload chapter: ${filePathInRepo}`);
+      await createFileInRepo(filePathInRepo, fileContent, commitMessage);
+      successFiles.push(file.name);
+    } catch (error) {
+      console.error(`[ChapterUpload] Error uploading chapter ${file.name} for novel ${novelId}:`, error);
+      const errorMessage = error instanceof Error ? error.message : `Error desconocido al subir ${file.name}.`;
+      failedFiles.push({ name: file.name, error: errorMessage });
+    }
+  }
+
+  let overallMessage = '';
+  if (successFiles.length > 0) {
+    overallMessage += `Se subieron con éxito ${successFiles.length} capítulo(s): ${successFiles.join(', ')}. `;
+  }
+  if (failedFiles.length > 0) {
+    overallMessage += `Fallaron ${failedFiles.length} capítulo(s): ${failedFiles.map(f => `${f.name} (${f.error})`).join(', ')}.`;
+  }
+  if (successFiles.length === 0 && failedFiles.length === 0) {
+    overallMessage = "No se procesaron archivos válidos.";
+  }
+  
+  if (successFiles.length > 0) {
+    revalidatePath('/'); // Revalidate home to update novel lists which might show chapter counts
+    revalidatePath(`/novels/${novelId}`); // Revalidate the novel detail page
+  }
+
+
+  return {
+    message: overallMessage.trim(),
+    successFiles,
+    failedFiles,
+    isSuccessOverall: failedFiles.length === 0 && successFiles.length > 0,
+  };
 }

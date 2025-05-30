@@ -11,15 +11,17 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { useEffect } from 'react';
 import { useToast } from '@/hooks/use-toast';
 import Link from 'next/link';
-import { ArrowLeft, CheckCircle, AlertTriangle, BookPlus } from 'lucide-react';
+import { ArrowLeft, CheckCircle, AlertTriangle, BookPlus, UploadCloud } from 'lucide-react';
+import ChapterUploadForm from './ChapterUploadForm'; // Import the new component
 
-const initialState = {
+const initialNovelState = {
   message: '',
   success: false,
   novelId: undefined,
+  novelTitle: undefined,
 };
 
-function SubmitButton() {
+function SubmitNovelButton() {
   const { pending } = useFormStatus();
   return (
     <Button type="submit" disabled={pending} className="w-full sm:w-auto">
@@ -29,18 +31,21 @@ function SubmitButton() {
 }
 
 export default function CreateNovelForm() {
-  const [state, formAction] = useFormState(createNovelAction, initialState);
+  const [novelState, formAction] = useFormState(createNovelAction, initialNovelState);
   const { toast } = useToast();
 
   useEffect(() => {
-    if (state?.message) {
-      toast({
-        title: state.success ? 'Éxito' : 'Error',
-        description: state.message,
-        variant: state.success ? 'default' : 'destructive',
-      });
+    if (novelState?.message) {
+      // Only toast for novel creation, chapter upload will have its own feedback
+      if (novelState.message.startsWith('Novela') || novelState.message.startsWith('Error al crear la novela') || novelState.message.startsWith('Error de validación:')) {
+        toast({
+          title: novelState.success ? 'Éxito en Creación de Novela' : 'Error en Creación de Novela',
+          description: novelState.message,
+          variant: novelState.success ? 'default' : 'destructive',
+        });
+      }
     }
-  }, [state, toast]);
+  }, [novelState, toast]);
 
   return (
     <div className="max-w-2xl mx-auto">
@@ -54,11 +59,11 @@ export default function CreateNovelForm() {
         <CardHeader>
           <CardTitle className="flex items-center text-2xl">
             <BookPlus className="mr-3 h-6 w-6 text-primary" />
-            Crear Nueva Novela
+            Crear Nueva Novela (info.json)
           </CardTitle>
           <CardDescription>
             Completa los detalles para añadir una nueva novela al repositorio de GitHub.
-            La carpeta y el archivo <code>info.json</code> se crearán automáticamente.
+            Esto creará la carpeta de la novela y el archivo <code>info.json</code>.
           </CardDescription>
         </CardHeader>
         <form action={formAction}>
@@ -112,12 +117,12 @@ export default function CreateNovelForm() {
             </div>
           </CardContent>
           <CardFooter className="flex flex-col items-start sm:flex-row sm:justify-end gap-4 pt-6">
-            <SubmitButton />
+            <SubmitNovelButton />
           </CardFooter>
         </form>
       </Card>
 
-      {state?.message && state.success && state.novelId && (
+      {novelState?.message && novelState.success && novelState.novelId && novelState.novelTitle && (
         <Card className="mt-6 bg-green-50 dark:bg-green-900/30 border-green-300 dark:border-green-700">
           <CardHeader>
             <CardTitle className="flex items-center text-green-700 dark:text-green-300">
@@ -126,19 +131,14 @@ export default function CreateNovelForm() {
             </CardTitle>
           </CardHeader>
           <CardContent className="text-sm text-green-600 dark:text-green-400 space-y-2">
-            <p>{state.message}</p>
+            <p>{novelState.message}</p>
             <p>
-              Ahora puedes añadir archivos de capítulo (ej: <code>chapter-1.html</code>) a la carpeta <code>{state.novelId}</code> en tu repositorio de GitHub.
+              Ahora puedes <Link href={`/novels/${novelState.novelId}`} className="underline hover:text-primary">ver la página de la novela</Link> (puede tardar unos segundos en reflejar todos los cambios) o subir archivos de capítulo a continuación.
             </p>
-             <Button variant="outline" asChild className="mt-2">
-                <Link href={`/novels/${state.novelId}`}>
-                  Ver Página de la Novela (puede tardar en aparecer)
-                </Link>
-            </Button>
           </CardContent>
         </Card>
       )}
-      {state?.message && !state.success && (
+      {novelState?.message && !novelState.success && (
          <Card className="mt-6 bg-red-50 dark:bg-red-900/30 border-red-300 dark:border-red-700">
           <CardHeader>
             <CardTitle className="flex items-center text-red-700 dark:text-red-400">
@@ -147,9 +147,13 @@ export default function CreateNovelForm() {
             </CardTitle>
           </CardHeader>
           <CardContent className="text-sm text-red-600 dark:text-red-500">
-            <p>{state.message}</p>
+            <p>{novelState.message}</p>
           </CardContent>
         </Card>
+      )}
+
+      {novelState?.success && novelState.novelId && novelState.novelTitle && (
+        <ChapterUploadForm novelId={novelState.novelId} novelTitle={novelState.novelTitle} />
       )}
     </div>
   );
