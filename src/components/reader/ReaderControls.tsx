@@ -5,7 +5,7 @@ import { useReaderSettings } from '@/contexts/ReaderSettingsContext';
 import type { ReaderTheme, ReaderFontSize } from '@/lib/types';
 import { Button } from '@/components/ui/button';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger, DropdownMenuRadioGroup, DropdownMenuRadioItem } from '@/components/ui/dropdown-menu';
-import { Palette, TextQuote, Volume2, Minimize, Maximize, Sun, Moon, Coffee, BookOpen, AlignLeft, Languages, BrainCircuit } from 'lucide-react';
+import { Palette, TextQuote, Minimize, Maximize, Sun, Moon, Coffee, BookOpen, AlignLeft, Languages, BookText, Settings2 } from 'lucide-react'; // Added BookText
 import React, { useState, useEffect } from 'react';
 import ChapterSummaryDialog from './ChapterSummaryDialog';
 import AudioPlayer from './AudioPlayer';
@@ -21,12 +21,14 @@ const TARGET_LANGUAGES: {label: string, value: TranslateChapterInput['targetLang
 ];
 
 interface ReaderControlsProps {
-  chapterHtmlContent: string;
+  chapterHtmlContent: string; // This will be the effective content (original or translated)
   onToggleImmersive: () => void;
   isImmersive: boolean;
   novelId: string;
   onTranslateRequest: (language: TranslateChapterInput['targetLanguage']) => void;
   forceTranslationMenuOpen?: boolean;
+  isTranslationApplied: boolean;
+  onRevertToOriginal: () => void;
 }
 
 const FONT_SIZES: { label: string, value: ReaderFontSize }[] = [
@@ -49,11 +51,13 @@ export default function ReaderControls({
   isImmersive, 
   novelId,
   onTranslateRequest,
-  forceTranslationMenuOpen = false
+  forceTranslationMenuOpen = false,
+  isTranslationApplied,
+  onRevertToOriginal
 }: ReaderControlsProps) {
   const { theme, fontSize, setTheme, setFontSize } = useReaderSettings();
   const [isSummaryDialogOpen, setIsSummaryDialogOpen] = useState(false);
-  const [isTranslateMenuOpen, setIsTranslateMenuOpen] = useState(false);
+  const [isTranslateMenuOpen, setIsTranslateMenuOpen] = useState(forceTranslationMenuOpen);
 
   useEffect(() => {
     if (forceTranslationMenuOpen) {
@@ -64,8 +68,20 @@ export default function ReaderControls({
 
   const handleLanguageSelect = (language: TranslateChapterInput['targetLanguage']) => {
     onTranslateRequest(language);
-    setIsTranslateMenuOpen(false); // Close dropdown after selection
+    setIsTranslateMenuOpen(false); 
   };
+
+  const handleTranslateButtonClick = () => {
+    if (isTranslationApplied) {
+      onRevertToOriginal();
+    } else {
+      setIsTranslateMenuOpen(true);
+    }
+  };
+  
+  const translateButtonTooltip = isTranslationApplied ? "Ver Texto Original" : "Traducir Capítulo";
+  const TranslateIcon = isTranslationApplied ? BookText : Languages;
+
 
   return (
     <div className={`reader-controls p-2 bg-card/90 backdrop-blur-sm shadow-md border-b transition-all duration-300 ${isImmersive ? 'opacity-0 hover:opacity-100 fixed top-0 left-0 right-0 z-[110] pt-2' : 'sticky top-0 z-40 rounded-t-lg border-x'}`}>
@@ -94,12 +110,12 @@ export default function ReaderControls({
               <Tooltip>
                 <TooltipTrigger asChild>
                   <DropdownMenuTrigger asChild>
-                    <Button variant="ghost" size="icon" aria-label="Ajustes de texto">
-                      <AlignLeft />
+                    <Button variant="ghost" size="icon" aria-label="Ajustes de apariencia">
+                      <Settings2 />
                     </Button>
                   </DropdownMenuTrigger>
                 </TooltipTrigger>
-                <TooltipContent><p>Ajustes de Texto</p></TooltipContent>
+                <TooltipContent><p>Ajustes de Apariencia</p></TooltipContent>
               </Tooltip>
             </TooltipProvider>
             <DropdownMenuContent align="center">
@@ -128,7 +144,7 @@ export default function ReaderControls({
             <Tooltip>
               <TooltipTrigger asChild>
                 <Button variant="ghost" size="icon" onClick={() => setIsSummaryDialogOpen(true)} aria-label="Resumen del capítulo">
-                  <TextQuote /> {/* Using TextQuote as BrainCircuit might be too specific for summary */}
+                  <TextQuote />
                 </Button>
               </TooltipTrigger>
               <TooltipContent><p>Resumen del Capítulo</p></TooltipContent>
@@ -140,28 +156,33 @@ export default function ReaderControls({
             onOpenChange={setIsSummaryDialogOpen} 
           />
           
-          <DropdownMenu open={isTranslateMenuOpen} onOpenChange={setIsTranslateMenuOpen}>
+          <DropdownMenu open={!isTranslationApplied && isTranslateMenuOpen} onOpenChange={!isTranslationApplied ? setIsTranslateMenuOpen : undefined}>
             <TooltipProvider delayDuration={100}>
               <Tooltip>
                 <TooltipTrigger asChild>
-                  <DropdownMenuTrigger asChild>
-                    <Button variant="ghost" size="icon" aria-label="Traducir Capítulo">
-                      <Languages />
-                    </Button>
-                  </DropdownMenuTrigger>
+                  <Button 
+                    variant="ghost" 
+                    size="icon" 
+                    aria-label={translateButtonTooltip}
+                    onClick={handleTranslateButtonClick}
+                  >
+                    <TranslateIcon />
+                  </Button>
                 </TooltipTrigger>
-                <TooltipContent><p>Traducir Capítulo</p></TooltipContent>
+                <TooltipContent><p>{translateButtonTooltip}</p></TooltipContent>
               </Tooltip>
             </TooltipProvider>
-            <DropdownMenuContent align="center">
-              <DropdownMenuLabel>Traducir a</DropdownMenuLabel>
-              <DropdownMenuSeparator />
-              {TARGET_LANGUAGES.map(lang => (
-                <DropdownMenuItem key={lang.value} onClick={() => handleLanguageSelect(lang.value)}>
-                  {lang.label}
-                </DropdownMenuItem>
-              ))}
-            </DropdownMenuContent>
+            {!isTranslationApplied && (
+              <DropdownMenuContent align="center">
+                <DropdownMenuLabel>Traducir a</DropdownMenuLabel>
+                <DropdownMenuSeparator />
+                {TARGET_LANGUAGES.map(lang => (
+                  <DropdownMenuItem key={lang.value} onClick={() => handleLanguageSelect(lang.value)}>
+                    {lang.label}
+                  </DropdownMenuItem>
+                ))}
+              </DropdownMenuContent>
+            )}
           </DropdownMenu>
 
           <AudioPlayer textToRead={chapterHtmlContent} />

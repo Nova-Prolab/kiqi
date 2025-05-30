@@ -11,7 +11,7 @@ import { ChevronLeft, ChevronRight, Home } from 'lucide-react';
 import Link from 'next/link';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Card } from '../ui/card';
-import TranslationDialog from './TranslationDialog'; // Import new dialog
+import TranslationDialog from './TranslationDialog';
 import type { TranslateChapterInput } from '@/ai/flows/translate-chapter-flow';
 
 interface ReaderViewProps {
@@ -31,10 +31,36 @@ export default function ReaderView({ novel, currentChapter }: ReaderViewProps) {
   const [selectedTargetLanguage, setSelectedTargetLanguage] = useState<TranslateChapterInput['targetLanguage'] | null>(null);
   const [translationControlsOpen, setTranslationControlsOpen] = useState(false);
 
+  const [effectiveChapterContent, setEffectiveChapterContent] = useState<string>(currentChapter.content);
+  const [isTranslationApplied, setIsTranslationApplied] = useState<boolean>(false);
 
   useEffect(() => {
     setIsMounted(true);
   }, []);
+
+  // Reset effective content and translation state when chapter changes
+  useEffect(() => {
+    setEffectiveChapterContent(currentChapter.content);
+    setIsTranslationApplied(false);
+    // Reset scroll position for new chapter
+    if (scrollViewportRef.current) {
+      scrollViewportRef.current.scrollTop = 0;
+    }
+    // Load saved position for new chapter after a brief delay to ensure DOM update
+    // This also handles initial load.
+    const timer = setTimeout(() => {
+        if (!isMounted || !scrollViewportRef.current) return;
+        const scrollableElement = scrollViewportRef.current;
+        const position = loadPosition(); // loadPosition is for the new chapterKey
+        if (position !== null) {
+          scrollableElement.scrollTop = position;
+        }
+    }, 50); // Small delay
+
+    return () => clearTimeout(timer);
+
+  }, [currentChapter.id, currentChapter.content, novel.id, isMounted, loadPosition]);
+
 
   const debounceTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const debouncedSavePosition = useCallback((scrollTop: number) => {
@@ -49,14 +75,10 @@ export default function ReaderView({ novel, currentChapter }: ReaderViewProps) {
 
   useEffect(() => {
     if (!isMounted || !scrollViewportRef.current) return;
-
     const scrollableElement = scrollViewportRef.current;
     
-    const position = loadPosition();
-    if (position !== null) {
-      scrollableElement.scrollTop = position;
-    }
-
+    // Initial position setting is handled by the chapter change useEffect
+    // This useEffect is now only for saving position on scroll
     const handleScroll = () => {
       if (scrollableElement) {
         debouncedSavePosition(scrollableElement.scrollTop);
@@ -70,7 +92,7 @@ export default function ReaderView({ novel, currentChapter }: ReaderViewProps) {
         clearTimeout(debounceTimeoutRef.current);
       }
     };
-  }, [isMounted, loadPosition, debouncedSavePosition, chapterKey]);
+  }, [isMounted, debouncedSavePosition, chapterKey]);
 
 
   const sortedChapters = novel.chapters.sort((a, b) => a.order - b.order);
@@ -78,7 +100,7 @@ export default function ReaderView({ novel, currentChapter }: ReaderViewProps) {
   const prevChapter = currentIndex > 0 ? sortedChapters[currentIndex - 1] : null;
   const nextChapter = currentIndex < sortedChapters.length - 1 ? sortedChapters[currentIndex + 1] : null;
 
-  const chapterContentHtml = { __html: currentChapter.content };
+  const chapterContentToDisplay = { __html: effectiveChapterContent };
 
   const handleToggleImmersive = () => {
     setIsImmersive(!isImmersive);
@@ -90,15 +112,27 @@ export default function ReaderView({ novel, currentChapter }: ReaderViewProps) {
   };
   
   const handleRequestLanguageChange = () => {
-    setIsTranslationDialogOpen(false); // Close dialog
-    // This will re-open the dropdown in ReaderControls due to its onOpenChange logic
-    // We need a way for ReaderControls to know it should open its dropdown.
-    // A small timeout or a state variable can achieve this.
-    // For now, let's rely on user clicking the translate button again in ReaderControls
-    setTranslationControlsOpen(true); // Signal to ReaderControls to open its menu
-    setTimeout(() => setTranslationControlsOpen(false), 50); // Reset signal
+    setIsTranslationDialogOpen(false); 
+    setTranslationControlsOpen(true); 
+    setTimeout(() => setTranslationControlsOpen(false), 50); 
   };
 
+  const handleApplyTranslation = (translatedHtml: string) => {
+    setEffectiveChapterContent(translatedHtml);
+    setIsTranslationApplied(true);
+    // After applying translation, it might be good to scroll to top
+    if (scrollViewportRef.current) {
+      scrollViewportRef.current.scrollTop = 0;
+    }
+  };
+
+  const handleRevertToOriginal = () => {
+    setEffectiveChapterContent(currentChapter.content);
+    setIsTranslationApplied(false);
+    if (scrollViewportRef.current) {
+      scrollViewportRef.current.scrollTop = 0;
+    }
+  };
 
   if (!isMounted) {
     return (
@@ -121,18 +155,23 @@ export default function ReaderView({ novel, currentChapter }: ReaderViewProps) {
         <Card className="m-2 mb-0 shadow rounded-b-none border-b-0">
           <header className="p-4">
             <h1 className="text-xl md:text-2xl font-bold text-primary truncate">{novel.title}</h1>
-            <h2 className="text-md md:text-lg text-muted-foreground truncate">Chapter {currentChapter.order}: {currentChapter.title}</h2>
+            <h2 className="text-md md:text-lg text-muted-foreground truncate">
+              Capítulo {currentChapter.order}: {currentChapter.title} 
+              {isTranslationApplied && <span className="text-sm text-accent ml-2">(Traducido)</span>}
+            </h2>
           </header>
         </Card>
       )}
       
       <ReaderControls
-        chapterHtmlContent={currentChapter.content}
+        chapterHtmlContent={effectiveChapterContent} // Use effective content
         onToggleImmersive={handleToggleImmersive}
         isImmersive={isImmersive}
         novelId={novel.id}
         onTranslateRequest={handleOpenTranslationDialog}
         forceTranslationMenuOpen={translationControlsOpen}
+        isTranslationApplied={isTranslationApplied}
+        onRevertToOriginal={handleRevertToOriginal}
       />
 
       <ScrollArea 
@@ -141,7 +180,7 @@ export default function ReaderView({ novel, currentChapter }: ReaderViewProps) {
       >
         <div
           className={`reading-content-area ${themeClass} ${fontClass} p-6 md:p-10 lg:p-12 prose prose-sm sm:prose md:prose-lg max-w-4xl mx-auto selection:bg-accent selection:text-accent-foreground`}
-          dangerouslySetInnerHTML={chapterContentHtml} // This will always show original content. Translation is in a dialog.
+          dangerouslySetInnerHTML={chapterContentToDisplay}
         />
         
         <Card className={`mx-auto max-w-4xl my-6 ${isImmersive ? 'bg-transparent border-none shadow-none' : 'shadow rounded-lg border'}`}>
@@ -174,9 +213,10 @@ export default function ReaderView({ novel, currentChapter }: ReaderViewProps) {
       <TranslationDialog
         isOpen={isTranslationDialogOpen}
         onOpenChange={setIsTranslationDialogOpen}
-        originalHtmlContent={currentChapter.content}
+        originalHtmlContent={currentChapter.content} // Always translate from original
         targetLanguage={selectedTargetLanguage}
         onLanguageChangeRequest={handleRequestLanguageChange}
+        onApplyTranslation={handleApplyTranslation}
       />
     </div>
   );

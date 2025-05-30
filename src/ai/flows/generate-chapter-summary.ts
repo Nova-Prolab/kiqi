@@ -1,3 +1,4 @@
+
 'use server';
 
 /**
@@ -19,7 +20,7 @@ const GenerateChapterSummaryInputSchema = z.object({
 export type GenerateChapterSummaryInput = z.infer<typeof GenerateChapterSummaryInputSchema>;
 
 const GenerateChapterSummaryOutputSchema = z.object({
-  summary: z.string().describe('A concise summary of the chapter content.'),
+  summary: z.string().describe('A concise summary of the chapter content, in Spanish.'),
 });
 export type GenerateChapterSummaryOutput = z.infer<typeof GenerateChapterSummaryOutputSchema>;
 
@@ -33,7 +34,12 @@ const prompt = ai.definePrompt({
   name: 'generateChapterSummaryPrompt',
   input: {schema: GenerateChapterSummaryInputSchema},
   output: {schema: GenerateChapterSummaryOutputSchema},
-  prompt: `You are an expert literary analyst. Please provide a concise summary of the following chapter text:\n\n{{{chapterText}}}`,
+  prompt: `Eres un experto analista literario. Por favor, proporciona un resumen conciso DEL SIGUIENTE TEXTO DEL CAPÍTULO en idioma ESPAÑOL.
+
+Texto del Capítulo:
+{{{chapterText}}}
+
+Resumen en Español:`,
 });
 
 const generateChapterSummaryFlow = ai.defineFlow(

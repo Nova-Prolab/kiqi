@@ -6,7 +6,7 @@ import { translateChapterAction } from '@/actions/translationActions';
 import type { TranslateChapterInput } from '@/ai/flows/translate-chapter-flow';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
-import { Loader2, AlertTriangle, Languages } from 'lucide-react';
+import { Loader2, AlertTriangle, Languages, CheckCircle } from 'lucide-react';
 import { ScrollArea } from '@/components/ui/scroll-area';
 
 interface TranslationDialogProps {
@@ -14,7 +14,8 @@ interface TranslationDialogProps {
   targetLanguage: TranslateChapterInput['targetLanguage'] | null;
   isOpen: boolean;
   onOpenChange: (isOpen: boolean) => void;
-  onLanguageChangeRequest: () => void; // To reopen language selection
+  onLanguageChangeRequest: () => void; 
+  onApplyTranslation: (translatedHtml: string) => void;
 }
 
 export default function TranslationDialog({ 
@@ -22,7 +23,8 @@ export default function TranslationDialog({
   targetLanguage, 
   isOpen, 
   onOpenChange,
-  onLanguageChangeRequest 
+  onLanguageChangeRequest,
+  onApplyTranslation
 }: TranslationDialogProps) {
   const [translatedContent, setTranslatedContent] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
@@ -48,16 +50,25 @@ export default function TranslationDialog({
     if (isOpen && targetLanguage && originalHtmlContent) {
       handleTranslate();
     } else if (!isOpen) {
-      // Reset state when dialog is closed
-      setTranslatedContent(null);
+      // Reset state when dialog is closed, but don't clear translatedContent
+      // so it's still there if dialog is reopened for same language quickly.
+      // Only clear if language changes or explicitly told to.
+      // setTranslatedContent(null); 
       setIsLoading(false);
       setError(null);
     }
   }, [isOpen, targetLanguage, originalHtmlContent]);
 
+  const handleApplyAndClose = () => {
+    if (translatedContent) {
+      onApplyTranslation(translatedContent);
+      onOpenChange(false);
+    }
+  };
+
   const title = useMemo(() => {
-    if (!targetLanguage) return "Translate Chapter";
-    return `Chapter Translation (to ${targetLanguage})`;
+    if (!targetLanguage) return "Traducir Capítulo";
+    return `Traducción del Capítulo (a ${targetLanguage})`;
   }, [targetLanguage]);
 
   return (
@@ -69,7 +80,7 @@ export default function TranslationDialog({
           </DialogTitle>
           {targetLanguage && (
             <DialogDescription>
-              AI-generated translation of the current chapter to {targetLanguage}. HTML formatting is preserved where possible.
+              Traducción generada por IA del capítulo actual a {targetLanguage}. El formato HTML se preserva donde es posible.
             </DialogDescription>
           )}
         </DialogHeader>
@@ -77,13 +88,13 @@ export default function TranslationDialog({
           {isLoading && (
             <div className="flex-grow flex flex-col items-center justify-center space-y-2">
               <Loader2 className="h-10 w-10 animate-spin text-primary" />
-              <p className="text-muted-foreground">Translating to {targetLanguage} with Gemini...</p>
+              <p className="text-muted-foreground">Traduciendo a {targetLanguage} con Gemini...</p>
             </div>
           )}
           {error && !isLoading && (
             <div className="flex-grow flex flex-col items-center justify-center text-destructive p-4 bg-destructive/10 rounded-md">
               <AlertTriangle className="h-8 w-8 mb-2" />
-              <p className="font-semibold text-center">Error Translating Chapter</p>
+              <p className="font-semibold text-center">Error al Traducir Capítulo</p>
               <p className="text-sm text-center">{error}</p>
             </div>
           )}
@@ -94,21 +105,31 @@ export default function TranslationDialog({
           )}
           {!targetLanguage && !isLoading && !error && (
              <div className="flex-grow flex flex-col items-center justify-center">
-                <p className="text-muted-foreground">Please select a target language first.</p>
+                <p className="text-muted-foreground">Por favor, selecciona un idioma de destino primero.</p>
              </div>
           )}
         </div>
-        <DialogFooter className="gap-2 sm:justify-between mt-auto">
-          {targetLanguage && (
-             <Button onClick={handleTranslate} variant="outline" disabled={isLoading}>
-              {isLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
-              Retry Translation
+        <DialogFooter className="gap-2 sm:justify-between mt-auto flex-wrap">
+          <div className="flex gap-2 flex-wrap justify-center sm:justify-start">
+            {targetLanguage && (
+              <Button onClick={handleTranslate} variant="outline" disabled={isLoading}>
+                {isLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Languages className="mr-2 h-4 w-4" />}
+                Reintentar Traducción
+              </Button>
+            )}
+            <Button onClick={onLanguageChangeRequest} variant="secondary">
+              Cambiar Idioma
             </Button>
-          )}
-           <Button onClick={onLanguageChangeRequest} variant="secondary">
-             Change Language
-           </Button>
-          <Button onClick={() => onOpenChange(false)} variant={!targetLanguage && !isLoading && !error ? "default" : "secondary"}>Close</Button>
+          </div>
+          <div className="flex gap-2 flex-wrap justify-center sm:justify-end">
+            {translatedContent && !isLoading && !error && (
+              <Button onClick={handleApplyAndClose} variant="default">
+                <CheckCircle className="mr-2 h-4 w-4" />
+                Aplicar Traducción
+              </Button>
+            )}
+            <Button onClick={() => onOpenChange(false)} variant={!targetLanguage && !isLoading && !error ? "default" : "secondary"}>Cerrar</Button>
+          </div>
         </DialogFooter>
       </DialogContent>
     </Dialog>
