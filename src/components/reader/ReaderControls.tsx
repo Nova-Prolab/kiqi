@@ -5,21 +5,28 @@ import { useReaderSettings } from '@/contexts/ReaderSettingsContext';
 import type { ReaderTheme, ReaderFontSize } from '@/lib/types';
 import { Button } from '@/components/ui/button';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger, DropdownMenuRadioGroup, DropdownMenuRadioItem } from '@/components/ui/dropdown-menu';
-import { Palette, TextQuote, Volume2, Minimize, Maximize, Settings2, Sun, Moon, Coffee, BookOpen, AlignLeft } from 'lucide-react'; // Removed ChevronLeft, ChevronRight, Home
-import React, { useState } from 'react';
+import { Palette, TextQuote, Volume2, Minimize, Maximize, Sun, Moon, Coffee, BookOpen, AlignLeft, Languages, BrainCircuit } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
 import ChapterSummaryDialog from './ChapterSummaryDialog';
 import AudioPlayer from './AudioPlayer';
 import Link from 'next/link';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import type { TranslateChapterInput } from '@/ai/flows/translate-chapter-flow';
 
+const TARGET_LANGUAGES: {label: string, value: TranslateChapterInput['targetLanguage']}[] = [
+  { label: "English", value: "English" },
+  { label: "Português", value: "Portuguese" },
+  { label: "Français", value: "French" },
+  { label: "Italiano", value: "Italian" },
+];
 
 interface ReaderControlsProps {
   chapterHtmlContent: string;
   onToggleImmersive: () => void;
   isImmersive: boolean;
   novelId: string;
-  currentChapterId: string;
-  // prevChapterId and nextChapterId are no longer needed
+  onTranslateRequest: (language: TranslateChapterInput['targetLanguage']) => void;
+  forceTranslationMenuOpen?: boolean;
 }
 
 const FONT_SIZES: { label: string, value: ReaderFontSize }[] = [
@@ -36,15 +43,35 @@ const THEMES: { label: string, value: ReaderTheme, icon: React.ElementType }[] =
   { label: 'Dark', value: 'dark', icon: Moon },
 ];
 
-export default function ReaderControls({ chapterHtmlContent, onToggleImmersive, isImmersive, novelId }: ReaderControlsProps) { // Removed currentChapterId, prevChapterId, nextChapterId from props as they are not used here anymore
+export default function ReaderControls({ 
+  chapterHtmlContent, 
+  onToggleImmersive, 
+  isImmersive, 
+  novelId,
+  onTranslateRequest,
+  forceTranslationMenuOpen = false
+}: ReaderControlsProps) {
   const { theme, fontSize, setTheme, setFontSize } = useReaderSettings();
   const [isSummaryDialogOpen, setIsSummaryDialogOpen] = useState(false);
+  const [isTranslateMenuOpen, setIsTranslateMenuOpen] = useState(false);
+
+  useEffect(() => {
+    if (forceTranslationMenuOpen) {
+      setIsTranslateMenuOpen(true);
+    }
+  }, [forceTranslationMenuOpen]);
+
+
+  const handleLanguageSelect = (language: TranslateChapterInput['targetLanguage']) => {
+    onTranslateRequest(language);
+    setIsTranslateMenuOpen(false); // Close dropdown after selection
+  };
 
   return (
     <div className={`reader-controls p-2 bg-card/90 backdrop-blur-sm shadow-md border-b transition-all duration-300 ${isImmersive ? 'opacity-0 hover:opacity-100 fixed top-0 left-0 right-0 z-[110] pt-2' : 'sticky top-0 z-40 rounded-t-lg border-x'}`}>
       <div className="mx-auto flex items-center justify-between gap-1 max-w-4xl px-2 sm:px-0">
         
-        <div className="flex items-center gap-0.5 min-w-[40px]"> {/* min-w to balance the right side */}
+        <div className="flex items-center gap-0.5 min-w-[40px]">
            {isImmersive && (
             <TooltipProvider delayDuration={100}>
               <Tooltip>
@@ -60,7 +87,6 @@ export default function ReaderControls({ chapterHtmlContent, onToggleImmersive, 
             </TooltipProvider>
           )}
         </div>
-
 
         <div className="flex items-center gap-0.5 flex-grow justify-center">
           <DropdownMenu>
@@ -102,7 +128,7 @@ export default function ReaderControls({ chapterHtmlContent, onToggleImmersive, 
             <Tooltip>
               <TooltipTrigger asChild>
                 <Button variant="ghost" size="icon" onClick={() => setIsSummaryDialogOpen(true)} aria-label="Resumen del capítulo">
-                  <TextQuote />
+                  <TextQuote /> {/* Using TextQuote as BrainCircuit might be too specific for summary */}
                 </Button>
               </TooltipTrigger>
               <TooltipContent><p>Resumen del Capítulo</p></TooltipContent>
@@ -113,11 +139,35 @@ export default function ReaderControls({ chapterHtmlContent, onToggleImmersive, 
             isOpen={isSummaryDialogOpen} 
             onOpenChange={setIsSummaryDialogOpen} 
           />
+          
+          <DropdownMenu open={isTranslateMenuOpen} onOpenChange={setIsTranslateMenuOpen}>
+            <TooltipProvider delayDuration={100}>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <DropdownMenuTrigger asChild>
+                    <Button variant="ghost" size="icon" aria-label="Traducir Capítulo">
+                      <Languages />
+                    </Button>
+                  </DropdownMenuTrigger>
+                </TooltipTrigger>
+                <TooltipContent><p>Traducir Capítulo</p></TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
+            <DropdownMenuContent align="center">
+              <DropdownMenuLabel>Traducir a</DropdownMenuLabel>
+              <DropdownMenuSeparator />
+              {TARGET_LANGUAGES.map(lang => (
+                <DropdownMenuItem key={lang.value} onClick={() => handleLanguageSelect(lang.value)}>
+                  {lang.label}
+                </DropdownMenuItem>
+              ))}
+            </DropdownMenuContent>
+          </DropdownMenu>
 
           <AudioPlayer textToRead={chapterHtmlContent} />
         </div>
 
-        <div className="flex items-center gap-0.5 min-w-[40px]"> {/* min-w to balance the left side */}
+        <div className="flex items-center gap-0.5 min-w-[40px]">
           <TooltipProvider delayDuration={100}>
             <Tooltip>
               <TooltipTrigger asChild>
@@ -128,7 +178,6 @@ export default function ReaderControls({ chapterHtmlContent, onToggleImmersive, 
               <TooltipContent><p>{isImmersive ? "Salir de Pantalla Completa" : "Lectura en Pantalla Completa"}</p></TooltipContent>
             </Tooltip>
           </TooltipProvider>
-          {/* Immersive next/prev buttons removed from here */}
         </div>
       </div>
     </div>

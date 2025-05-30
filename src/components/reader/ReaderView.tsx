@@ -11,6 +11,8 @@ import { ChevronLeft, ChevronRight, Home } from 'lucide-react';
 import Link from 'next/link';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Card } from '../ui/card';
+import TranslationDialog from './TranslationDialog'; // Import new dialog
+import type { TranslateChapterInput } from '@/ai/flows/translate-chapter-flow';
 
 interface ReaderViewProps {
   novel: Novel;
@@ -25,6 +27,10 @@ export default function ReaderView({ novel, currentChapter }: ReaderViewProps) {
   const scrollViewportRef = useRef<HTMLDivElement>(null); 
 
   const [isMounted, setIsMounted] = useState(false);
+  const [isTranslationDialogOpen, setIsTranslationDialogOpen] = useState(false);
+  const [selectedTargetLanguage, setSelectedTargetLanguage] = useState<TranslateChapterInput['targetLanguage'] | null>(null);
+  const [translationControlsOpen, setTranslationControlsOpen] = useState(false);
+
 
   useEffect(() => {
     setIsMounted(true);
@@ -78,6 +84,22 @@ export default function ReaderView({ novel, currentChapter }: ReaderViewProps) {
     setIsImmersive(!isImmersive);
   };
 
+  const handleOpenTranslationDialog = (language: TranslateChapterInput['targetLanguage']) => {
+    setSelectedTargetLanguage(language);
+    setIsTranslationDialogOpen(true);
+  };
+  
+  const handleRequestLanguageChange = () => {
+    setIsTranslationDialogOpen(false); // Close dialog
+    // This will re-open the dropdown in ReaderControls due to its onOpenChange logic
+    // We need a way for ReaderControls to know it should open its dropdown.
+    // A small timeout or a state variable can achieve this.
+    // For now, let's rely on user clicking the translate button again in ReaderControls
+    setTranslationControlsOpen(true); // Signal to ReaderControls to open its menu
+    setTimeout(() => setTranslationControlsOpen(false), 50); // Reset signal
+  };
+
+
   if (!isMounted) {
     return (
       <div className="flex flex-col h-[calc(100vh-8rem)]">
@@ -109,8 +131,8 @@ export default function ReaderView({ novel, currentChapter }: ReaderViewProps) {
         onToggleImmersive={handleToggleImmersive}
         isImmersive={isImmersive}
         novelId={novel.id}
-        currentChapterId={currentChapter.id}
-        // prevChapterId and nextChapterId are no longer needed here for ReaderControls
+        onTranslateRequest={handleOpenTranslationDialog}
+        forceTranslationMenuOpen={translationControlsOpen}
       />
 
       <ScrollArea 
@@ -119,10 +141,9 @@ export default function ReaderView({ novel, currentChapter }: ReaderViewProps) {
       >
         <div
           className={`reading-content-area ${themeClass} ${fontClass} p-6 md:p-10 lg:p-12 prose prose-sm sm:prose md:prose-lg max-w-4xl mx-auto selection:bg-accent selection:text-accent-foreground`}
-          dangerouslySetInnerHTML={chapterContentHtml}
+          dangerouslySetInnerHTML={chapterContentHtml} // This will always show original content. Translation is in a dialog.
         />
         
-        {/* Always visible bottom navigation */}
         <Card className={`mx-auto max-w-4xl my-6 ${isImmersive ? 'bg-transparent border-none shadow-none' : 'shadow rounded-lg border'}`}>
           <nav className="p-4 flex justify-between items-center">
             {prevChapter ? (
@@ -149,8 +170,14 @@ export default function ReaderView({ novel, currentChapter }: ReaderViewProps) {
           </nav>
         </Card>
       </ScrollArea>
-
-      {/* The old conditional bottom navigation is removed as it's now always inside ScrollArea */}
+      
+      <TranslationDialog
+        isOpen={isTranslationDialogOpen}
+        onOpenChange={setIsTranslationDialogOpen}
+        originalHtmlContent={currentChapter.content}
+        targetLanguage={selectedTargetLanguage}
+        onLanguageChangeRequest={handleRequestLanguageChange}
+      />
     </div>
   );
 }
