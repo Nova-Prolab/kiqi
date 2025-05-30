@@ -1,18 +1,25 @@
 export interface Chapter {
-  id: string;
-  title: string;
+  id: string; // e.g., "chapter-1"
+  title: string; // e.g., "Chapter 1" (can be generated)
   order: number;
   content: string; // Full chapter content, expected to be HTML string
+  path?: string; // Path to the chapter file in the repo, e.g. "el-magnate/chapter-1.html"
 }
 
 export interface Novel {
-  id: string;
+  id: string; // Corresponds to the folder name in the GitHub repo
   title: string;
   author: string;
-  coverImage: string;
+  coverImage: string; // URL to the cover image file
   summary: string;
-  githubRepoUrl?: string; // Optional: URL to the GitHub folder for this novel
-  chapters: Chapter[]; // Array of full chapter objects
+  githubRepoUrl?: string; // URL to the specific novel folder on GitHub
+  chapters: Pick<Chapter, 'id' | 'title' | 'order'>[]; // Array of chapter metadata
+
+  // New fields from info.json
+  fecha_lanzamiento?: string;
+  etiquetas?: string[];
+  categoria?: string;
+  traductor?: string;
 }
 
 // For Reader Settings Context

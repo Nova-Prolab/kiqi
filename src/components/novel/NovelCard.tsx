@@ -9,36 +9,19 @@ interface NovelCardProps {
 }
 
 export default function NovelCard({ novel }: NovelCardProps) {
-  let coverImageUrl = novel.coverImage;
-  let aiHint = "book cover"; 
-  if (novel.coverImage.includes('placehold.co') && novel.coverImage.includes('data-ai-hint=')) {
-    try {
-      const url = new URL(novel.coverImage);
-      const hintParam = url.searchParams.get('data-ai-hint');
-      if (hintParam) {
-        aiHint = hintParam;
-        url.searchParams.delete('data-ai-hint'); // Remove to avoid rendering issues
-        coverImageUrl = url.toString();
-      }
-    } catch (e) {
-      // Invalid URL, use original
-      console.warn("Error parsing cover image URL for AI hint:", e);
-    }
-  }
-
-
   return (
     <Link href={`/novels/${novel.id}`} passHref legacyBehavior>
       <a className="block h-full">
         <Card className="h-full flex flex-col overflow-hidden hover:shadow-xl transition-shadow duration-300 ease-in-out group rounded-lg border">
           <CardHeader className="p-0 relative aspect-[2/3] w-full overflow-hidden rounded-t-lg">
             <Image
-              src={coverImageUrl}
+              src={novel.coverImage}
               alt={`Cover of ${novel.title}`}
               width={300}
               height={450}
               className="object-cover w-full h-full group-hover:scale-105 transition-transform duration-300"
-              data-ai-hint={aiHint}
+              // data-ai-hint is removed as we expect real cover images
+              // If a placeholder is used (e.g. from fallback in github.ts), it might not have a hint
             />
           </CardHeader>
           <CardContent className="pt-4 px-4 flex-grow">
