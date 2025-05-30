@@ -21,7 +21,7 @@ const PREDEFINED_CATEGORIES: string[] = [
   "Misterio", "Suspense", "Terror", "Comedia", "Drama", 
   "Histórico", "Urbano", "Wuxia", "Xianxia", "Realismo Mágico", 
   "Cyberpunk", "Steampunk", "LitRPG", "GameLit", "Post-apocalíptico",
-  "Sobrenatural", "Escolar"
+  "Sobrenatural", "Escolar", "Artes Marciales", "Mecha", "Slice of Life"
 ];
 
 const PREDEFINED_TAGS: string[] = [
@@ -29,7 +29,7 @@ const PREDEFINED_TAGS: string[] = [
   "cultivo", "harén", "protagonista astuto", "protagonista OP", "academia", 
   "monstruos", "tecnología avanzada", "viajes en el tiempo", "isekai", "supervivencia", 
   "venganza", "comedia romántica", "drama psicológico", "construcción de mundos", "elementos de juego",
-  "artes marciales", "no humano", "política"
+  "no humano", "política", "guerra", "amistad", "familia", "traición"
 ];
 
 export default function NovelBrowser({ initialNovels }: NovelBrowserProps) {
@@ -46,6 +46,26 @@ export default function NovelBrowser({ initialNovels }: NovelBrowserProps) {
     return initialNovels.filter(novel => 
       novel.etiquetas?.map(tag => tag.toLowerCase()).includes('destacado')
     );
+  }, [initialNovels]);
+
+  const categoryCounts = useMemo(() => {
+    const counts: { [key: string]: number } = {};
+    initialNovels.forEach(novel => {
+      if (novel.categoria) {
+        counts[novel.categoria] = (counts[novel.categoria] || 0) + 1;
+      }
+    });
+    return counts;
+  }, [initialNovels]);
+
+  const tagCounts = useMemo(() => {
+    const counts: { [key: string]: number } = {};
+    initialNovels.forEach(novel => {
+      novel.etiquetas?.forEach(tag => {
+        counts[tag] = (counts[tag] || 0) + 1;
+      });
+    });
+    return counts;
   }, [initialNovels]);
 
   const uniqueCategories = useMemo(() => {
@@ -89,12 +109,12 @@ export default function NovelBrowser({ initialNovels }: NovelBrowserProps) {
 
   const handleCategorySelect = (category: string | null) => {
     setSelectedCategory(category);
-    setSelectedTag(null); // Reset tag filter when category changes
+    setSelectedTag(null); 
   };
 
   const handleTagSelect = (tag: string | null) => {
     setSelectedTag(tag);
-    setSelectedCategory(null); // Reset category filter when tag changes
+    setSelectedCategory(null); 
   };
   
   const clearAllFilters = () => {
@@ -107,7 +127,7 @@ export default function NovelBrowser({ initialNovels }: NovelBrowserProps) {
     return (
       <div className="space-y-8">
         <div className="py-8 sm:py-10 px-4">
-          <div className="max-w-xl mx-auto">
+          <div className="max-w-2xl mx-auto">
             <div className="h-16 bg-muted rounded-xl animate-pulse"></div> {/* Search bar skeleton */}
           </div>
         </div>
@@ -137,7 +157,7 @@ export default function NovelBrowser({ initialNovels }: NovelBrowserProps) {
             <Input
               type="search"
               placeholder="Buscar novelas por título o autor..."
-              className="w-full pl-12 pr-4 py-3 rounded-lg shadow-lg text-base focus:ring-2 focus:ring-primary border-border"
+              className="w-full pl-12 pr-4 py-3 rounded-lg shadow-lg text-base focus:ring-2 focus:ring-primary border-border h-14 sm:h-16 text-lg"
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               aria-label="Buscar novelas"
@@ -155,7 +175,7 @@ export default function NovelBrowser({ initialNovels }: NovelBrowserProps) {
             </h2>
           </div>
           <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4 sm:gap-6">
-            {featuredNovels.slice(0,6).map((novel) => ( // Show up to 6 featured
+            {featuredNovels.slice(0,6).map((novel) => ( 
               <NovelCard key={`featured-${novel.id}`} novel={novel} />
             ))}
           </div>
@@ -172,25 +192,23 @@ export default function NovelBrowser({ initialNovels }: NovelBrowserProps) {
                 Categorías
               </CardTitle>
             </CardHeader>
-            <CardContent className="space-y-2">
-              <Button
-                variant={selectedCategory === null ? 'default' : 'ghost'}
-                size="sm"
-                className="w-full justify-start"
+            <CardContent className="flex flex-wrap gap-2">
+              <Badge
+                variant={selectedCategory === null ? 'default' : 'secondary'}
+                className="cursor-pointer text-sm px-3 py-1"
                 onClick={() => handleCategorySelect(null)}
               >
-                Todas las Categorías
-              </Button>
+                Todas ({initialNovels.length})
+              </Badge>
               {uniqueCategories.map(category => (
-                <Button
+                <Badge
                   key={category}
-                  variant={selectedCategory === category ? 'secondary' : 'ghost'}
-                  size="sm"
-                  className="w-full justify-start"
+                  variant={selectedCategory === category ? 'default' : 'secondary'}
+                  className="cursor-pointer text-sm px-3 py-1"
                   onClick={() => handleCategorySelect(category)}
                 >
-                  {category}
-                </Button>
+                  {category} ({categoryCounts[category] || 0})
+                </Badge>
               ))}
             </CardContent>
           </Card>
@@ -208,7 +226,7 @@ export default function NovelBrowser({ initialNovels }: NovelBrowserProps) {
                   className="cursor-pointer text-sm px-3 py-1"
                   onClick={() => handleTagSelect(null)}
                 >
-                  Todas
+                  Todas ({initialNovels.length})
                 </Badge>
               {uniqueTags.map(tag => (
                 <Badge
@@ -217,7 +235,7 @@ export default function NovelBrowser({ initialNovels }: NovelBrowserProps) {
                   className="cursor-pointer text-sm px-3 py-1"
                   onClick={() => handleTagSelect(tag)}
                 >
-                  {tag}
+                  {tag} ({tagCounts[tag] || 0})
                 </Badge>
               ))}
             </CardContent>
@@ -232,7 +250,7 @@ export default function NovelBrowser({ initialNovels }: NovelBrowserProps) {
 
         <main className="md:col-span-9">
           {filteredNovels.length > 0 ? (
-            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-4 gap-4 sm:gap-6"> {/* Adjusted for potentially smaller main area */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-4 gap-4 sm:gap-6">
               {filteredNovels.map((novel) => (
                 <NovelCard key={novel.id} novel={novel} />
               ))}
@@ -257,4 +275,3 @@ export default function NovelBrowser({ initialNovels }: NovelBrowserProps) {
     </div>
   );
 }
-
