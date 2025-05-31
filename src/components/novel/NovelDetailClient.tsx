@@ -177,6 +177,14 @@ export default function NovelDetailClient({ novel }: NovelDetailClientProps) {
                   <AgeRatingBadge rating={novel.ageRating} />
                 </div>
               )}
+              {statusInfo && (
+                <div className="absolute top-3 left-3 z-10">
+                    <Badge className={cn("text-xs px-1.5 py-0.5 flex items-center gap-1 pointer-events-none", statusInfo.colorClass)}>
+                        <statusInfo.Icon className="h-3 w-3" />
+                        {statusInfo.text}
+                    </Badge>
+                </div>
+              )}
             </Card>
              {firstChapter && (
               <Button 
@@ -246,7 +254,7 @@ export default function NovelDetailClient({ novel }: NovelDetailClientProps) {
                      <div className="flex items-center">
                         <statusInfo.Icon className="mr-2.5 h-4 w-4 text-muted-foreground flex-shrink-0" />
                         <strong className="w-32 sm:w-40 flex-shrink-0">Estado:</strong>
-                        <Badge className={statusInfo.colorClass + " ml-2"}>{statusInfo.text}</Badge>
+                        <Badge className={cn("ml-2 text-xs", statusInfo.colorClass)}>{statusInfo.text}</Badge>
                       </div>
                    )}
                   {novel.categoria && (
@@ -267,7 +275,7 @@ export default function NovelDetailClient({ novel }: NovelDetailClientProps) {
                           </Link>
                       </div>
                   )}
-                  {novel.lastUpdateDate && ( // Typically, this would be the last chapter upload date
+                  {novel.lastUpdateDate && ( 
                       <div className="flex items-center">
                           <CalendarDays className="mr-2.5 h-4 w-4 text-muted-foreground flex-shrink-0" />
                           <strong className="w-32 sm:w-40 flex-shrink-0">Lanzamiento:</strong>
