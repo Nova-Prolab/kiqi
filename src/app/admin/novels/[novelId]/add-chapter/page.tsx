@@ -8,7 +8,7 @@ import { notFound, useRouter, usePathname } from 'next/navigation';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { ArrowLeft, Loader2, ShieldAlert } from 'lucide-react';
-import React, { useEffect, useState } from 'react'; // Ensured React is imported for React.use
+import React, { useEffect, useState } from 'react';
 import type { Novel } from '@/lib/types';
 import { useAuth } from '@/hooks/useAuth';
 
@@ -27,13 +27,13 @@ import { useAuth } from '@/hooks/useAuth';
 // }
 
 export default function AddChapterToNovelPage({ params }: { params: { novelId: string } }) {
-  const resolvedParams = React.use(params); // Use React.use() to unwrap params
-  const { novelId } = resolvedParams; // Destructure novelId from the resolved params
+  const resolvedParams = React.use(params); 
+  const { novelId } = resolvedParams; 
   const { currentUser, isLoading: authIsLoading } = useAuth();
   const router = useRouter();
   const pathname = usePathname();
 
-  const [novel, setNovel] = useState<Novel | null | undefined>(undefined); // undefined: loading, null: not found
+  const [novel, setNovel] = useState<Novel | null | undefined>(undefined); // undefined: initial, loading, null: not found/error
   const [isLoadingNovel, setIsLoadingNovel] = useState(true);
   const [isAuthorized, setIsAuthorized] = useState(false);
 
@@ -44,35 +44,52 @@ export default function AddChapterToNovelPage({ params }: { params: { novelId: s
   }, [currentUser, authIsLoading, router, pathname]);
 
   useEffect(() => {
-    async function loadNovel() {
-      if (!novelId) return;
+    async function loadNovelData() {
+      if (!novelId) {
+        setIsLoadingNovel(false);
+        setNovel(null); // Treat as not found if no novelId
+        return;
+      }
+
+      if (!currentUser) { // Wait for user auth to complete
+        if (!authIsLoading) { // If auth is done and still no user, probably will be redirected
+            setIsLoadingNovel(false);
+            setNovel(null); // Or let redirect handle it
+        }
+        return; // Don't fetch novel if user isn't determined yet or not logged in
+      }
+      
       setIsLoadingNovel(true);
       try {
+        // fetchNovelById is called client-side here.
+        // It will log an error to the console if GITHUB_REPO_OWNER/NAME are not NEXT_PUBLIC_
+        // and will return undefined.
         const fetchedNovel = await fetchNovelById(novelId);
-        setNovel(fetchedNovel);
+        if (fetchedNovel) {
+          setNovel(fetchedNovel);
+          if (fetchedNovel.creatorId === currentUser.id) {
+            setIsAuthorized(true);
+          } else {
+            setIsAuthorized(false);
+          }
+        } else {
+          // This handles fetchedNovel being undefined (e.g. env var issue on client / 404)
+          setNovel(null); 
+          setIsAuthorized(false);
+        }
       } catch (error) {
         console.error("Error fetching novel for chapter management:", error);
-        setNovel(null); // Set to null on error
+        setNovel(null); // Set to null on any unexpected error during fetch
+        setIsAuthorized(false);
       }
       setIsLoadingNovel(false);
     }
-    loadNovel();
-  }, [novelId]);
 
-  useEffect(() => {
-    if (currentUser && novel) {
-      if (novel.creatorId === currentUser.id) {
-        setIsAuthorized(true);
-      } else {
-        setIsAuthorized(false);
-      }
-    } else if (novel === null) { // Novel not found after fetch attempt
-        setIsAuthorized(false);
-    }
-  }, [currentUser, novel]);
+    loadNovelData();
+  }, [novelId, currentUser, authIsLoading]); // Dependencies for re-running novel load
 
 
-  if (authIsLoading || isLoadingNovel || novel === undefined) {
+  if (authIsLoading || isLoadingNovel) { // Simplified loading check
     return (
       <section className="py-8">
         <div className="container mx-auto px-4 text-center">
@@ -83,19 +100,23 @@ export default function AddChapterToNovelPage({ params }: { params: { novelId: s
     );
   }
 
-  if (novel === null) { // Explicitly novel not found
-    notFound();
-  }
-
-  if (!currentUser) { // Should be caught by the redirect effect, but as a fallback
+  // After loading attempts:
+  if (!currentUser) { // Should ideally be caught by the redirect effect, but as a fallback
      return (
       <section className="py-8">
         <div className="container mx-auto px-4 text-center">
           <p>Redirigiendo a inicio de sesión...</p>
+          {/* Or a more specific "Auth required" message if redirect takes time */}
         </div>
       </section>
     );
   }
+  
+  if (novel === null) { // Explicitly novel not found or fetch error (including env var issues on client)
+    notFound(); // This should lead to your not-found page
+  }
+  
+  // At this point, novel should be loaded (Novel object) and currentUser is present
 
   if (!isAuthorized) {
      return (
@@ -118,7 +139,7 @@ export default function AddChapterToNovelPage({ params }: { params: { novelId: s
   }
 
   // At this point, novel is not null, user is logged in and authorized
-  const safeNovel = novel as Novel;
+  const safeNovel = novel as Novel; // novel is guaranteed to be Novel here
 
   return (
     <section className="py-8">
