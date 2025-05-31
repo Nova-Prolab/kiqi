@@ -18,14 +18,13 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
-import { useActionState, useTransition } from 'react';
+import { useActionState, useTransition, useEffect, useState, useMemo } from 'react';
 import { useFormStatus } from 'react-dom';
 import { deleteNovelAction } from '@/actions/novelAdminActions';
 import { useToast } from "@/hooks/use-toast";
-import { useEffect, useState, useMemo } from 'react';
 import { useAuth } from '@/hooks/useAuth';
 import { useRouter } from 'next/navigation';
-import { Badge } from '@/components/ui/badge'; // Added import for Badge
+import { Badge } from '@/components/ui/badge';
 
 
 const initialDeleteState = {
@@ -65,13 +64,17 @@ export default function AdminNovelListClient({ novels: allFetchedNovels }: Admin
   const [clientNovels, setClientNovels] = useState<Novel[]>(allFetchedNovels);
 
   useEffect(() => {
+    setClientNovels(allFetchedNovels); // Sync with fetched novels if they change
+  }, [allFetchedNovels]);
+
+  useEffect(() => {
     if (!authIsLoading && !currentUser) {
       router.push('/auth/login?redirect=/admin/dashboard');
     }
   }, [currentUser, authIsLoading, router]);
 
   useEffect(() => {
-    if (deleteState?.message && !isDeletePending && !isPendingFormReset) { // Check for !isPendingFormReset
+    if (deleteState?.message && !isDeletePending && !isPendingFormReset) {
       toast({
         title: deleteState.success ? 'Novela Eliminada (Info)' : 'Error al Eliminar',
         description: deleteState.message,
@@ -91,9 +94,11 @@ export default function AdminNovelListClient({ novels: allFetchedNovels }: Admin
   }, [clientNovels, currentUser]);
 
   const officialNovels = useMemo(() => {
-    if(!currentUser) return clientNovels; // If no user, all non-managed are "official"
-    return clientNovels.filter(novel => !novel.creatorId || novel.creatorId !== currentUser.id);
-  }, [clientNovels, currentUser]);
+    if(!currentUser) return clientNovels; // If no user, all non-managed are "official" for display purpose
+    // Filter out novels managed by the current user to avoid duplication if logic changes
+    const managedIds = managedNovels.map(n => n.id);
+    return clientNovels.filter(novel => !managedIds.includes(novel.id) && (!novel.creatorId || novel.creatorId !== currentUser.id));
+  }, [clientNovels, currentUser, managedNovels]);
 
 
   if (authIsLoading || !currentUser) {
@@ -159,7 +164,7 @@ export default function AdminNovelListClient({ novels: allFetchedNovels }: Admin
               <Eye className="mr-1.5 h-3.5 w-3.5" /> Ver Novela
             </Link>
           </Button>
-          {isManaged && currentUser && ( // Ensure currentUser is checked for creatorId access
+          {isManaged && currentUser && (
             <>
               <Button asChild variant="secondary" className="w-full sm:w-auto text-xs">
                 <Link href={`/admin/novels/${novel.id}/add-chapter`}>
@@ -178,11 +183,9 @@ export default function AdminNovelListClient({ novels: allFetchedNovels }: Admin
                         <AlertTriangle className="text-destructive mr-2"/>Confirmar Eliminación
                     </AlertDialogTitle>
                     <AlertDialogDescription>
-                      ¿Estás seguro de que quieres eliminar la información de la novela (<code>info.json</code>) para "{novel.title}"?
-                      Esto la hará inaccesible desde la aplicación.
+                      ¿Estás seguro de que quieres eliminar la novela "{novel.title}"?
                       <br />
-                      <strong className="text-destructive-foreground">Los archivos de capítulo NO se eliminarán del repositorio y deberán gestionarse manualmente si deseas eliminarlos por completo.</strong>
-                      <br />Esta acción no se puede deshacer desde la web.
+                      Esta acción es irreversible y solo eliminará su información de la aplicación (<code>info.json</code>). Los archivos de capítulo permanecerán en el repositorio.
                     </AlertDialogDescription>
                   </AlertDialogHeader>
                   <AlertDialogFooter>
@@ -190,7 +193,6 @@ export default function AdminNovelListClient({ novels: allFetchedNovels }: Admin
                     <form action={deleteFormAction} className="inline-flex">
                         <input type="hidden" name="novelId" value={novel.id} />
                         <input type="hidden" name="infoJsonSha" value={infoSha || ''} />
-                        {/* <input type="hidden" name="creatorId" value={currentUser.id} /> For server-side auth in future */}
                         <Button type="submit" variant="destructive" disabled={isDeletePending}>
                            <DeleteButtonContent/>
                         </Button>
@@ -205,7 +207,7 @@ export default function AdminNovelListClient({ novels: allFetchedNovels }: Admin
     );
   };
   
-  if (clientNovels.length === 0 && managedNovels.length === 0 && officialNovels.length === 0) { // Check all lists
+  if (!authIsLoading && clientNovels.length === 0 && managedNovels.length === 0 && officialNovels.length === 0) {
       return (
           <div className="text-center py-12">
             <p className="text-xl text-muted-foreground">No se encontraron novelas en el repositorio.</p>
@@ -227,7 +229,7 @@ export default function AdminNovelListClient({ novels: allFetchedNovels }: Admin
         </section>
       )}
 
-      {currentUser && managedNovels.length === 0 && ( // Only show this if user is logged in
+      {currentUser && managedNovels.length === 0 && (
         <div className="text-center py-12 border-2 border-dashed border-muted-foreground/30 rounded-lg">
             <UserCircle className="mx-auto h-12 w-12 text-muted-foreground mb-4" />
             <p className="text-xl text-muted-foreground">No estás gestionando ninguna novela.</p>
@@ -254,3 +256,5 @@ export default function AdminNovelListClient({ novels: allFetchedNovels }: Admin
     </div>
   );
 }
+
+    
