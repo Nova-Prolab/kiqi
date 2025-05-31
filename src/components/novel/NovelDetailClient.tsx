@@ -7,10 +7,11 @@ import type { Novel, RecentChapterInfo } from '@/lib/types';
 import { useRecentlyRead } from '@/hooks/useRecentlyRead';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { List, ChevronRight, BookOpen, ArrowLeft, Tag, CalendarDays, UserCircle, Clock, History, BookCheck, FileText, Loader2 } from 'lucide-react';
+import { List, ChevronRight, BookOpen, ArrowLeft, Tag, CalendarDays, UserCircle, Clock, History, BookCheck, FileText, Users, Shield, BarChart, Loader2 } from 'lucide-react';
 import { Separator } from '@/components/ui/separator';
 import { Badge } from '@/components/ui/badge';
 import React, { useState, useEffect, useMemo } from 'react';
+import AgeRatingBadge from '@/components/ui/AgeRatingBadge'; // Import the new component
 
 interface NovelDetailClientProps {
   novel: Novel;
@@ -53,8 +54,7 @@ export default function NovelDetailClient({ novel }: NovelDetailClientProps) {
 
   const processedSummaryContent = useMemo(() => {
     if (!novel?.summary) return "";
-    // Explicitly replace literal '\\n' with actual newline character '\n'
-    // Then, split by the actual newline character
+    // Explicitly replace literal '\\n' and also actual '\n' if any mixed in
     return novel.summary.replace(/\\n/g, '\n');
   }, [novel?.summary]);
 
@@ -69,17 +69,15 @@ export default function NovelDetailClient({ novel }: NovelDetailClientProps) {
     }
   }, [summaryLines]);
 
-  const displayedSummaryLines = isLongSummary && !isSummaryExpanded
-    ? summaryLines.slice(0, MAX_INITIAL_SUMMARY_LINES)
-    : summaryLines;
+  const displayedSummary = isLongSummary && !isSummaryExpanded
+    ? summaryLines.slice(0, MAX_INITIAL_SUMMARY_LINES).join('\n') + (summaryLines.length > MAX_INITIAL_SUMMARY_LINES ? '...' : '')
+    : processedSummaryContent;
 
   const handleChapterLinkClick = () => {
     setIsNavigatingToChapter(true);
   };
 
   if (!novel) {
-    // This case should ideally be handled by the page component (e.g., with notFound())
-    // but adding a fallback here for safety.
     return <p>Información de la novela no disponible.</p>;
   }
 
@@ -98,7 +96,7 @@ export default function NovelDetailClient({ novel }: NovelDetailClientProps) {
 
         <section className="grid md:grid-cols-3 gap-8 items-start">
           <div className="md:col-span-1 space-y-4">
-            <Card className="overflow-hidden shadow-lg rounded-lg border">
+            <Card className="overflow-hidden shadow-lg rounded-lg border relative">
               <Image
                 src={novel.coverImage}
                 alt={`Portada de ${novel.title}`}
@@ -107,6 +105,11 @@ export default function NovelDetailClient({ novel }: NovelDetailClientProps) {
                 className="object-cover w-full aspect-[2/3]"
                 priority
               />
+              {novel.ageRating && (
+                <div className="absolute top-3 right-3 z-10">
+                  <AgeRatingBadge rating={novel.ageRating} />
+                </div>
+              )}
             </Card>
              {firstChapter && (
               <Button 
@@ -139,16 +142,8 @@ export default function NovelDetailClient({ novel }: NovelDetailClientProps) {
                 <CardTitle className="text-xl">Descripción</CardTitle>
               </CardHeader>
               <CardContent>
-                 <div className="text-foreground/80 leading-relaxed">
-                  {displayedSummaryLines.map((line, index) => (
-                    <React.Fragment key={index}>
-                      {line}
-                      {index < displayedSummaryLines.length - 1 && <br />}
-                    </React.Fragment>
-                  ))}
-                  {isLongSummary && !isSummaryExpanded && ! (summaryLines.length <= MAX_INITIAL_SUMMARY_LINES) && (
-                    <span className="text-muted-foreground">...</span>
-                  )}
+                 <div className="text-foreground/80 leading-relaxed whitespace-pre-line">
+                    {displayedSummary}
                 </div>
                 {isLongSummary && (
                   <Button
@@ -167,6 +162,13 @@ export default function NovelDetailClient({ novel }: NovelDetailClientProps) {
                   <CardTitle className="text-xl">Detalles</CardTitle>
               </CardHeader>
               <CardContent className="space-y-3">
+                   {novel.ageRating && (
+                     <div className="flex items-center text-sm">
+                        <Shield className="mr-2 h-4 w-4 text-muted-foreground" />
+                        <strong>Clasificación:</strong>
+                        <span className="ml-2"><AgeRatingBadge rating={novel.ageRating} /></span>
+                      </div>
+                   )}
                   {novel.categoria && (
                       <div className="flex items-center text-sm">
                           <List className="mr-2 h-4 w-4 text-muted-foreground" />
@@ -286,7 +288,3 @@ export default function NovelDetailClient({ novel }: NovelDetailClientProps) {
     </>
   );
 }
-
-    
-
-    

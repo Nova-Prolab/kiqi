@@ -7,11 +7,14 @@ export interface Chapter {
   path?: string;
 }
 
+export type AgeRating = 'all' | 'pg' | 'teen' | 'mature' | 'adults';
+
 export interface InfoJson {
   titulo: string;
   descripcion: string;
   autor: string;
   coverImageUrl?: string;
+  ageRating?: AgeRating;
   fecha_lanzamiento?: string;
   etiquetas?: string[];
   categoria?: string;
@@ -29,6 +32,7 @@ export interface Novel {
   infoJsonSha?: string; // SHA of the info.json file, useful for updates/deletes
 
   // Fields from info.json
+  ageRating?: AgeRating;
   fecha_lanzamiento?: string;
   etiquetas?: string[];
   categoria?: string;
@@ -54,7 +58,7 @@ export type ReaderFontFamily =
   | 'open-sans'
   | 'lato'
   | 'roboto'
-  | 'source-sans-pro'
+  | 'source-sans-3'
   | 'inter'
   | 'custom';
 
@@ -94,6 +98,7 @@ export interface CreateNovelInput {
   translator?: string;
   releaseDate?: string;
   creatorId: string; // User's unique ID - now mandatory
+  // ageRating: AgeRating; // For future addition to form
 }
 
 // For User "Accounts"
