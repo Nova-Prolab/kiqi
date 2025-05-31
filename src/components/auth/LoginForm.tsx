@@ -11,15 +11,15 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { useToast } from '@/hooks/use-toast';
 import Link from 'next/link';
 import { LogIn, UserPlus, KeyRound } from 'lucide-react';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation'; // Import useSearchParams
 import { useAuth } from '@/hooks/useAuth';
 import type { User } from '@/lib/types';
 
 // Adjust initialLoginState to expect a user object on success
-const initialLoginState: { 
-  message: string; 
-  success: boolean; 
-  user?: Pick<User, 'id' | 'username'>; 
+const initialLoginState: {
+  message: string;
+  success: boolean;
+  user?: Pick<User, 'id' | 'username'>;
 } = {
   message: '',
   success: false,
@@ -39,16 +39,10 @@ export default function LoginForm() {
   const [state, formAction] = useActionState(loginUserAction, initialLoginState);
   const { toast } = useToast();
   const router = useRouter();
+  const searchParams = useSearchParams(); // Get search params
   const { login, currentUser, isLoading: authIsLoading } = useAuth();
 
-  useEffect(() => {
-    if (authIsLoading) return; 
-
-    if (currentUser) {
-      router.push('/admin/dashboard'); 
-    }
-  }, [currentUser, router, authIsLoading]);
-
+  // This useEffect handles the result of the login form submission
   useEffect(() => {
     if (state?.message) {
       toast({
@@ -57,16 +51,30 @@ export default function LoginForm() {
         variant: state.success ? 'default' : 'destructive',
       });
       if (state.success && state.user) {
-        login(state.user); // Pass the user object { id, username }
-        router.push('/admin/dashboard'); 
+        login(state.user); // Update auth state
+        // DO NOT redirect here. Let the useEffect below handle it after currentUser updates.
       }
     }
-  }, [state, toast, login, router]);
+  }, [state, toast, login]);
+
+  // This useEffect handles redirection based on the currentUser state
+  useEffect(() => {
+    if (authIsLoading) return;
+
+    if (currentUser) {
+      // If user is logged in, redirect them.
+      // Prioritize 'redirect' query param, then default to dashboard.
+      const redirectUrl = searchParams.get('redirect') || '/admin/dashboard';
+      router.push(redirectUrl);
+    }
+  }, [currentUser, router, authIsLoading, searchParams]);
 
 
-  if (authIsLoading) {
+  if (authIsLoading && !currentUser) { // Show loader only if loading and no user yet
       return <div className="flex justify-center items-center h-32"><p>Cargando...</p></div>;
   }
+  // If already logged in (currentUser is set), the useEffect above will redirect.
+  // This prevents showing the form闪烁.
 
   return (
     <div className="max-w-md mx-auto">
