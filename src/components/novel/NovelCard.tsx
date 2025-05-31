@@ -22,10 +22,10 @@ const ageRatingBorderColorMap: Partial<Record<AgeRating, string>> = {
 };
 
 const novelStatusDetails: Record<NovelStatus, { text: string; Icon: React.ElementType; colorClass: string }> = {
-  ongoing: { text: 'En curso', Icon: Clock, colorClass: 'bg-sky-100 text-sky-700 dark:bg-sky-900/60 dark:text-sky-300' },
-  completed: { text: 'Completada', Icon: CheckCircle, colorClass: 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/60 dark:text-emerald-300' },
-  hiatus: { text: 'Hiato', Icon: PauseCircle, colorClass: 'bg-orange-100 text-orange-700 dark:bg-orange-900/60 dark:text-orange-300' },
-  dropped: { text: 'Abandonada', Icon: XCircle, colorClass: 'bg-rose-100 text-rose-700 dark:bg-rose-900/60 dark:text-rose-300' },
+  ongoing: { text: 'En curso', Icon: Clock, colorClass: 'bg-sky-100 text-sky-700 dark:bg-sky-900/60 dark:text-sky-300 border-sky-300 dark:border-sky-700' },
+  completed: { text: 'Completada', Icon: CheckCircle, colorClass: 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/60 dark:text-emerald-300 border-emerald-300 dark:border-emerald-700' },
+  hiatus: { text: 'En Hiato', Icon: PauseCircle, colorClass: 'bg-orange-100 text-orange-700 dark:bg-orange-900/60 dark:text-orange-300 border-orange-300 dark:border-orange-700' },
+  dropped: { text: 'Abandonada', Icon: XCircle, colorClass: 'bg-rose-100 text-rose-700 dark:bg-rose-900/60 dark:text-rose-300 border-rose-300 dark:border-rose-700' },
 };
 
 export default function NovelCard({ novel }: NovelCardProps) {
@@ -56,7 +56,7 @@ export default function NovelCard({ novel }: NovelCardProps) {
             )}
              {statusInfo && (
               <div className="absolute top-2 left-2 z-10">
-                <Badge className={cn("text-xs px-1.5 py-0.5 flex items-center gap-1 pointer-events-none", statusInfo.colorClass)}>
+                <Badge className={cn("text-xs px-1.5 py-0.5 flex items-center gap-1 pointer-events-none border", statusInfo.colorClass)}>
                   <statusInfo.Icon className="h-3 w-3" />
                   {statusInfo.text}
                 </Badge>

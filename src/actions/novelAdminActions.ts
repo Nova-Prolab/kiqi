@@ -37,6 +37,8 @@ export async function createNovelAction(
   formData: FormData
 ): Promise<{ message: string; success: boolean; novelId?: string, novelTitle?: string }> {
   
+  const statusFromForm = formData.get('status') as string | undefined;
+
   const rawFormData = {
     title: formData.get('title') as string,
     author: formData.get('author') as string,
@@ -49,7 +51,7 @@ export async function createNovelAction(
     creatorId: formData.get('creatorId') as string,
     ageRating: formData.get('ageRating') as AgeRating | undefined,
     rating_platform: formData.get('rating_platform') ? parseInt(formData.get('rating_platform') as string, 10) : undefined,
-    status: formData.get('status') as NovelStatus | undefined,
+    status: statusFromForm === '' ? undefined : statusFromForm as NovelStatus | undefined,
   };
 
   const validatedFields = createNovelSchema.safeParse(rawFormData);
@@ -87,7 +89,7 @@ export async function createNovelAction(
     creatorId: data.creatorId,
     ageRating: data.ageRating,
     rating_platform: data.rating_platform,
-    status: data.status,
+    status: data.status, // data.status será undefined si el original era ''
   };
 
   const infoJsonContent = JSON.stringify(infoJson, null, 2);

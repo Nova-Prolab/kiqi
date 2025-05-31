@@ -29,11 +29,11 @@ const MAX_INITIAL_SUMMARY_LINES = 6;
 const MAX_RECENT_TO_DISPLAY = 3;
 const MAX_SIMILAR_NOVELS_TO_DISPLAY = 5;
 
-const novelStatusDetails: Record<NovelStatus, { text: string; Icon: React.ElementType; colorClass: string }> = {
-  ongoing: { text: 'En curso', Icon: Clock, colorClass: 'bg-sky-100 text-sky-700 dark:bg-sky-900/60 dark:text-sky-300' },
-  completed: { text: 'Completada', Icon: CheckCircle, colorClass: 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/60 dark:text-emerald-300' },
-  hiatus: { text: 'En Hiato', Icon: PauseCircle, colorClass: 'bg-orange-100 text-orange-700 dark:bg-orange-900/60 dark:text-orange-300' },
-  dropped: { text: 'Abandonada', Icon: XCircle, colorClass: 'bg-rose-100 text-rose-700 dark:bg-rose-900/60 dark:text-rose-300' },
+const novelStatusDetails: Record<NovelStatus, { text: string; Icon: React.ElementType; colorClass: string; badgeBorderClass?: string }> = {
+  ongoing: { text: 'En curso', Icon: Clock, colorClass: 'bg-sky-100 text-sky-700 dark:bg-sky-900/60 dark:text-sky-300', badgeBorderClass: 'border-sky-300 dark:border-sky-700' },
+  completed: { text: 'Completada', Icon: CheckCircle, colorClass: 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/60 dark:text-emerald-300', badgeBorderClass: 'border-emerald-300 dark:border-emerald-700' },
+  hiatus: { text: 'En Hiato', Icon: PauseCircle, colorClass: 'bg-orange-100 text-orange-700 dark:bg-orange-900/60 dark:text-orange-300', badgeBorderClass: 'border-orange-300 dark:border-orange-700' },
+  dropped: { text: 'Abandonada', Icon: XCircle, colorClass: 'bg-rose-100 text-rose-700 dark:bg-rose-900/60 dark:text-rose-300', badgeBorderClass: 'border-rose-300 dark:border-rose-700' },
 };
 
 
@@ -179,7 +179,7 @@ export default function NovelDetailClient({ novel }: NovelDetailClientProps) {
               )}
               {statusInfo && (
                 <div className="absolute top-3 left-3 z-10">
-                    <Badge className={cn("text-xs px-1.5 py-0.5 flex items-center gap-1 pointer-events-none", statusInfo.colorClass)}>
+                    <Badge className={cn("text-xs px-1.5 py-0.5 flex items-center gap-1 pointer-events-none border", statusInfo.colorClass, statusInfo.badgeBorderClass)}>
                         <statusInfo.Icon className="h-3 w-3" />
                         {statusInfo.text}
                     </Badge>
@@ -254,7 +254,7 @@ export default function NovelDetailClient({ novel }: NovelDetailClientProps) {
                      <div className="flex items-center">
                         <statusInfo.Icon className="mr-2.5 h-4 w-4 text-muted-foreground flex-shrink-0" />
                         <strong className="w-32 sm:w-40 flex-shrink-0">Estado:</strong>
-                        <Badge className={cn("ml-2 text-xs", statusInfo.colorClass)}>{statusInfo.text}</Badge>
+                        <Badge className={cn("ml-2 text-xs border", statusInfo.colorClass, statusInfo.badgeBorderClass)}>{statusInfo.text}</Badge>
                       </div>
                    )}
                   {novel.categoria && (
