@@ -19,7 +19,7 @@ export default async function AdminDashboardPage() {
   return (
     <section className="py-8">
       <div className="container mx-auto px-4">
-        <div className="flex justify-between items-center mb-8">
+        <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center mb-8 gap-4 sm:gap-0">
           <h1 className="text-3xl font-bold text-primary">Panel de Administración</h1>
           <Button asChild size="lg">
             <Link href="/admin/create-novel">
