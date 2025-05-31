@@ -18,6 +18,11 @@ interface GitHubFile {
 const registerUserSchema = z.object({
   username: z.string().min(3, "El nombre de usuario debe tener al menos 3 caracteres.").regex(/^[a-zA-Z0-9_.-]+$/, "Nombre de usuario inválido. Solo letras, números, '_', '-', '.' son permitidos."),
   email: z.string().email("Formato de correo electrónico inválido."),
+  password: z.string().min(6, "La contraseña debe tener al menos 6 caracteres."),
+  confirmPassword: z.string(),
+}).refine((data) => data.password === data.confirmPassword, {
+  message: "Las contraseñas no coinciden.",
+  path: ["confirmPassword"], // Path of the error
 });
 
 export async function registerUserAction(
@@ -27,6 +32,8 @@ export async function registerUserAction(
   const rawFormData = {
     username: formData.get('username') as string,
     email: formData.get('email') as string,
+    password: formData.get('password') as string,
+    confirmPassword: formData.get('confirmPassword') as string,
   };
 
   const validatedFields = registerUserSchema.safeParse(rawFormData);
@@ -38,13 +45,13 @@ export async function registerUserAction(
     };
   }
 
-  const { username, email } = validatedFields.data;
+  const { username, email, password } = validatedFields.data;
   const filePath = `users/${username}.json`;
 
-  // New: MX Record Check for the email's domain
+  // MX Record Check for the email's domain
   try {
     const domain = email.substring(email.lastIndexOf('@') + 1);
-    if (!domain) { // Should be caught by zod's email validation, but as an extra check
+    if (!domain) { 
         return {
             message: "El formato del correo electrónico es inválido (no se pudo extraer el dominio).",
             success: false,
@@ -59,7 +66,6 @@ export async function registerUserAction(
     }
   } catch (error: any) {
     console.error(`[MX Check Error] Failed to resolve MX records for domain in email '${email}':`, error.code || error.message);
-    // Common errors: ENODATA (no MX records for domain), ENOTFOUND (domain doesn't exist)
     let userMessage = "No se pudo verificar el dominio del correo electrónico. Por favor, inténtalo de nuevo más tarde o usa un correo diferente.";
     if (error.code === 'ENODATA' || error.code === 'ENOTFOUND') {
         userMessage = `El dominio del correo electrónico '${email.substring(email.lastIndexOf('@') + 1)}' no parece ser válido o no está configurado para recibir correos.`;
@@ -78,7 +84,6 @@ export async function registerUserAction(
     }
   } catch (error) {
     // Assuming fetchFileContent returns null for 404s and doesn't throw for that.
-    // If it throws for non-404, it will be caught by the generic catch block below.
   }
 
   // Check if email already exists in another user's file
@@ -96,7 +101,6 @@ export async function registerUserAction(
               }
             } catch (parseError) {
               console.warn(`Could not parse user file ${file.path} during email check:`, parseError);
-              // Continue checking other files
             }
           }
         }
@@ -104,14 +108,13 @@ export async function registerUserAction(
     }
   } catch (error) {
      console.error("Error fetching user list for email check:", error);
-     // Potentially return a generic error or allow registration if user list can't be fetched?
-     // For now, let it proceed to the creation attempt which might fail or succeed.
   }
 
 
   const userJson: User = {
     username,
     email,
+    password, // Storing password in plain text - UNSAFE FOR PRODUCTION
   };
   const userJsonContent = JSON.stringify(userJson, null, 2);
   const commitMessage = `feat: Register new user - ${username}`;
@@ -122,7 +125,6 @@ export async function registerUserAction(
   } catch (error) {
     console.error("Error creating user file:", error);
     const errorMessage = error instanceof Error ? error.message : "Error desconocido al registrar el usuario.";
-     // Check if the error is because the file already exists (code 422 from GitHub)
     if (errorMessage.includes('422') || (error && typeof error === 'object' && 'status' in error && error.status === 422)) {
       return {
         message: `Error al registrar: El nombre de usuario '${username}' ya existe. Elige otro.`,
@@ -134,7 +136,8 @@ export async function registerUserAction(
 }
 
 const loginUserSchema = z.object({
-  username: z.string().min(1, "El nombre de usuario es obligatorio."),
+  identifier: z.string().min(1, "El nombre de usuario o correo es obligatorio."),
+  password: z.string().min(1, "La contraseña es obligatoria."),
 });
 
 export async function loginUserAction(
@@ -142,7 +145,8 @@ export async function loginUserAction(
   formData: FormData
 ): Promise<{ message: string; success: boolean; username?: string; }> {
   const rawFormData = {
-    username: formData.get('username') as string,
+    identifier: formData.get('identifier') as string,
+    password: formData.get('password') as string,
   };
 
   const validatedFields = loginUserSchema.safeParse(rawFormData);
@@ -154,22 +158,59 @@ export async function loginUserAction(
     };
   }
 
-  const { username } = validatedFields.data;
-  const filePath = `users/${username}.json`;
+  const { identifier, password } = validatedFields.data;
+  let userToVerify: User | null = null;
+  let foundBy: 'username' | 'email' | null = null;
 
+  // Try fetching by username first
+  const usernameFilePath = `users/${identifier}.json`;
   try {
-    const userFile = await fetchFileContent(filePath);
-    if (userFile) {
-      // In a real system, you'd also verify a password here.
-      // For this simulation, existence of the file means login is successful.
-      return { message: `Inicio de sesión exitoso para '${username}'.`, success: true, username };
-    } else {
-      return { message: `Nombre de usuario '${username}' no encontrado o incorrecto.`, success: false };
+    const userFileByUsername = await fetchFileContent(usernameFilePath);
+    if (userFileByUsername) {
+      userToVerify = JSON.parse(userFileByUsername.content) as User;
+      foundBy = 'username';
     }
   } catch (error) {
-    console.error("Error during login:", error);
-    // If fetchFileContent returns null for 404, it might not throw. This catch is for other errors.
-    const errorMessage = error instanceof Error ? error.message : "Error desconocido durante el inicio de sesión.";
-    return { message: `Error al iniciar sesión: ${errorMessage}`, success: false };
+    // console.log("User not found by username, will try by email if applicable.");
+  }
+
+  // If not found by username and identifier looks like an email, try searching by email
+  if (!userToVerify && identifier.includes('@')) {
+    try {
+      const allUserFiles = await fetchFromGitHub<GitHubFile[]>('contents/users/');
+      if (allUserFiles && Array.isArray(allUserFiles)) {
+        for (const file of allUserFiles) {
+          if (file.type === 'file' && file.name.endsWith('.json')) {
+            const fileData = await fetchFileContent(file.path);
+            if (fileData) {
+              try {
+                const otherUser: User = JSON.parse(fileData.content);
+                if (otherUser.email && otherUser.email.toLowerCase() === identifier.toLowerCase()) {
+                  userToVerify = otherUser;
+                  foundBy = 'email';
+                  break; 
+                }
+              } catch (parseError) {
+                console.warn(`Could not parse user file ${file.path} during email login check:`, parseError);
+              }
+            }
+          }
+        }
+      }
+    } catch (error) {
+      console.error("Error fetching user list for email login check:", error);
+      // Allow to proceed to password check, it will fail if userToVerify is still null
+    }
+  }
+
+  if (userToVerify) {
+    // IMPORTANT: This is plain text password comparison. UNSAFE FOR PRODUCTION.
+    if (userToVerify.password === password) {
+      return { message: `Inicio de sesión exitoso para '${userToVerify.username}'.`, success: true, username: userToVerify.username };
+    } else {
+      return { message: "Contraseña incorrecta.", success: false };
+    }
+  } else {
+    return { message: `Usuario o correo '${identifier}' no encontrado.`, success: false };
   }
 }

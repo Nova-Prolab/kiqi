@@ -33,7 +33,7 @@ export interface Novel {
   etiquetas?: string[];
   categoria?: string;
   traductor?: string;
-  lastUpdateDate?: string;
+  lastUpdateDate?: string; // This will be populated by fecha_lanzamiento
   creatorId?: string; // Username of the user who created the novel
 }
 
@@ -97,5 +97,6 @@ export interface CreateNovelInput {
 // For User "Accounts"
 export interface User {
   username: string;
-  email: string; // Changed from discordUsername
+  email: string;
+  password?: string; // Added password field - for simulation only, NOT secure
 }

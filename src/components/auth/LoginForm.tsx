@@ -10,7 +10,7 @@ import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
 import Link from 'next/link';
-import { LogIn, UserPlus } from 'lucide-react';
+import { LogIn, UserPlus, KeyRound } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/hooks/useAuth';
 
@@ -36,10 +36,10 @@ export default function LoginForm() {
   const { login, currentUser, isLoading: authIsLoading } = useAuth();
 
   useEffect(() => {
-    if (authIsLoading) return; // Wait for auth state to load
+    if (authIsLoading) return; 
 
     if (currentUser) {
-      router.push('/admin/dashboard'); // Redirect if already logged in
+      router.push('/admin/dashboard'); 
     }
   }, [currentUser, router, authIsLoading]);
 
@@ -51,8 +51,8 @@ export default function LoginForm() {
         variant: state.success ? 'default' : 'destructive',
       });
       if (state.success && state.username) {
-        login(state.username); // Update auth context/localStorage
-        router.push('/admin/dashboard'); // Redirect to dashboard
+        login(state.username); 
+        router.push('/admin/dashboard'); 
       }
     }
   }, [state, toast, login, router]);
@@ -71,16 +71,19 @@ export default function LoginForm() {
             Iniciar Sesión
           </CardTitle>
           <CardDescription>
-            Ingresa tu nombre de usuario para acceder a tu panel.
+            Ingresa tu nombre de usuario o correo electrónico y tu contraseña.
           </CardDescription>
         </CardHeader>
         <form action={formAction}>
           <CardContent className="space-y-6">
             <div className="space-y-2">
-              <Label htmlFor="username">Nombre de Usuario</Label>
-              <Input id="username" name="username" placeholder="Tu nombre de usuario" required />
+              <Label htmlFor="identifier">Nombre de Usuario o Correo Electrónico</Label>
+              <Input id="identifier" name="identifier" placeholder="Tu nombre de usuario o correo" required />
             </div>
-            {/* Password field would go here in a real system */}
+            <div className="space-y-2">
+              <Label htmlFor="password">Contraseña</Label>
+              <Input id="password" name="password" type="password" placeholder="Tu contraseña" required />
+            </div>
           </CardContent>
           <CardFooter className="flex flex-col gap-4 pt-6">
             <SubmitButton />

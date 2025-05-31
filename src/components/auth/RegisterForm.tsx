@@ -10,7 +10,7 @@ import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
 import Link from 'next/link';
-import { UserPlus, LogIn } from 'lucide-react';
+import { UserPlus, LogIn, KeyRound } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 
 const initialRegisterState = {
@@ -40,7 +40,6 @@ export default function RegisterForm() {
         variant: state.success ? 'default' : 'destructive',
       });
       if (state.success) {
-        // Optionally redirect to login page after successful registration
         router.push('/auth/login');
       }
     }
@@ -56,6 +55,7 @@ export default function RegisterForm() {
           </CardTitle>
           <CardDescription>
             Ingresa tus datos para crear una nueva cuenta. El nombre de usuario y el correo electrónico deben ser únicos.
+            La contraseña debe tener al menos 6 caracteres.
           </CardDescription>
         </CardHeader>
         <form action={formAction}>
@@ -68,9 +68,16 @@ export default function RegisterForm() {
             <div className="space-y-2">
               <Label htmlFor="email">Correo Electrónico</Label>
               <Input id="email" name="email" type="email" placeholder="Ej: tu_correo@ejemplo.com" required />
-               <p className="text-xs text-muted-foreground">Usaremos este correo para asociarlo a tu cuenta.</p>
             </div>
-            {/* Password field would go here in a real system */}
+            <div className="space-y-2">
+              <Label htmlFor="password">Contraseña</Label>
+              <Input id="password" name="password" type="password" placeholder="Tu contraseña" required />
+               <p className="text-xs text-muted-foreground">Mínimo 6 caracteres.</p>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="confirmPassword">Confirmar Contraseña</Label>
+              <Input id="confirmPassword" name="confirmPassword" type="password" placeholder="Confirma tu contraseña" required />
+            </div>
           </CardContent>
           <CardFooter className="flex flex-col gap-4 pt-6">
             <SubmitButton />
