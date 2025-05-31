@@ -8,12 +8,12 @@ export async function generateMetadata({ params }: { params: { novelId: string, 
   const data = await fetchChapter(params.novelId, params.chapterId);
   if (!data) {
     return { 
-      title: 'Chapter Not Found - NovaNexus',
+      title: 'Chapter Not Found - Kiqi!',
       description: 'The chapter you are looking for could not be found.',
     };
   }
   return {
-    title: `Chapter ${data.chapter.order}: ${data.chapter.title} - ${data.novel.title} - NovaNexus`,
+    title: `Chapter ${data.chapter.order}: ${data.chapter.title} - ${data.novel.title} - Kiqi!`,
     description: `Read Chapter ${data.chapter.order} of ${data.novel.title}.`,
   };
 }

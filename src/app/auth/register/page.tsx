@@ -3,7 +3,7 @@ import RegisterForm from '@/components/auth/RegisterForm';
 import type { Metadata } from 'next';
 
 export const metadata: Metadata = {
-  title: 'Crear Cuenta - NovaNexus',
+  title: 'Crear Cuenta - Kiqi!',
   description: 'Regístrate para empezar a gestionar tus novelas.',
 };
 

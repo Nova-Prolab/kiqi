@@ -42,8 +42,8 @@ const inter = Inter({ subsets: ['latin'], variable: '--font-inter', display: 'sw
 
 
 export const metadata: Metadata = {
-  title: 'NovaNexus',
-  description: 'Your portal to a universe of stories at NovaNexus.',
+  title: 'Kiqi!',
+  description: 'Your portal to a universe of stories at Kiqi!.',
 };
 
 export default function RootLayout({

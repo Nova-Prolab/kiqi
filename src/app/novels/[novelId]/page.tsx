@@ -7,10 +7,10 @@ import type { Novel } from '@/lib/types';
 export async function generateMetadata({ params }: { params: { novelId: string } }) {
   const novel = await fetchNovelById(params.novelId);
   if (!novel) {
-    return { title: 'Novel Not Found - NovaNexus' };
+    return { title: 'Novel Not Found - Kiqi!' };
   }
   return {
-    title: `${novel.title} - NovaNexus`,
+    title: `${novel.title} - Kiqi!`,
     description: novel.summary,
   };
 }

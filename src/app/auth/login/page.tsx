@@ -3,7 +3,7 @@ import LoginForm from '@/components/auth/LoginForm';
 import type { Metadata } from 'next';
 
 export const metadata: Metadata = {
-  title: 'Iniciar Sesión - NovaNexus',
+  title: 'Iniciar Sesión - Kiqi!',
   description: 'Accede a tu panel de administración de novelas.',
 };
 

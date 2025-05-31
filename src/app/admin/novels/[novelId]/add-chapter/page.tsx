@@ -72,7 +72,7 @@ export default function AddChapterToNovelPage({ params: routeParams }: { params:
   if (authIsLoading || isLoadingNovel || novel === undefined) {
     return (
       <section className="py-8">
-        <title>Gestionar Capítulos - NovaNexus</title>
+        <title>Gestionar Capítulos - Kiqi!</title>
         <div className="container mx-auto px-4 text-center flex flex-col items-center justify-center min-h-[calc(100vh-20rem)]">
           <Loader2 className="h-12 w-12 text-primary animate-spin mx-auto mb-4" />
           <p className="text-lg text-muted-foreground">Cargando información de la novela y autenticación...</p>
@@ -89,7 +89,7 @@ export default function AddChapterToNovelPage({ params: routeParams }: { params:
   if (!isAuthorized) {
     return (
       <section className="py-8">
-        <title>Acceso Denegado - NovaNexus</title>
+        <title>Acceso Denegado - Kiqi!</title>
         <div className="container mx-auto px-4 text-center max-w-md">
           <ShieldAlert className="h-12 w-12 text-destructive mx-auto mb-4" />
           <h1 className="text-2xl font-bold mb-2">Acceso Denegado</h1>
@@ -109,7 +109,7 @@ export default function AddChapterToNovelPage({ params: routeParams }: { params:
 
   return (
     <section className="py-8">
-       <title>{`Gestionar Capítulos: ${novel.title} - NovaNexus`}</title>
+       <title>{`Gestionar Capítulos: ${novel.title} - Kiqi!`}</title>
       <div className="container mx-auto px-4 max-w-3xl">
         <Button variant="outline" asChild className="mb-6">
           <Link href="/admin/dashboard">

@@ -2,7 +2,8 @@
 'use client';
 
 import Link from 'next/link';
-import { BookMarked, Settings, LogIn, UserPlus, LogOut, LayoutDashboard } from 'lucide-react';
+import Image from 'next/image';
+import { Settings, LogIn, UserPlus, LogOut, LayoutDashboard } from 'lucide-react';
 import { ModeToggle } from '@/components/layout/ModeToggle';
 import { Button } from '@/components/ui/button';
 import { useAuth } from '@/hooks/useAuth';
@@ -14,7 +15,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
+import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 
 
 export default function AppHeader() {
@@ -30,9 +31,15 @@ export default function AppHeader() {
     <header className="sticky top-0 z-50 w-full border-b border-border/40 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
       <div className="container flex h-16 items-center">
         <Link href="/" className="flex items-center space-x-2 mr-auto">
-          <BookMarked className="h-8 w-8 text-primary" />
+          <Image 
+            src="https://i.imgur.com/oDm44VN.png" 
+            alt="Kiqi! Logo" 
+            width={32} // Adjust as needed
+            height={32} // Adjust as needed
+            className="h-8 w-8" // Tailwind classes for responsive size
+          />
           <span className="font-bold text-xl text-primary tracking-tight">
-            NovaNexus
+            Kiqi!
           </span>
         </Link>
         
