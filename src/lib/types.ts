@@ -7,7 +7,8 @@ export interface Chapter {
   path?: string;
 }
 
-export type AgeRating = 'all' | 'pg' | 'teen' | 'mature' | 'adults';
+export const AGE_RATING_VALUES = ['all', 'pg', 'teen', 'mature', 'adults'] as const;
+export type AgeRating = typeof AGE_RATING_VALUES[number];
 
 export interface InfoJson {
   titulo: string;
@@ -98,7 +99,7 @@ export interface CreateNovelInput {
   translator?: string;
   releaseDate?: string;
   creatorId: string; // User's unique ID - now mandatory
-  // ageRating: AgeRating; // For future addition to form
+  ageRating: AgeRating; 
 }
 
 // For User "Accounts"
@@ -107,4 +108,20 @@ export interface User {
   username: string;
   email: string;
   password?: string; // Storing password in plain text - UNSAFE FOR PRODUCTION
+}
+
+// For Chapter Management
+export interface SaveChapterInput {
+    novelId: string;
+    chapterNumber: number;
+    chapterTitle?: string;
+    chapterContent: string;
+    // creatorId: string; // For server-side auth (future)
+}
+
+export interface ChapterUploadState {
+  message: string;
+  success: boolean;
+  uploadedFiles?: { name: string; status: 'success' | 'error'; reason?: string }[];
+  failedFiles?: { name: string; status: 'error'; reason?: string }[];
 }

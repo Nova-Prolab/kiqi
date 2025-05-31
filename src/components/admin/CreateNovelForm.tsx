@@ -1,7 +1,7 @@
 
 'use client';
 
-import { useActionState, useEffect, useRef } from 'react';
+import { useActionState, useEffect, useRef, useState } from 'react';
 import { useFormStatus } from 'react-dom';
 import { createNovelAction } from '@/actions/novelAdminActions';
 import { Button } from '@/components/ui/button';
@@ -9,11 +9,14 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from '@/hooks/use-toast';
 import Link from 'next/link';
-import { ArrowLeft, CheckCircle, AlertTriangle, BookPlus, ListChecks } from 'lucide-react';
+import { ArrowLeft, CheckCircle, AlertTriangle, BookPlus, ListChecks, ShieldQuestion } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { useRouter } from 'next/navigation';
+import type { AgeRating } from '@/lib/types';
+import { AGE_RATING_VALUES } from '@/lib/types';
 
 const initialNovelState = {
   message: '',
@@ -31,34 +34,40 @@ function SubmitNovelButton() {
   );
 }
 
+const ageRatingLabels: Record<AgeRating, string> = {
+  all: 'Todos (Todas las edades)',
+  pg: '+10 (Supervisión parental sugerida)',
+  teen: '+13 (Adolescentes)',
+  mature: '+17 (Maduro)',
+  adults: '+18 (Adultos)',
+};
+
 export default function CreateNovelForm() {
-  const [novelState, formAction] = useActionState(createNovelAction, initialNovelState);
+  const [novelState, formAction, isPending] = useActionState(createNovelAction, initialNovelState);
   const { toast } = useToast();
-  const { currentUser, isLoading: authIsLoading } = useAuth();
+  const { currentUser } = useAuth(); // isLoading from useAuth is handled by parent page
   const router = useRouter();
   const formRef = useRef<HTMLFormElement>(null);
+  const [selectedAgeRating, setSelectedAgeRating] = useState<AgeRating | ''>('');
+
 
   useEffect(() => {
-    if (!authIsLoading && !currentUser) {
-      router.push('/auth/login?redirect=/admin/create-novel');
-    }
-  }, [currentUser, authIsLoading, router]);
-
-  useEffect(() => {
-    if (novelState?.message) {
+    if (novelState?.message && !isPending) {
       toast({
         title: novelState.success ? 'Éxito en Creación de Información' : 'Error en Creación de Información',
         description: novelState.message,
         variant: novelState.success ? 'default' : 'destructive',
       });
       if (novelState.success) {
-        formRef.current?.reset(); // Reset form on successful novel info creation
+        formRef.current?.reset();
+        setSelectedAgeRating(''); 
       }
     }
-  }, [novelState, toast]);
+  }, [novelState, toast, isPending]);
 
-  if (authIsLoading || !currentUser) {
-    return <div className="flex justify-center items-center h-64"><p>Cargando o redirigiendo...</p></div>;
+  if (!currentUser) {
+    // This check is a fallback, parent page should handle redirection ideally
+    return <div className="flex justify-center items-center h-64"><p>Debes iniciar sesión para crear una novela.</p></div>;
   }
 
   return (
@@ -77,24 +86,46 @@ export default function CreateNovelForm() {
           </CardTitle>
           <CardDescription>
             Completa los detalles para añadir una nueva novela.
-            Esto creará el archivo de información de la novela. Después podrás gestionar sus capítulos.
+            Esto creará el archivo de información de la novela. Después podrás gestionar sus capítulos desde el panel de administración.
           </CardDescription>
         </CardHeader>
         <form action={formAction} ref={formRef}>
           <input type="hidden" name="creatorId" value={currentUser.id} />
+          <input type="hidden" name="ageRating" value={selectedAgeRating} />
           <CardContent className="space-y-6">
             <div className="space-y-2">
-              <Label htmlFor="title">Título de la Novela</Label>
+              <Label htmlFor="title">Título de la Novela <span className="text-destructive">*</span></Label>
               <Input id="title" name="title" placeholder="Ej: El Viaje Interminable" required />
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="author">Autor</Label>
+              <Label htmlFor="author">Autor <span className="text-destructive">*</span></Label>
               <Input id="author" name="author" placeholder="Ej: Nombre del Autor" required />
+            </div>
+            
+            <div className="space-y-2">
+              <Label htmlFor="ageRating">Clasificación de Edad <span className="text-destructive">*</span></Label>
+              <Select 
+                name="ageRatingSelect" /* Name on Select for UI, actual value via hidden input */
+                onValueChange={(value) => setSelectedAgeRating(value as AgeRating)}
+                value={selectedAgeRating}
+                required
+              >
+                <SelectTrigger className="w-full">
+                  <SelectValue placeholder="Selecciona una clasificación de edad" />
+                </SelectTrigger>
+                <SelectContent>
+                  {AGE_RATING_VALUES.map(rating => (
+                    <SelectItem key={rating} value={rating}>
+                      {ageRatingLabels[rating]}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="description">Descripción</Label>
+              <Label htmlFor="description">Descripción <span className="text-destructive">*</span></Label>
               <Textarea
                 id="description"
                 name="description"
@@ -131,6 +162,7 @@ export default function CreateNovelForm() {
               <Label htmlFor="releaseDate">Fecha de Lanzamiento (Opcional)</Label>
               <Input id="releaseDate" name="releaseDate" type="date" />
             </div>
+             <p className="text-xs text-muted-foreground"><span className="text-destructive">*</span> Campos obligatorios</p>
           </CardContent>
           <CardFooter className="flex flex-col items-start sm:flex-row sm:justify-end gap-4 pt-6">
             <SubmitNovelButton />
@@ -149,10 +181,13 @@ export default function CreateNovelForm() {
           <CardContent className="text-sm text-green-600 dark:text-green-400 space-y-2">
             <p>{novelState.message}</p>
             <p>
-              Ahora puedes{' '}
-              <Link href={`/admin/novels/${novelState.novelId}/add-chapter`} className="underline hover:text-primary">
+              Puedes{' '}
+              <Link href={`/admin/novels/${novelState.novelId}/add-chapter`} className="underline hover:text-primary font-medium">
                 ir a gestionar sus capítulos
-                <ListChecks className="inline-block ml-1.5 h-4 w-4" />
+              </Link>
+              {' '}o volver al{' '}
+              <Link href="/admin/dashboard" className="underline hover:text-primary font-medium">
+                panel de administración
               </Link>.
             </p>
           </CardContent>
