@@ -26,15 +26,16 @@ const PREDEFINED_CATEGORIES: string[] = [
 ];
 
 const PREDEFINED_TAGS: string[] = [
-  "destacado", "magia", "espadas", "reencarnación", "sistema", 
+  "magia", "espadas", "reencarnación", "sistema", 
   "cultivo", "harén", "protagonista astuto", "protagonista OP", "academia", 
   "monstruos", "tecnología avanzada", "viajes en el tiempo", "isekai", "supervivencia", 
   "venganza", "comedia romántica", "drama psicológico", "construcción de mundos", "elementos de juego",
   "no humano", "política", "guerra", "amistad", "familia", "traición", "poderes", "secretos",
   "antihéroe", "imperio", "nobleza", "IA", "realidad virtual", "dioses", "demonios"
+  // "destacado" is intentionally omitted from PREDEFINED_TAGS for filtering UI
 ];
 
-const ITEMS_PER_PAGE = 24; // Increased items per page due to smaller cards
+const ITEMS_PER_PAGE = 24;
 
 export default function NovelBrowser({ initialNovels }: NovelBrowserProps) {
   const searchParams = useSearchParams();
@@ -51,9 +52,9 @@ export default function NovelBrowser({ initialNovels }: NovelBrowserProps) {
     const query = searchParams.get('q');
     if (query) {
       setSearchTerm(query);
-      setCurrentPage(1);
-      const lowerQuery = query.toLowerCase();
+      setCurrentPage(1); // Reset page when query changes
 
+      const lowerQuery = query.toLowerCase();
       if (lowerQuery.startsWith('categoría:')) {
         const categoryValue = query.substring(10).trim();
         setSelectedCategory(categoryValue);
@@ -63,11 +64,18 @@ export default function NovelBrowser({ initialNovels }: NovelBrowserProps) {
         setSelectedTag(tagValue);
         setSelectedCategory(null);
       } else if (lowerQuery.startsWith('autor:') || lowerQuery.startsWith('traductor:')) {
+        // For author/translator searches via URL, we don't auto-select a category/tag badge
         setSelectedCategory(null);
         setSelectedTag(null);
       }
     }
   }, [searchParams]);
+
+  // Effect to reset current page to 1 if filters change
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [selectedCategory, selectedTag, searchTerm]);
+
 
   const featuredNovels = useMemo(() => {
     return initialNovels.filter(novel => 
@@ -76,21 +84,25 @@ export default function NovelBrowser({ initialNovels }: NovelBrowserProps) {
   }, [initialNovels]);
 
   const allUniqueCategories = useMemo(() => {
-    const categories = new Set<string>(PREDEFINED_CATEGORIES);
+    const categoriesFromNovels = new Set<string>();
     initialNovels.forEach(novel => {
       if (novel.categoria) {
-        categories.add(novel.categoria);
+        categoriesFromNovels.add(novel.categoria);
       }
     });
-    return Array.from(categories).sort();
+    return Array.from(new Set([...PREDEFINED_CATEGORIES, ...categoriesFromNovels])).sort();
   }, [initialNovels]);
 
   const allUniqueTags = useMemo(() => {
-    const tags = new Set<string>(PREDEFINED_TAGS);
+    const tagsFromNovels = new Set<string>();
     initialNovels.forEach(novel => {
-      novel.etiquetas?.forEach(tag => tags.add(tag));
+      novel.etiquetas?.forEach(tag => {
+        if (tag.toLowerCase() !== 'destacado') { 
+            tagsFromNovels.add(tag);
+        }
+      });
     });
-    return Array.from(tags).sort();
+    return Array.from(new Set([...PREDEFINED_TAGS, ...tagsFromNovels])).sort();
   }, [initialNovels]);
   
   const categoryCounts = useMemo(() => {
@@ -110,7 +122,9 @@ export default function NovelBrowser({ initialNovels }: NovelBrowserProps) {
     const counts: { [key: string]: number } = {};
     initialNovels.forEach(novel => {
       novel.etiquetas?.forEach(tag => {
-        counts[tag] = (counts[tag] || 0) + 1;
+        if (tag.toLowerCase() !== 'destacado') { 
+          counts[tag] = (counts[tag] || 0) + 1;
+        }
       });
     });
     PREDEFINED_TAGS.forEach(tag => {
@@ -120,7 +134,7 @@ export default function NovelBrowser({ initialNovels }: NovelBrowserProps) {
   }, [initialNovels]);
 
   const filteredNovels = useMemo(() => {
-    let novels = [...initialNovels];
+    let novelsToFilter = [...initialNovels]; 
     const lowerSearchTerm = searchTerm.toLowerCase();
 
     let authorQuery: string | null = null;
@@ -144,7 +158,7 @@ export default function NovelBrowser({ initialNovels }: NovelBrowserProps) {
     }
     generalQueryText = generalQueryText.trim();
 
-    novels = novels.filter(novel => {
+    novelsToFilter = novelsToFilter.filter(novel => {
       const activeCategoryFilter = categoryQueryFromSearch || selectedCategory;
       if (activeCategoryFilter && novel.categoria?.toLowerCase() !== activeCategoryFilter.toLowerCase()) {
         return false;
@@ -154,7 +168,7 @@ export default function NovelBrowser({ initialNovels }: NovelBrowserProps) {
       if (activeTagFilter && !novel.etiquetas?.map(t => t.toLowerCase()).includes(activeTagFilter.toLowerCase())) {
         return false;
       }
-
+      
       if (authorQuery && !novel.author.toLowerCase().includes(authorQuery)) {
         return false;
       }
@@ -167,9 +181,9 @@ export default function NovelBrowser({ initialNovels }: NovelBrowserProps) {
         const titleMatch = novel.title.toLowerCase().includes(generalQueryText);
         const authorGeneralMatch = !authorQuery && novel.author.toLowerCase().includes(generalQueryText);
         const translatorGeneralMatch = !translatorQuery && novel.traductor?.toLowerCase().includes(generalQueryText);
-
+        
         if (categoryQueryFromSearch || tagQueryFromSearch || authorQuery || translatorQuery) {
-          if(!titleMatch) return false;
+          if(!titleMatch && generalQueryText) return false;
         } else {
           if (!titleMatch && !authorGeneralMatch && !translatorGeneralMatch) {
             return false;
@@ -178,7 +192,7 @@ export default function NovelBrowser({ initialNovels }: NovelBrowserProps) {
       }
       return true;
     });
-    return novels;
+    return novelsToFilter;
   }, [initialNovels, searchTerm, selectedCategory, selectedTag]);
 
   const totalPages = Math.ceil(filteredNovels.length / ITEMS_PER_PAGE);
@@ -187,69 +201,21 @@ export default function NovelBrowser({ initialNovels }: NovelBrowserProps) {
     return filteredNovels.slice(startIndex, startIndex + ITEMS_PER_PAGE);
   }, [filteredNovels, currentPage]);
 
-  const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const newSearchTerm = e.target.value;
-    setSearchTerm(newSearchTerm);
-    setCurrentPage(1); 
-
-    const lowerNewSearchTerm = newSearchTerm.toLowerCase();
-    if (lowerNewSearchTerm.startsWith('categoría:')) {
-      const catVal = lowerNewSearchTerm.substring(10).trim();
-      setSelectedCategory(catVal); 
-      setSelectedTag(null);
-    } else if (lowerNewSearchTerm.startsWith('etiqueta:')) {
-      const tagVal = lowerNewSearchTerm.substring(9).trim();
-      setSelectedTag(tagVal);
-      setSelectedCategory(null);
-    } else if (!newSearchTerm) { // If search term is cleared
-        setSelectedCategory(null);
-        setSelectedTag(null);
-    }
-  };
-  
-  const handleCategorySelect = (category: string | null) => {
-    setSelectedCategory(category);
-    setSelectedTag(null); 
-    setCurrentPage(1);
-    if (category) {
-      setSearchTerm(`Categoría:${category}`);
-    } else {
-      setSearchTerm(''); 
-    }
-    router.push(`/?q=${category ? `Categoría:${encodeURIComponent(category)}` : ''}`, { scroll: false });
-  };
-
-  const handleTagSelect = (tag: string | null) => {
-    setSelectedTag(tag);
-    setSelectedCategory(null); 
-    setCurrentPage(1);
-    if (tag) {
-      setSearchTerm(`Etiqueta:${tag}`);
-    } else {
-      setSearchTerm(''); 
-    }
-    router.push(`/?q=${tag ? `Etiqueta:${encodeURIComponent(tag)}` : ''}`, { scroll: false });
-  };
-  
-  const clearAllFilters = () => {
-    setSelectedCategory(null);
-    setSelectedTag(null);
-    setSearchTerm('');
-    setCurrentPage(1);
-    router.push('/', { scroll: false });
-  }
-
-  const handlePageChange = (newPage: number) => {
-    setCurrentPage(newPage);
-    window.scrollTo(0, 0); 
-  };
-
-  useEffect(() => {
-    // Reset page to 1 if filters change
-    setCurrentPage(1);
-  }, [selectedCategory, selectedTag]);
+  const filteredNovelsTitle = useMemo(() => {
+    if (selectedCategory) return `Categoría: ${selectedCategory}`;
+    if (selectedTag) return `Etiqueta: ${selectedTag}`;
+    // Check specific search prefixes after general category/tag selections
+    const lowerSearch = searchTerm.toLowerCase();
+    if (lowerSearch.startsWith('categoría:')) return `Categoría: ${searchTerm.substring(10)}`;
+    if (lowerSearch.startsWith('etiqueta:')) return `Etiqueta: ${searchTerm.substring(9)}`;
+    if (lowerSearch.startsWith('autor:')) return `Autor: ${searchTerm.substring(6).split(' ')[0]}`;
+    if (lowerSearch.startsWith('traductor:')) return `Traductor: ${searchTerm.substring(10).split(' ')[0]}`;
+    if (searchTerm) return "Resultados de Búsqueda";
+    return "Todas las Novelas";
+  }, [searchTerm, selectedCategory, selectedTag]);
 
 
+  // Moved the `if (!mounted)` block to after all hook declarations
   if (!mounted) {
     return (
       <div className="space-y-8">
@@ -273,20 +239,65 @@ export default function NovelBrowser({ initialNovels }: NovelBrowserProps) {
     );
   }
 
+  const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const newSearchTerm = e.target.value;
+    setSearchTerm(newSearchTerm);
+
+    const lowerNewSearchTerm = newSearchTerm.toLowerCase();
+    if (lowerNewSearchTerm.startsWith('categoría:')) {
+      const catVal = newSearchTerm.substring(10).trim();
+      setSelectedCategory(catVal); 
+      setSelectedTag(null);
+    } else if (lowerNewSearchTerm.startsWith('etiqueta:')) {
+      const tagVal = newSearchTerm.substring(9).trim();
+      setSelectedTag(tagVal);
+      setSelectedCategory(null);
+    } else if (!newSearchTerm) { 
+        if(selectedCategory && searchTerm.toLowerCase().startsWith('categoría:')){
+            setSelectedCategory(null);
+        }
+        if(selectedTag && searchTerm.toLowerCase().startsWith('etiqueta:')){
+            setSelectedTag(null);
+        }
+    }
+  };
+  
+  const handleCategorySelect = (category: string | null) => {
+    setSelectedCategory(category);
+    setSelectedTag(null); 
+    if (category) {
+      setSearchTerm(`Categoría:${category}`);
+    } else {
+      setSearchTerm(''); 
+    }
+    router.push(`/?q=${category ? `Categoría:${encodeURIComponent(category)}` : ''}`, { scroll: false });
+  };
+
+  const handleTagSelect = (tag: string | null) => {
+    setSelectedTag(tag);
+    setSelectedCategory(null); 
+    if (tag) {
+      setSearchTerm(`Etiqueta:${tag}`);
+    } else {
+      setSearchTerm(''); 
+    }
+    router.push(`/?q=${tag ? `Etiqueta:${encodeURIComponent(tag)}` : ''}`, { scroll: false });
+  };
+  
+  const clearAllFilters = () => {
+    setSelectedCategory(null);
+    setSelectedTag(null);
+    setSearchTerm('');
+    router.push('/', { scroll: false });
+  }
+
+  const handlePageChange = (newPage: number) => {
+    setCurrentPage(newPage);
+    window.scrollTo(0, 0); 
+  };
+
   const activeFilterCount = [selectedCategory, selectedTag, searchTerm ? 'search' : null].filter(Boolean).length;
   const isFiltering = selectedCategory || selectedTag || searchTerm;
-
-  const filteredNovelsTitle = useMemo(() => {
-    if (selectedCategory) return `Categoría: ${selectedCategory}`;
-    if (selectedTag) return `Etiqueta: ${selectedTag}`;
-    if (searchTerm.toLowerCase().startsWith('categoría:')) return `Categoría: ${searchTerm.substring(10)}`;
-    if (searchTerm.toLowerCase().startsWith('etiqueta:')) return `Etiqueta: ${searchTerm.substring(9)}`;
-    if (searchTerm.toLowerCase().startsWith('autor:')) return `Autor: ${searchTerm.substring(6).split(' ')[0]}`;
-    if (searchTerm.toLowerCase().startsWith('traductor:')) return `Traductor: ${searchTerm.substring(10).split(' ')[0]}`;
-    if (searchTerm) return "Resultados de Búsqueda";
-    return "Todas las Novelas";
-  }, [searchTerm, selectedCategory, selectedTag]);
-
 
   return (
     <div className="space-y-10">
@@ -296,7 +307,7 @@ export default function NovelBrowser({ initialNovels }: NovelBrowserProps) {
             <Search className="absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-muted-foreground" />
             <Input
               type="search"
-              placeholder="Buscar por título, autor, traductor, categoría o etiqueta (ej: Autor:Nombre)..."
+              placeholder="Buscar por título, autor, traductor, o usar Categoría: / Etiqueta: / Autor: / Traductor:"
               className="w-full pl-12 pr-4 py-3 rounded-lg shadow-xl text-base focus:ring-2 focus:ring-primary border-border h-14 sm:h-16 text-lg"
               value={searchTerm}
               onChange={handleSearchChange}
@@ -326,11 +337,11 @@ export default function NovelBrowser({ initialNovels }: NovelBrowserProps) {
       <section>
         <h2 className="text-2xl sm:text-3xl font-bold text-primary mb-6">
             {filteredNovelsTitle}
-            {(isFiltering) && ` (${filteredNovels.length})`}
+            {(isFiltering || searchTerm) && ` (${filteredNovels.length})`}
         </h2>
         {paginatedNovels.length > 0 ? (
           <>
-            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4 sm:gap-5"> {/* Smaller cards grid */}
+            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4 sm:gap-5">
               {paginatedNovels.map((novel) => (
                 <NovelCard key={novel.id} novel={novel} />
               ))}
@@ -377,16 +388,17 @@ export default function NovelBrowser({ initialNovels }: NovelBrowserProps) {
       </section>
 
       <Separator className="my-10 sm:my-12" />
+        
+      {activeFilterCount > 0 && (
+        <div className="mb-6 text-center">
+            <Button variant="outline" onClick={clearAllFilters} className="w-full sm:w-auto">
+                <FilterX className="mr-2 h-4 w-4" />
+                Limpiar Filtros ({activeFilterCount})
+            </Button>
+        </div>
+      )}
 
       <section className="space-y-8">
-         {activeFilterCount > 0 && (
-            <div className="mb-6 text-center">
-                <Button variant="outline" onClick={clearAllFilters} className="w-full sm:w-auto">
-                    <FilterX className="mr-2 h-4 w-4" />
-                    Limpiar Filtros ({activeFilterCount})
-                </Button>
-            </div>
-        )}
         <Card>
           <CardHeader>
             <CardTitle className="text-lg flex items-center">
@@ -399,6 +411,9 @@ export default function NovelBrowser({ initialNovels }: NovelBrowserProps) {
               variant={selectedCategory === null && !searchTerm.toLowerCase().startsWith('categoría:') ? 'default' : 'outline'}
               className="cursor-pointer text-sm px-3 py-1.5"
               onClick={() => handleCategorySelect(null)}
+              role="button"
+              tabIndex={0}
+              onKeyDown={(e) => e.key === 'Enter' && handleCategorySelect(null)}
             >
               Todas ({initialNovels.length})
             </Badge>
@@ -409,6 +424,9 @@ export default function NovelBrowser({ initialNovels }: NovelBrowserProps) {
                 variant={selectedCategory === category || searchTerm.toLowerCase() === `categoría:${category.toLowerCase()}` ? 'default' : 'outline'}
                 className="cursor-pointer text-sm px-3 py-1.5"
                 onClick={() => handleCategorySelect(category)}
+                role="button"
+                tabIndex={0}
+                onKeyDown={(e) => e.key === 'Enter' && handleCategorySelect(category)}
               >
                 {category} ({categoryCounts[category] || 0})
               </Badge>
@@ -428,17 +446,22 @@ export default function NovelBrowser({ initialNovels }: NovelBrowserProps) {
                     variant={selectedTag === null && !searchTerm.toLowerCase().startsWith('etiqueta:') ? 'default' : 'outline'}
                     className="cursor-pointer text-sm px-3 py-1.5"
                     onClick={() => handleTagSelect(null)}
+                    role="button"
+                    tabIndex={0}
+                    onKeyDown={(e) => e.key === 'Enter' && handleTagSelect(null)}
                 >
                     Todas ({initialNovels.length})
                 </Badge>
             {allUniqueTags.map(tag => (
                 (tagCounts[tag] > 0 || PREDEFINED_TAGS.includes(tag)) && 
-                tag.toLowerCase() !== 'destacado' && 
                 <Badge
                     key={tag}
                     variant={selectedTag === tag || searchTerm.toLowerCase() === `etiqueta:${tag.toLowerCase()}` ? 'default' : 'outline'}
                     className="cursor-pointer text-sm px-3 py-1.5"
                     onClick={() => handleTagSelect(tag)}
+                    role="button"
+                    tabIndex={0}
+                    onKeyDown={(e) => e.key === 'Enter' && handleTagSelect(tag)}
                 >
                     {tag} ({tagCounts[tag] || 0})
                 </Badge>
@@ -449,3 +472,4 @@ export default function NovelBrowser({ initialNovels }: NovelBrowserProps) {
     </div>
   );
 }
+
