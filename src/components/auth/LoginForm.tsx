@@ -10,12 +10,11 @@ import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
 import Link from 'next/link';
-import { LogIn, UserPlus, KeyRound } from 'lucide-react';
-import { useRouter, useSearchParams } from 'next/navigation'; // Import useSearchParams
+import { LogIn, UserPlus } from 'lucide-react';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { useAuth } from '@/hooks/useAuth';
 import type { User } from '@/lib/types';
 
-// Adjust initialLoginState to expect a user object on success
 const initialLoginState: {
   message: string;
   success: boolean;
@@ -39,10 +38,9 @@ export default function LoginForm() {
   const [state, formAction] = useActionState(loginUserAction, initialLoginState);
   const { toast } = useToast();
   const router = useRouter();
-  const searchParams = useSearchParams(); // Get search params
+  const searchParams = useSearchParams();
   const { login, currentUser, isLoading: authIsLoading } = useAuth();
 
-  // This useEffect handles the result of the login form submission
   useEffect(() => {
     if (state?.message) {
       toast({
@@ -51,30 +49,31 @@ export default function LoginForm() {
         variant: state.success ? 'default' : 'destructive',
       });
       if (state.success && state.user) {
-        login(state.user); // Update auth state
-        // DO NOT redirect here. Let the useEffect below handle it after currentUser updates.
+        login(state.user); // Update auth state for other components like AppHeader
+
+        // Use requestAnimationFrame to ensure state updates are processed before redirect
+        requestAnimationFrame(() => {
+          const redirectUrl = searchParams.get('redirect') || '/admin/dashboard';
+          router.push(redirectUrl);
+        });
       }
     }
-  }, [state, toast, login]);
+  }, [state, toast, login, router, searchParams]);
 
-  // This useEffect handles redirection based on the currentUser state
+  // This useEffect handles redirecting if the user is already logged in when visiting the page
   useEffect(() => {
-    if (authIsLoading) return;
-
-    if (currentUser) {
-      // If user is logged in, redirect them.
-      // Prioritize 'redirect' query param, then default to dashboard.
+    if (!authIsLoading && currentUser) {
+      // If already logged in (e.g. navigating back to /login), redirect away
       const redirectUrl = searchParams.get('redirect') || '/admin/dashboard';
       router.push(redirectUrl);
     }
-  }, [currentUser, router, authIsLoading, searchParams]);
+  }, [currentUser, authIsLoading, router, searchParams]);
 
 
-  if (authIsLoading && !currentUser) { // Show loader only if loading and no user yet
+  if (authIsLoading && !currentUser) {
       return <div className="flex justify-center items-center h-32"><p>Cargando...</p></div>;
   }
   // If already logged in (currentUser is set), the useEffect above will redirect.
-  // This prevents showing the form闪烁.
 
   return (
     <div className="max-w-md mx-auto">

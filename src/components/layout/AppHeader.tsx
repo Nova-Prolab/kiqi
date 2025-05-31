@@ -49,38 +49,45 @@ export default function AppHeader() {
   };
 
   const handleLogoClick = () => {
-    if (easterEggActive) return; // Don't count clicks if easter egg is already active
-
-    const newCount = logoClickCount + 1;
-    setLogoClickCount(newCount);
-
-    if (newCount >= EASTER_EGG_TRIGGER_COUNT) {
-      setEasterEggActive(true);
-      setLogoClickCount(0); // Reset count
-
-      if (easterEggTimeoutRef.current) {
-        clearTimeout(easterEggTimeoutRef.current);
-      }
-      easterEggTimeoutRef.current = setTimeout(() => {
-        setEasterEggActive(false);
-      }, EASTER_EGG_DURATION);
-    }
+    if (easterEggActive) return;
+    setLogoClickCount(prevCount => prevCount + 1);
   };
+
+  useEffect(() => {
+    if (logoClickCount >= EASTER_EGG_TRIGGER_COUNT && !easterEggActive) {
+      setEasterEggActive(true);
+      setLogoClickCount(0);
+    }
+  }, [logoClickCount, easterEggActive]);
 
   useEffect(() => {
     if (easterEggActive) {
       document.documentElement.classList.add('easter-egg-mode');
+      
+      if (easterEggTimeoutRef.current) {
+        clearTimeout(easterEggTimeoutRef.current);
+      }
+      
+      easterEggTimeoutRef.current = setTimeout(() => {
+        setEasterEggActive(false);
+      }, EASTER_EGG_DURATION);
     } else {
       document.documentElement.classList.remove('easter-egg-mode');
+      if (easterEggTimeoutRef.current) {
+        clearTimeout(easterEggTimeoutRef.current);
+        easterEggTimeoutRef.current = null;
+      }
     }
 
-    // Cleanup timeout on unmount
     return () => {
       if (easterEggTimeoutRef.current) {
         clearTimeout(easterEggTimeoutRef.current);
       }
-      // Ensure class is removed if component unmounts while active
-      document.documentElement.classList.remove('easter-egg-mode');
+      // If unmounting while easter egg was active (based on the state when effect was set up)
+      // ensure class is removed. This is important for navigation.
+      if (easterEggActive && document.documentElement.classList.contains('easter-egg-mode')) {
+         document.documentElement.classList.remove('easter-egg-mode');
+      }
     };
   }, [easterEggActive]);
 
@@ -96,7 +103,7 @@ export default function AppHeader() {
               width={64}
               height={64}
               className="h-16 w-16" 
-              priority // Prioritize logo loading
+              priority
             />
           </Link>
           <Button asChild variant="outline" className="ml-4 hidden sm:flex">
@@ -112,7 +119,6 @@ export default function AppHeader() {
         </nav>
 
         <div className="flex items-center space-x-2 ml-4">
-           {/* Mobile Discord Button - Shows as icon only if there isn't space */}
            <Button asChild variant="ghost" size="icon" className="sm:hidden">
             <a href="https://discord.gg/zQzV4ekTVV" target="_blank" rel="noopener noreferrer" aria-label="Unirse a Discord">
               <DiscordIcon className="h-5 w-5" />
@@ -145,7 +151,7 @@ export default function AppHeader() {
                 </DropdownMenuItem>
                 <DropdownMenuItem asChild>
                     <Link href="/admin/create-novel">
-                        <Settings className="mr-2 h-4 w-4" /> {/* Changed icon for variety */}
+                        <Settings className="mr-2 h-4 w-4" />
                         <span>Crear Novela</span>
                     </Link>
                 </DropdownMenuItem>
