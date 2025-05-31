@@ -2,7 +2,7 @@
 'use client';
 
 import ManageNovelChapters from '@/components/admin/ManageNovelChapters';
-import { useRouter, usePathname, notFound }_from_ 'next/navigation';
+import { useRouter, usePathname, notFound } from 'next/navigation';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { ArrowLeft, Loader2, ShieldAlert } from 'lucide-react';
@@ -42,6 +42,9 @@ export default function AddChapterPageClient({ novel: initialNovel }: AddChapter
         setIsAuthorized(false);
       }
     } else {
+      // If initialNovel is null/undefined from the server, it means it wasn't found or env vars failed.
+      // The server component page.tsx should have already called notFound().
+      // This client component will also call notFound() defensively if initialNovel isn't truthy after auth.
       notFound();
     }
     setIsCheckingAuth(false);
@@ -61,14 +64,17 @@ export default function AddChapterPageClient({ novel: initialNovel }: AddChapter
   }
 
   if (!novel) {
+    // This handles the case where initialNovel was null, or if anything else unexpected happened.
+    // The parent page.tsx (Server Component) is the primary place to call notFound() for data fetching issues.
     console.error("AddChapterPageClient: novel es null o undefined después de la carga y autenticación.");
     notFound();
-    return null;
+    return null; // Return null or a fallback UI because notFound() might not immediately stop rendering here.
   }
 
   if (!currentUser) {
+    // This should ideally be caught by the useEffect redirect, but as a fallback:
     console.error("AddChapterPageClient: currentUser es null después de la carga y autenticación.");
-    router.push(`/auth/login?redirect=${pathname}`);
+    // router.push(`/auth/login?redirect=${pathname}`); // Already handled in useEffect
     return <p>Redirigiendo a inicio de sesión...</p>;
   }
 
