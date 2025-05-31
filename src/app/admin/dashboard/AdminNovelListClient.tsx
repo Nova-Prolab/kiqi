@@ -185,7 +185,7 @@ export default function AdminNovelListClient({ novels: allFetchedNovels }: Admin
                     <AlertDialogDescription>
                       ¿Estás seguro de que quieres eliminar la novela "{novel.title}"?
                       <br />
-                      Esta acción es irreversible y solo eliminará su información de la aplicación (<code>info.json</code>). Los archivos de capítulo permanecerán en el repositorio.
+                      Esta acción es irreversible.
                     </AlertDialogDescription>
                   </AlertDialogHeader>
                   <AlertDialogFooter>
