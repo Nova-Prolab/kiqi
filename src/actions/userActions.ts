@@ -4,6 +4,7 @@
 import { z } from 'zod';
 import { createFileInRepo, fetchFileContent, fetchFromGitHub } from '@/lib/github';
 import type { User } from '@/lib/types';
+import dns from 'node:dns/promises'; // For MX record lookup
 
 // Define GitHubFile interface locally if not centrally available and needed for fetchFromGitHub response
 interface GitHubFile {
@@ -16,7 +17,7 @@ interface GitHubFile {
 
 const registerUserSchema = z.object({
   username: z.string().min(3, "El nombre de usuario debe tener al menos 3 caracteres.").regex(/^[a-zA-Z0-9_.-]+$/, "Nombre de usuario inválido. Solo letras, números, '_', '-', '.' son permitidos."),
-  email: z.string().email("Correo electrónico inválido."),
+  email: z.string().email("Formato de correo electrónico inválido."),
 });
 
 export async function registerUserAction(
@@ -40,6 +41,35 @@ export async function registerUserAction(
   const { username, email } = validatedFields.data;
   const filePath = `users/${username}.json`;
 
+  // New: MX Record Check for the email's domain
+  try {
+    const domain = email.substring(email.lastIndexOf('@') + 1);
+    if (!domain) { // Should be caught by zod's email validation, but as an extra check
+        return {
+            message: "El formato del correo electrónico es inválido (no se pudo extraer el dominio).",
+            success: false,
+        };
+    }
+    const addresses = await dns.resolveMx(domain);
+    if (!addresses || addresses.length === 0) {
+      return {
+        message: `El dominio del correo electrónico '${domain}' no parece estar configurado para recibir correos. Por favor, usa un correo electrónico válido.`,
+        success: false,
+      };
+    }
+  } catch (error: any) {
+    console.error(`[MX Check Error] Failed to resolve MX records for domain in email '${email}':`, error.code || error.message);
+    // Common errors: ENODATA (no MX records for domain), ENOTFOUND (domain doesn't exist)
+    let userMessage = "No se pudo verificar el dominio del correo electrónico. Por favor, inténtalo de nuevo más tarde o usa un correo diferente.";
+    if (error.code === 'ENODATA' || error.code === 'ENOTFOUND') {
+        userMessage = `El dominio del correo electrónico '${email.substring(email.lastIndexOf('@') + 1)}' no parece ser válido o no está configurado para recibir correos.`;
+    }
+    return {
+      message: userMessage,
+      success: false,
+    };
+  }
+
   // Check if user file (username) already exists
   try {
     const existingUserFile = await fetchFileContent(filePath);
@@ -47,8 +77,8 @@ export async function registerUserAction(
       return { message: `El nombre de usuario '${username}' ya está en uso. Por favor, elige otro.`, success: false };
     }
   } catch (error) {
-    // Assuming fetchFileContent returns null for 404s and doesn't throw.
-    // If it throws for non-404, an error message will be shown by the generic catch block below.
+    // Assuming fetchFileContent returns null for 404s and doesn't throw for that.
+    // If it throws for non-404, it will be caught by the generic catch block below.
   }
 
   // Check if email already exists in another user's file
@@ -76,7 +106,6 @@ export async function registerUserAction(
      console.error("Error fetching user list for email check:", error);
      // Potentially return a generic error or allow registration if user list can't be fetched?
      // For now, let it proceed to the creation attempt which might fail or succeed.
-     // Depending on requirements, you might want to make this a hard fail.
   }
 
 
