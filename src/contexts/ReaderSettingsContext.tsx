@@ -2,11 +2,12 @@
 "use client";
 
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
-import type { ReaderTheme, ReaderFontSize, ReaderFontFamily, ReaderSettings } from '@/lib/types';
+import type { ReaderTheme, ReaderFontSize, ReaderFontFamily, ReaderSettings, ReaderLineHeight } from '@/lib/types';
 
 interface ReaderSettingsContextType extends ReaderSettings {
   setTheme: (theme: ReaderTheme) => void;
   setFontSize: (fontSize: ReaderFontSize) => void;
+  setLineHeight: (lineHeight: ReaderLineHeight) => void;
   setIsImmersive: (isImmersive: boolean) => void;
   setCustomBackground: (color: string) => void;
   setCustomForeground: (color: string) => void;
@@ -14,6 +15,7 @@ interface ReaderSettingsContextType extends ReaderSettings {
   setCustomFontFamily: (fontName: string) => void;
   fontClass: string; // For font size
   themeClass: string; // For pre-defined themes
+  lineHeightClass: string; // For line height
   readerFontFamilyStyle: React.CSSProperties; // For applying font family
 }
 
@@ -25,6 +27,13 @@ const FONT_SIZE_MAP: Record<ReaderFontSize, string> = {
   'lg': 'text-lg',
   'xl': 'text-xl',
   '2xl': 'text-2xl',
+};
+
+const LINE_HEIGHT_MAP: Record<ReaderLineHeight, string> = {
+  'tight': 'leading-tight',   // 1.25
+  'normal': 'leading-normal', // 1.5
+  'relaxed': 'leading-relaxed', // 1.625
+  'loose': 'leading-loose',   // 2
 };
 
 const THEME_CLASS_MAP: Record<Exclude<ReaderTheme, 'custom'>, string> = {
@@ -56,12 +65,14 @@ const DEFAULT_CUSTOM_BACKGROUND = '#FFFFFF';
 const DEFAULT_CUSTOM_FOREGROUND = '#000000';
 const DEFAULT_FONT_FAMILY: ReaderFontFamily = 'lora';
 const DEFAULT_CUSTOM_FONT_FAMILY = 'Georgia, serif';
+const DEFAULT_LINE_HEIGHT: ReaderLineHeight = 'normal';
 
 
 export const ReaderSettingsProvider = ({ children }: { children: ReactNode }) => {
   const [isMounted, setIsMounted] = useState(false);
   const [theme, setThemeState] = useState<ReaderTheme>('light');
   const [fontSize, setFontSizeState] = useState<ReaderFontSize>('base');
+  const [lineHeight, setLineHeightState] = useState<ReaderLineHeight>(DEFAULT_LINE_HEIGHT);
   const [isImmersive, setIsImmersiveState] = useState<boolean>(false);
   const [customBackground, setCustomBackgroundState] = useState<string>(DEFAULT_CUSTOM_BACKGROUND);
   const [customForeground, setCustomForegroundState] = useState<string>(DEFAULT_CUSTOM_FOREGROUND);
@@ -74,6 +85,7 @@ export const ReaderSettingsProvider = ({ children }: { children: ReactNode }) =>
     try {
       const storedTheme = localStorage.getItem('readerTheme') as ReaderTheme | null;
       const storedFontSize = localStorage.getItem('readerFontSize') as ReaderFontSize | null;
+      const storedLineHeight = localStorage.getItem('readerLineHeight') as ReaderLineHeight | null;
       const storedImmersive = localStorage.getItem('readerImmersive');
       const storedCustomBg = localStorage.getItem('customReaderBg');
       const storedCustomFg = localStorage.getItem('customReaderFg');
@@ -82,6 +94,7 @@ export const ReaderSettingsProvider = ({ children }: { children: ReactNode }) =>
 
       if (storedTheme && (THEME_CLASS_MAP[storedTheme as Exclude<ReaderTheme, 'custom'>] || storedTheme === 'custom')) setThemeState(storedTheme);
       if (storedFontSize && FONT_SIZE_MAP[storedFontSize]) setFontSizeState(storedFontSize);
+      if (storedLineHeight && LINE_HEIGHT_MAP[storedLineHeight]) setLineHeightState(storedLineHeight);
       if (storedImmersive) setIsImmersiveState(JSON.parse(storedImmersive) as boolean);
       if (storedCustomBg) setCustomBackgroundState(storedCustomBg);
       if (storedCustomFg) setCustomForegroundState(storedCustomFg);
@@ -101,6 +114,11 @@ export const ReaderSettingsProvider = ({ children }: { children: ReactNode }) =>
   const setFontSize = (newFontSize: ReaderFontSize) => {
     setFontSizeState(newFontSize);
     if (isMounted) localStorage.setItem('readerFontSize', newFontSize);
+  };
+
+  const setLineHeight = (newLineHeight: ReaderLineHeight) => {
+    setLineHeightState(newLineHeight);
+    if (isMounted) localStorage.setItem('readerLineHeight', newLineHeight);
   };
 
   const setIsImmersive = (newIsImmersive: boolean) => {
@@ -131,6 +149,7 @@ export const ReaderSettingsProvider = ({ children }: { children: ReactNode }) =>
 
   const fontClass = FONT_SIZE_MAP[fontSize] || FONT_SIZE_MAP['base'];
   const themeClass = theme === 'custom' ? '' : (THEME_CLASS_MAP[theme as Exclude<ReaderTheme, 'custom'>] || THEME_CLASS_MAP['light']);
+  const lineHeightClass = LINE_HEIGHT_MAP[lineHeight] || LINE_HEIGHT_MAP['normal'];
   
   let currentReaderFontFamily: string;
   if (fontFamily === 'custom') {
@@ -148,6 +167,7 @@ export const ReaderSettingsProvider = ({ children }: { children: ReactNode }) =>
   const contextValue = {
     theme,
     fontSize,
+    lineHeight,
     isImmersive,
     customBackground: customBackground || DEFAULT_CUSTOM_BACKGROUND,
     customForeground: customForeground || DEFAULT_CUSTOM_FOREGROUND,
@@ -155,6 +175,7 @@ export const ReaderSettingsProvider = ({ children }: { children: ReactNode }) =>
     customFontFamily: customFontFamily || DEFAULT_CUSTOM_FONT_FAMILY,
     setTheme,
     setFontSize,
+    setLineHeight,
     setIsImmersive,
     setCustomBackground,
     setCustomForeground,
@@ -162,6 +183,7 @@ export const ReaderSettingsProvider = ({ children }: { children: ReactNode }) =>
     setCustomFontFamily,
     fontClass,
     themeClass,
+    lineHeightClass,
     readerFontFamilyStyle,
   };
   
@@ -171,6 +193,7 @@ export const ReaderSettingsProvider = ({ children }: { children: ReactNode }) =>
      const initialContextValue = {
         theme: 'light' as ReaderTheme,
         fontSize: 'base' as ReaderFontSize,
+        lineHeight: DEFAULT_LINE_HEIGHT,
         isImmersive: false,
         customBackground: DEFAULT_CUSTOM_BACKGROUND,
         customForeground: DEFAULT_CUSTOM_FOREGROUND,
@@ -178,6 +201,7 @@ export const ReaderSettingsProvider = ({ children }: { children: ReactNode }) =>
         customFontFamily: DEFAULT_CUSTOM_FONT_FAMILY,
         setTheme: () => {},
         setFontSize: () => {},
+        setLineHeight: () => {},
         setIsImmersive: () => {},
         setCustomBackground: () => {},
         setCustomForeground: () => {},
@@ -185,6 +209,7 @@ export const ReaderSettingsProvider = ({ children }: { children: ReactNode }) =>
         setCustomFontFamily: () => {},
         fontClass: FONT_SIZE_MAP['base'],
         themeClass: THEME_CLASS_MAP['light'],
+        lineHeightClass: LINE_HEIGHT_MAP[DEFAULT_LINE_HEIGHT],
         readerFontFamilyStyle: initialFontFamilyStyle,
      }
      return <ReaderSettingsContext.Provider value={initialContextValue}>{children}</ReaderSettingsContext.Provider>;

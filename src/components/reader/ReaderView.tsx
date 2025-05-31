@@ -24,14 +24,15 @@ const DOUBLE_CLICK_REVEAL_TIMEOUT = 2500;
 
 export default function ReaderView({ novel, currentChapter }: ReaderViewProps) {
   const {
-    fontClass, // Font size class
-    themeClass, // Pre-defined theme class
+    fontClass, 
+    themeClass, 
+    lineHeightClass, // Added lineHeightClass
     isImmersive,
     setIsImmersive,
-    theme, // Current theme (string like 'light', 'dark', 'custom')
+    theme, 
     customBackground,
     customForeground,
-    readerFontFamilyStyle, // Object like { fontFamily: 'var(--font-lora)' } or { fontFamily: 'Arial, sans-serif'}
+    readerFontFamilyStyle, 
   } = useReaderSettings();
 
   const chapterKey = `${novel.id}_${currentChapter.id}`;
@@ -67,7 +68,7 @@ export default function ReaderView({ novel, currentChapter }: ReaderViewProps) {
         novelId: novel.id,
         novelTitle: novel.title,
         id: currentChapter.id,
-        title: currentChapter.title,
+        title: currentChapter.title || `Capítulo ${currentChapter.order}`,
         order: currentChapter.order,
       });
     }
@@ -133,7 +134,7 @@ export default function ReaderView({ novel, currentChapter }: ReaderViewProps) {
 
   const handleToggleImmersive = () => {
     setIsImmersive(!isImmersive);
-    if (!isImmersive) { // When turning immersive OFF
+    if (!isImmersive) { 
       setIsMouseOverImmersiveControls(false);
       setForceShowImmersiveControlsByDoubleClick(false);
     }
@@ -179,9 +180,9 @@ export default function ReaderView({ novel, currentChapter }: ReaderViewProps) {
 
   const actualImmersiveControlsVisible = isImmersive
     ? (isMouseOverImmersiveControls || forceShowImmersiveControlsByDoubleClick)
-    : true; // Controls always "visible" in terms of logic if not immersive
+    : true; 
 
-  const readingAreaBaseClasses = `reading-content-area ${fontClass} prose prose-sm sm:prose md:prose-lg max-w-4xl mx-auto selection:bg-accent selection:text-accent-foreground p-6 md:p-10 lg:p-12`;
+  const readingAreaBaseClasses = `reading-content-area ${fontClass} ${lineHeightClass} prose prose-sm sm:prose md:prose-lg max-w-4xl mx-auto selection:bg-accent selection:text-accent-foreground p-6 md:p-10 lg:p-12`;
   
   const readingAreaDynamicClasses = theme === 'custom' ? '' : themeClass;
 
@@ -194,9 +195,8 @@ export default function ReaderView({ novel, currentChapter }: ReaderViewProps) {
   }
   
   if (!isMounted) {
-    // Basic skeleton for loading state
     return (
-      <div className="flex flex-col h-[calc(100vh-var(--header-height,8rem))]">
+      <div className={`flex flex-col ${isImmersive ? 'h-screen' : 'h-[calc(100vh-var(--header-height,8rem))]'}`}>
         <div className="p-4 border-b bg-muted animate-pulse h-20 rounded-t-lg"></div>
         <div className="p-2 bg-muted/80 animate-pulse h-14"></div>
         <div className="flex-grow bg-muted/50 animate-pulse p-6">
@@ -226,7 +226,7 @@ export default function ReaderView({ novel, currentChapter }: ReaderViewProps) {
         <div
           className="fixed top-0 left-0 w-full h-16 z-[105] cursor-default"
           onDoubleClick={handleImmersiveTopAreaDoubleClick}
-          aria-hidden="true" // For accessibility, as it's just a trigger zone
+          aria-hidden="true"
         />
       )}
 
@@ -253,7 +253,7 @@ export default function ReaderView({ novel, currentChapter }: ReaderViewProps) {
           dangerouslySetInnerHTML={chapterContentToDisplay}
         />
 
-        <Card className={`mx-auto max-w-4xl my-6 ${isImmersive ? 'bg-transparent border-none shadow-none text-muted-foreground' : 'shadow rounded-lg border'}`}>
+        <Card className={`mx-auto max-w-4xl my-6 ${isImmersive ? 'bg-transparent border-none shadow-none text-muted-foreground/80' : 'shadow rounded-lg border'}`}>
           <nav className="p-4 flex justify-between items-center">
             {prevChapter ? (
               <Button variant="outline" asChild>

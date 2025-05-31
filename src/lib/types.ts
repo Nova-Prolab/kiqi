@@ -40,6 +40,7 @@ export interface Novel {
 // For Reader Settings Context
 export type ReaderTheme = 'light' | 'dark' | 'sepia' | 'midnight' | 'paper' | 'forest' | 'custom';
 export type ReaderFontSize = 'sm' | 'base' | 'lg' | 'xl' | '2xl';
+export type ReaderLineHeight = 'tight' | 'normal' | 'relaxed' | 'loose';
 export type ReaderFontFamily =
   | 'system-serif'
   | 'system-sans'
@@ -60,8 +61,9 @@ export type ReaderFontFamily =
 export interface ReaderSettings {
   theme: ReaderTheme;
   fontSize: ReaderFontSize;
-  isImmersive: boolean;
+  lineHeight: ReaderLineHeight;
   fontFamily: ReaderFontFamily;
+  isImmersive: boolean;
   customFontFamily?: string;
   customBackground?: string;
   customForeground?: string;
@@ -91,7 +93,7 @@ export interface CreateNovelInput {
   tags?: string; // Comma-separated string
   translator?: string;
   releaseDate?: string;
-  creatorId?: string; // User's unique ID
+  creatorId: string; // User's unique ID - now mandatory
 }
 
 // For User "Accounts"

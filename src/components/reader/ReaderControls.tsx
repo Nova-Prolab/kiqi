@@ -2,7 +2,7 @@
 'use client';
 
 import { useReaderSettings } from '@/contexts/ReaderSettingsContext';
-import type { ReaderTheme, ReaderFontSize, ReaderFontFamily } from '@/lib/types';
+import type { ReaderTheme, ReaderFontSize, ReaderFontFamily, ReaderLineHeight } from '@/lib/types';
 import { Button } from '@/components/ui/button';
 import { 
   DropdownMenu, 
@@ -12,11 +12,7 @@ import {
   DropdownMenuSeparator, 
   DropdownMenuTrigger, 
   DropdownMenuRadioGroup, 
-  DropdownMenuRadioItem,
-  DropdownMenuSub,
-  DropdownMenuSubTrigger,
-  DropdownMenuSubContent,
-  DropdownMenuPortal
+  DropdownMenuRadioItem
 } from '@/components/ui/dropdown-menu';
 import { 
   Settings2, 
@@ -34,8 +30,9 @@ import {
   MoonStar, 
   Paintbrush, 
   BookOpen,
-  Type, // Icon for Font selection
-  CaseSensitive // Icon for custom font input
+  CaseSensitive,
+  AlignJustify, // For Line Height
+  ALargeSmall   // For Font Size
 } from 'lucide-react';
 import React, { useState, useEffect, ChangeEvent } from 'react';
 import ChapterSummaryDialog from './ChapterSummaryDialog';
@@ -67,26 +64,33 @@ interface ReaderControlsProps {
 }
 
 const FONT_SIZES: { label: string, value: ReaderFontSize }[] = [
-  { label: 'Sml', value: 'sm' },
-  { label: 'Base', value: 'base' },
-  { label: 'Lrg', value: 'lg' },
-  { label: 'XL', value: 'xl' },
-  { label: 'XXL', value: '2xl' },
+  { label: 'Pequeño', value: 'sm' },
+  { label: 'Normal', value: 'base' },
+  { label: 'Grande', value: 'lg' },
+  { label: 'Muy Grande', value: 'xl' },
+  { label: 'Extra Grande', value: '2xl' },
+];
+
+const LINE_HEIGHTS: { label: string, value: ReaderLineHeight }[] = [
+    { label: 'Estrecho', value: 'tight'},
+    { label: 'Normal', value: 'normal' },
+    { label: 'Relajado', value: 'relaxed' },
+    { label: 'Amplio', value: 'loose' },
 ];
 
 const THEMES: { label: string, value: ReaderTheme, icon: React.ElementType }[] = [
-  { label: 'Light', value: 'light', icon: Sun },
+  { label: 'Claro', value: 'light', icon: Sun },
   { label: 'Sepia', value: 'sepia', icon: Coffee },
-  { label: 'Dark', value: 'dark', icon: Moon },
-  { label: 'Midnight', value: 'midnight', icon: MoonStar },
-  { label: 'Paper', value: 'paper', icon: FileTextIcon },
-  { label: 'Forest', value: 'forest', icon: Trees },
-  { label: 'Custom', value: 'custom', icon: Paintbrush },
+  { label: 'Oscuro', value: 'dark', icon: Moon },
+  { label: 'Medianoche', value: 'midnight', icon: MoonStar },
+  { label: 'Papel', value: 'paper', icon: FileTextIcon },
+  { label: 'Bosque', value: 'forest', icon: Trees },
+  { label: 'Personalizado', value: 'custom', icon: Paintbrush },
 ];
 
 const FONT_FAMILIES: { label: string, value: ReaderFontFamily, style?: React.CSSProperties }[] = [
-  { label: 'System Serif', value: 'system-serif', style: { fontFamily: 'serif'} },
-  { label: 'System Sans-serif', value: 'system-sans', style: { fontFamily: 'sans-serif'} },
+  { label: 'Serif (Sistema)', value: 'system-serif', style: { fontFamily: 'serif'} },
+  { label: 'Sans-serif (Sistema)', value: 'system-sans', style: { fontFamily: 'sans-serif'} },
   { label: 'Lora', value: 'lora', style: { fontFamily: 'var(--font-lora)'} },
   { label: 'Merriweather', value: 'merriweather', style: { fontFamily: 'var(--font-merriweather)'} },
   { label: 'Noto Serif', value: 'noto-serif', style: { fontFamily: 'var(--font-noto-serif)'} },
@@ -121,13 +125,15 @@ export default function ReaderControls({
     theme, 
     fontSize, 
     fontFamily,
+    lineHeight,
     customFontFamily,
     setTheme, 
-    setFontSize, 
+    setFontSize,
+    setLineHeight, 
     setCustomBackground, 
     setCustomForeground,
     setFontFamily,
-    setCustomFontFamily: setCtxCustomFontFamily, // Renamed to avoid conflict
+    setCustomFontFamily: setCtxCustomFontFamily,
     customBackground, 
     customForeground 
   } = useReaderSettings();
@@ -259,18 +265,35 @@ export default function ReaderControls({
                 <TooltipContent><p>Ajustes de Apariencia</p></TooltipContent>
               </Tooltip>
             </TooltipProvider>
-            <DropdownMenuContent align="center" className="w-80 sm:w-96"> {/* Increased width */}
-              <DropdownMenuLabel>Tamaño de Fuente</DropdownMenuLabel>
+            <DropdownMenuContent 
+              align="center" 
+              className="w-80 sm:w-96"
+              onCloseAutoFocus={(e) => e.preventDefault()} // Prevents auto-closing when interacting with inputs
+            >
+              <DropdownMenuLabel className="flex items-center"><Palette className="mr-2 h-4 w-4" />Apariencia</DropdownMenuLabel>
+              <DropdownMenuSeparator />
+
+              <DropdownMenuLabel className="text-xs text-muted-foreground">Tamaño de Fuente</DropdownMenuLabel>
               <DropdownMenuRadioGroup value={fontSize} onValueChange={(value) => setFontSize(value as ReaderFontSize)}>
                 {FONT_SIZES.map(fs => (
                   <DropdownMenuRadioItem key={fs.value} value={fs.value}>
-                    {fs.label}
+                    <ALargeSmall className="mr-2 h-4 w-4" /> {fs.label}
+                  </DropdownMenuRadioItem>
+                ))}
+              </DropdownMenuRadioGroup>
+              <DropdownMenuSeparator />
+              
+              <DropdownMenuLabel className="text-xs text-muted-foreground">Interlineado</DropdownMenuLabel>
+              <DropdownMenuRadioGroup value={lineHeight} onValueChange={(value) => setLineHeight(value as ReaderLineHeight)}>
+                {LINE_HEIGHTS.map(lh => (
+                  <DropdownMenuRadioItem key={lh.value} value={lh.value}>
+                    <AlignJustify className="mr-2 h-4 w-4" /> {lh.label}
                   </DropdownMenuRadioItem>
                 ))}
               </DropdownMenuRadioGroup>
               <DropdownMenuSeparator />
 
-              <DropdownMenuLabel>Fuente</DropdownMenuLabel>
+              <DropdownMenuLabel className="text-xs text-muted-foreground">Fuente</DropdownMenuLabel>
               <DropdownMenuRadioGroup value={fontFamily} onValueChange={(value) => setFontFamily(value as ReaderFontFamily)}>
                 {FONT_FAMILIES.map(ff => (
                   <DropdownMenuRadioItem key={ff.value} value={ff.value} style={ff.style}>
@@ -292,18 +315,19 @@ export default function ReaderControls({
                         value={tempCustomFont}
                         onChange={(e) => setTempCustomFont(e.target.value)}
                         className="h-8 text-sm flex-grow"
+                        onClick={(e) => e.stopPropagation()} // Prevent menu closing
                       />
                        <Button size="sm" variant="outline" onClick={handleCustomFontApply} className="h-8 px-2.5 text-xs">Aplicar</Button>
                     </div>
                      <p className="text-xs text-muted-foreground leading-tight pt-0.5">
-                      La fuente debe estar instalada en tu sistema o ser una fuente web.
+                      La fuente debe estar instalada en tu sistema.
                     </p>
                   </div>
                 </DropdownMenuItem>
               )}
               <DropdownMenuSeparator />
 
-              <DropdownMenuLabel>Tema</DropdownMenuLabel>
+              <DropdownMenuLabel className="text-xs text-muted-foreground">Tema</DropdownMenuLabel>
                <DropdownMenuRadioGroup value={theme} onValueChange={(value) => setTheme(value as ReaderTheme)}>
                 {THEMES.map(th => (
                   <DropdownMenuRadioItem key={th.value} value={th.value}>
@@ -313,19 +337,17 @@ export default function ReaderControls({
                 ))}
               </DropdownMenuRadioGroup>
               {theme === 'custom' && (
-                <>
-                  <DropdownMenuSeparator />
-                  <DropdownMenuLabel>Colores Personalizados</DropdownMenuLabel>
-                  <DropdownMenuItem onSelect={(e) => e.preventDefault()} className="focus:bg-transparent">
-                    <div className="w-full space-y-3 py-1 pl-6">
+                <DropdownMenuItem onSelect={(e) => e.preventDefault()} className="focus:bg-transparent mt-1">
+                  <div className="w-full space-y-3 py-1 pl-6">
                       <div className="flex items-center gap-2">
-                        <Label htmlFor="custom-bg-color" className="text-sm text-popover-foreground shrink-0 w-12">Fondo:</Label>
+                        <Label htmlFor="custom-bg-color" className="text-xs text-popover-foreground shrink-0 w-14">Fondo:</Label>
                         <input
                           id="custom-bg-color"
                           type="color"
                           value={customBackground || '#FFFFFF'}
                           onChange={handleCustomBgChange}
-                          className="h-8 w-8 p-0 border rounded cursor-pointer"
+                          className="h-7 w-7 p-0 border rounded cursor-pointer"
+                          onClick={(e) => e.stopPropagation()} // Prevent menu closing
                         />
                         <Input
                           type="text"
@@ -334,16 +356,18 @@ export default function ReaderControls({
                           placeholder="#FFFFFF"
                           className="h-8 text-sm flex-grow"
                           maxLength={7}
+                          onClick={(e) => e.stopPropagation()} // Prevent menu closing
                         />
                       </div>
                       <div className="flex items-center gap-2">
-                        <Label htmlFor="custom-fg-color" className="text-sm text-popover-foreground shrink-0 w-12">Texto:</Label>
+                        <Label htmlFor="custom-fg-color" className="text-xs text-popover-foreground shrink-0 w-14">Texto:</Label>
                         <input
                           id="custom-fg-color"
                           type="color"
                           value={customForeground || '#000000'}
                           onChange={handleCustomFgChange}
-                          className="h-8 w-8 p-0 border rounded cursor-pointer"
+                          className="h-7 w-7 p-0 border rounded cursor-pointer"
+                           onClick={(e) => e.stopPropagation()} // Prevent menu closing
                         />
                         <Input
                           type="text"
@@ -352,11 +376,11 @@ export default function ReaderControls({
                           placeholder="#000000"
                           className="h-8 text-sm flex-grow"
                           maxLength={7}
+                          onClick={(e) => e.stopPropagation()} // Prevent menu closing
                         />
                       </div>
                     </div>
-                  </DropdownMenuItem>
-                </>
+                </DropdownMenuItem>
               )}
             </DropdownMenuContent>
           </DropdownMenu>
@@ -394,7 +418,7 @@ export default function ReaderControls({
               </Tooltip>
             </TooltipProvider>
             {!isTranslationApplied && (
-              <DropdownMenuContent align="center">
+              <DropdownMenuContent align="center" onCloseAutoFocus={(e) => e.preventDefault()}>
                 <DropdownMenuLabel>Traducir a</DropdownMenuLabel>
                 <DropdownMenuSeparator />
                 {TARGET_LANGUAGES.map(lang => (
