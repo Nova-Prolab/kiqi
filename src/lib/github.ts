@@ -38,7 +38,11 @@ export async function fetchFromGitHub<T>(
   const repo = process.env.GITHUB_REPO_NAME;
 
   if (!pat || !owner || !repo) {
-    const errorMsg = '[GitHub Lib] GitHub PAT, owner, or repo not configured in environment variables.';
+    const missingVars = [];
+    if (!pat) missingVars.push("GITHUB_PAT");
+    if (!owner) missingVars.push("GITHUB_REPO_OWNER");
+    if (!repo) missingVars.push("GITHUB_REPO_NAME");
+    const errorMsg = `[GitHub Lib - fetchFromGitHub] Required GitHub environment variable(s) not set: ${missingVars.join(', ')}. Please check your .env file and restart the server.`;
     console.error(errorMsg);
     throw new Error(errorMsg);
   }
@@ -57,7 +61,7 @@ export async function fetchFromGitHub<T>(
   const options: RequestInit = {
     method,
     headers,
-    cache: 'no-store', // No caching for now during dev/debug
+    cache: 'no-store',
   };
 
   if ((method === 'PUT' || method === 'DELETE') && body) {
@@ -75,17 +79,16 @@ export async function fetchFromGitHub<T>(
     }
     const apiErrorMsg = `[GitHub Lib] GitHub API error for ${method} ${url}: ${response.status} - ${errorData.message || response.statusText}`;
     console.error(apiErrorMsg, 'Full error response:', errorData);
-    // Add specific check for 404 on GET to avoid throwing for non-existent files that are being checked
     if (method === 'GET' && response.status === 404) {
-      return null as T; // Explicitly return null for 404 on GET
+      return null as T; 
     }
     throw new Error(`Failed to ${method === 'GET' ? 'fetch from' : method === 'PUT' ? 'write to' : 'delete from'} GitHub: ${errorData.message || response.statusText}`);
   }
 
-  if (isDelete && response.status === 200) { // For delete, a 200 with empty body is success
-     return { commit: { sha: 'deleted' } } as T; // Provide a conforming structure
+  if (isDelete && response.status === 200) { 
+     return { commit: { sha: 'deleted' } } as T; 
   }
-  if (response.status === 204 || response.status === 205 ) { // No Content or Reset Content
+  if (response.status === 204 || response.status === 205 ) { 
     return null as T;
   }
 
@@ -100,7 +103,7 @@ export async function createFileInRepo(filePath: string, content: string, commit
     branch: DEFAULT_BRANCH,
   };
   if (sha) {
-    body.sha = sha; // Required for updating existing files
+    body.sha = sha; 
   }
   const normalizedFilePath = filePath.startsWith('/') ? filePath.substring(1) : filePath;
   return fetchFromGitHub<GitHubCommitResponse>(`contents/${normalizedFilePath}`, 'PUT', body);
@@ -122,7 +125,6 @@ export async function fetchFileContent(filePath: string): Promise<{ content: str
     const fileData = await fetchFromGitHub<GitHubFile | null>(`contents/${normalizedFilePath}?ref=${DEFAULT_BRANCH}`);
 
     if (!fileData || fileData.type !== 'file' || !fileData.content || fileData.encoding !== 'base64') {
-      // console.warn(`[GitHub Lib] Could not fetch content for file: ${filePath}. Expected base64 encoded file content or file not found.`);
       return null;
     }
     return {
@@ -130,9 +132,7 @@ export async function fetchFileContent(filePath: string): Promise<{ content: str
       sha: fileData.sha,
     };
   } catch (error: any) {
-    // fetchFromGitHub will return null for 404s, so we don't need special handling here anymore.
-    // Re-throw other errors.
-    console.error(`[GitHub Lib] Error fetching file content for '${filePath}':`, error);
+    console.error(`[GitHub Lib - fetchFileContent] Error fetching file content for '${filePath}':`, error);
     throw error;
   }
 }
@@ -142,33 +142,36 @@ export async function fetchNovels(): Promise<Novel[]> {
   const owner = process.env.GITHUB_REPO_OWNER;
   const repoName = process.env.GITHUB_REPO_NAME;
 
-  if (!owner || !repoName) {
-    console.error('[GitHub Lib] GITHUB_REPO_OWNER or GITHUB_REPO_NAME not set.');
+  const missingEnvVars: string[] = [];
+  if (!owner) missingEnvVars.push("GITHUB_REPO_OWNER");
+  if (!repoName) missingEnvVars.push("GITHUB_REPO_NAME");
+
+  if (missingEnvVars.length > 0) {
+    console.error(`[GitHub Lib - fetchNovels] Required GitHub environment variable(s) not set: ${missingEnvVars.join(', ')}. Please check your .env file and restart the server.`);
     return [];
   }
+  // GITHUB_PAT will be checked by fetchFromGitHub called below.
 
   let rootContents: GitHubFile[];
   try {
     rootContents = await fetchFromGitHub<GitHubFile[]>('contents/');
   } catch (error) {
-    console.error('[GitHub Lib] Failed to fetch root contents:', error);
+    console.error('[GitHub Lib - fetchNovels] Failed to fetch root contents from GitHub:', error);
     return [];
   }
 
   const novelDirs = rootContents.filter(item => item.type === 'dir' && !item.name.startsWith('.') && item.name !== 'users');
-
   const novels: Novel[] = [];
 
   for (const dir of novelDirs) {
     try {
       const novelId = dir.name;
       const novelPath = dir.path;
-
       const infoJsonFile = { path: `${novelPath}/info.json`, name: 'info.json' };
-
       const fileData = await fetchFileContent(infoJsonFile.path);
+
       if (!fileData) {
-        // console.warn(`[GitHub Lib] Skipping novel '${novelId}': info.json not found or unreadable at path '${infoJsonFile.path}'.`);
+        console.warn(`[GitHub Lib - fetchNovels] Skipping novel '${novelId}': info.json not found or unreadable at path '${infoJsonFile.path}'.`);
         continue;
       }
       const { content: infoJsonContent, sha: infoJsonSha } = fileData;
@@ -177,26 +180,24 @@ export async function fetchNovels(): Promise<Novel[]> {
       try {
         info = JSON.parse(infoJsonContent);
       } catch (parseError: any) {
-        console.error(`[GitHub Lib] Error parsing info.json for novel ${novelId} (path: ${infoJsonFile.path}): ${parseError.message}`);
-        // console.error(`[GitHub Lib] Content of problematic info.json for ${novelId}:\n---\n${infoJsonContent}\n---`);
-        console.warn(`[GitHub Lib] Skipping novel '${novelId}' due to invalid info.json.`);
+        console.error(`[GitHub Lib - fetchNovels] Error parsing info.json for novel ${novelId} (path: ${infoJsonFile.path}): ${parseError.message}`);
+        console.error(`[GitHub Lib - fetchNovels] Content of problematic info.json for ${novelId}:\n---\n${infoJsonContent}\n---`);
+        console.warn(`[GitHub Lib - fetchNovels] Skipping novel '${novelId}' due to invalid info.json.`);
         continue;
       }
 
       let coverImage: string;
       if (info.coverImageUrl && info.coverImageUrl.trim() !== '') {
         coverImage = info.coverImageUrl;
-         // console.log(`[GitHub Lib] Novel '${novelId}': Using coverImageUrl from info.json: ${coverImage}`);
       } else {
-        // console.warn(`[GitHub Lib] Novel '${novelId}': coverImageUrl not found or empty in info.json. Defaulting to placeholder.`);
         coverImage = `https://placehold.co/300x450.png?text=No+Cover`;
       }
 
       let novelContents: GitHubFile[];
       try {
         novelContents = await fetchFromGitHub<GitHubFile[]>(`contents/${novelPath}?ref=${DEFAULT_BRANCH}`);
-      } catch (e) {
-        console.warn(`[GitHub Lib] Could not fetch contents of novel directory '${novelPath}' to list chapters. Skipping chapter listing for '${novelId}'.`);
+      } catch (e: any) {
+        console.warn(`[GitHub Lib - fetchNovels] Could not fetch contents of novel directory '${novelPath}' for novel '${novelId}'. Error: ${e.message}. Proceeding without chapter listing.`);
         novelContents = [];
       }
 
@@ -211,13 +212,9 @@ export async function fetchNovels(): Promise<Novel[]> {
       const chaptersMetadata: Pick<Chapter, 'id' | 'title' | 'order'>[] = chapterFiles.map(file => {
         const orderMatch = file.name.match(/chapter-(\d+)\.html$/);
         const order = orderMatch ? parseInt(orderMatch[1]) : 0;
-        // Basic title extraction from H1 if present
-        // This is a simplified version; a more robust HTML parser might be needed for complex titles
-        // For now, it's not fetching content here to avoid too many API calls.
-        // If chapter content is needed for title, fetchChapter should be used.
         return {
           id: file.name.replace('.html', ''),
-          title: `Capítulo ${order}`, // Default title
+          title: `Capítulo ${order}`, 
           order: order,
         };
       });
@@ -238,7 +235,7 @@ export async function fetchNovels(): Promise<Novel[]> {
         creatorId: info.creatorId,
       });
     } catch (error) {
-      console.error(`[GitHub Lib] Error processing novel directory '${dir.name}':`, error);
+      console.error(`[GitHub Lib - fetchNovels] Error processing novel directory '${dir.name}':`, error);
     }
   }
   return novels;
@@ -248,10 +245,15 @@ export async function fetchNovelById(id: string): Promise<Novel | undefined> {
   const owner = process.env.GITHUB_REPO_OWNER;
   const repoName = process.env.GITHUB_REPO_NAME;
 
-  if (!owner || !repoName) {
-    console.error('[GitHub Lib] GITHUB_REPO_OWNER or GITHUB_REPO_NAME not set.');
+  const missingEnvVars: string[] = [];
+  if (!owner) missingEnvVars.push("GITHUB_REPO_OWNER");
+  if (!repoName) missingEnvVars.push("GITHUB_REPO_NAME");
+
+  if (missingEnvVars.length > 0) {
+    console.error(`[GitHub Lib - fetchNovelById] Required GitHub environment variable(s) not set for novel '${id}': ${missingEnvVars.join(', ')}. Please check your .env file and restart the server.`);
     return undefined;
   }
+  // GITHUB_PAT will be checked by fetchFileContent -> fetchFromGitHub called below.
 
   try {
     const novelFolderPath = id;
@@ -259,7 +261,7 @@ export async function fetchNovelById(id: string): Promise<Novel | undefined> {
 
     const fileData = await fetchFileContent(infoJsonFilePath);
     if (!fileData) {
-      // console.warn(`[GitHub Lib] Novel '${id}': info.json not found or unreadable at path '${infoJsonFilePath}'.`);
+      console.warn(`[GitHub Lib - fetchNovelById] Novel '${id}': info.json not found or unreadable at path '${infoJsonFilePath}'.`);
       return undefined;
     }
     const { content: infoJsonContent, sha: infoJsonSha } = fileData;
@@ -268,7 +270,7 @@ export async function fetchNovelById(id: string): Promise<Novel | undefined> {
     try {
       info = JSON.parse(infoJsonContent);
     } catch (parseError: any) {
-      console.error(`[GitHub Lib] Error parsing info.json for novel '${id}' (path: '${infoJsonFilePath}'): ${parseError.message}`);
+      console.error(`[GitHub Lib - fetchNovelById] Error parsing info.json for novel '${id}' (path: '${infoJsonFilePath}'): ${parseError.message}`);
       return undefined;
     }
 
@@ -283,11 +285,11 @@ export async function fetchNovelById(id: string): Promise<Novel | undefined> {
     try {
         novelContents = await fetchFromGitHub<GitHubFile[]>(`contents/${novelFolderPath}?ref=${DEFAULT_BRANCH}`);
     } catch (error: any) {
-        if (error.message && error.message.includes('404') || error.message && error.message.includes('Not Found')) {
-            // console.warn(`[GitHub Lib] Contents for novel with id '${id}' not found in GitHub repository (404). Path checked: 'contents/${novelFolderPath}'`);
+        if (error.message && (error.message.includes('404') || error.message.includes('Not Found'))) {
+            console.warn(`[GitHub Lib - fetchNovelById] Contents for novel with id '${id}' not found in GitHub repository (404). Path checked: 'contents/${novelFolderPath}'. This novel might not have chapters yet or the folder is missing.`);
             novelContents = [];
         } else {
-          console.warn(`[GitHub Lib] Could not fetch contents of novel directory '${novelFolderPath}' to list chapters. Proceeding without chapters for '${id}'.`);
+          console.warn(`[GitHub Lib - fetchNovelById] Could not fetch contents of novel directory '${novelFolderPath}' to list chapters for novel '${id}'. Error: ${error.message}. Proceeding without chapters.`);
           novelContents = [];
         }
     }
@@ -327,7 +329,7 @@ export async function fetchNovelById(id: string): Promise<Novel | undefined> {
     };
 
   } catch (error) {
-    console.error(`[GitHub Lib] Error fetching novel by id '${id}':`, error);
+    console.error(`[GitHub Lib - fetchNovelById] Error fetching novel by id '${id}':`, error);
     return undefined;
   }
 }
@@ -340,7 +342,7 @@ export async function fetchChapter(novelId: string, chapterId: string): Promise<
 
   const chapterMeta = novel.chapters.find(c => c.id === chapterId);
   if (!chapterMeta) {
-    console.warn(`[GitHub Lib] Chapter '${chapterId}' not found in metadata for novel '${novelId}'.`);
+    console.warn(`[GitHub Lib - fetchChapter] Chapter '${chapterId}' not found in metadata for novel '${novelId}'.`);
     return undefined;
   }
 
@@ -348,7 +350,7 @@ export async function fetchChapter(novelId: string, chapterId: string): Promise<
     const chapterFilePath = `${novelId}/${chapterId}.html`;
     const fileData = await fetchFileContent(chapterFilePath);
     if (!fileData || !fileData.content) {
-        console.warn(`[GitHub Lib] Chapter content for '${chapterFilePath}' not found or unreadable.`);
+        console.warn(`[GitHub Lib - fetchChapter] Chapter content for '${chapterFilePath}' not found or unreadable.`);
         return undefined;
     }
     const chapterContent = fileData.content;
@@ -368,7 +370,7 @@ export async function fetchChapter(novelId: string, chapterId: string): Promise<
     };
     return { novel, chapter: fullChapter };
   } catch (error) {
-    console.error(`[GitHub Lib] Error fetching chapter content for '${novelId}/${chapterId}':`, error);
+    console.error(`[GitHub Lib - fetchChapter] Error fetching chapter content for '${novelId}/${chapterId}':`, error);
     return undefined;
   }
 }
@@ -379,8 +381,6 @@ export async function getFileSha(filePath: string): Promise<string | null> {
     const fileData = await fetchFromGitHub<GitHubFile | null>(`contents/${normalizedFilePath}?ref=${DEFAULT_BRANCH}`);
     return fileData ? fileData.sha : null;
   } catch (error) {
-    // console.warn(`[GitHub Lib] Could not get SHA for file ${filePath}:`, error);
     return null;
   }
 }
-
