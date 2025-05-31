@@ -2,7 +2,7 @@
 'use server';
 
 import { z } from 'zod';
-import { createFileInRepo, deleteFileInRepo, getFileSha } from '@/lib/github';
+import { createFileInRepo, deleteFileInRepo, getFileSha, fetchFileContent } from '@/lib/github';
 import type { InfoJson, CreateNovelInput } from '@/lib/types';
 import { revalidatePath } from 'next/cache';
 
@@ -15,6 +15,7 @@ const createNovelSchema = z.object({
   tags: z.string().optional(), // Comma-separated
   translator: z.string().optional(),
   releaseDate: z.string().optional(), // Expects YYYY-MM-DD format if provided
+  creatorId: z.string().min(1, "El ID del creador es obligatorio."), // User's unique ID
 });
 
 function slugify(text: string): string {
@@ -41,6 +42,7 @@ export async function createNovelAction(
     tags: formData.get('tags') as string | undefined,
     translator: formData.get('translator') as string | undefined,
     releaseDate: formData.get('releaseDate') as string | undefined,
+    creatorId: formData.get('creatorId') as string, // Get creatorId
   };
 
   const validatedFields = createNovelSchema.safeParse(rawFormData);
@@ -70,37 +72,35 @@ export async function createNovelAction(
   const infoJson: InfoJson = {
     titulo: data.title,
     autor: data.author,
-    // Asegurarse de que los saltos de línea literales de un textarea se escapen para JSON
     descripcion: data.description.replace(/\r\n|\r|\n/g, '\\n'),
     coverImageUrl: data.coverImageUrl || undefined,
     categoria: data.category || undefined,
     etiquetas: tagsArray,
     traductor: data.translator || undefined,
     fecha_lanzamiento: data.releaseDate || undefined,
+    creatorId: data.creatorId, // Store creatorId
   };
 
   const infoJsonContent = JSON.stringify(infoJson, null, 2);
   const filePath = `${novelId}/info.json`;
-  const commitMessage = `feat: Add new novel - ${data.title}`;
+  const commitMessage = `feat: Add new novel - ${data.title} by ${data.creatorId}`;
 
   try {
     await createFileInRepo(filePath, infoJsonContent, commitMessage);
     
-    // Revalidar rutas relevantes
-    revalidatePath('/'); // Revalida la página de inicio donde se listan las novelas
-    revalidatePath('/admin/dashboard'); // Revalida el dashboard de administración
-    revalidatePath(`/novels/${novelId}`); // Revalida la página de detalles de la nueva novela
+    revalidatePath('/');
+    revalidatePath('/admin/dashboard');
+    revalidatePath(`/novels/${novelId}`);
 
     return { 
       message: `Información de la novela '${data.title}' creada con éxito con ID '${novelId}'. Ahora puedes añadir capítulos.`, 
       success: true, 
       novelId,
-      novelTitle: data.title // Devolver el título para usarlo en el cliente
+      novelTitle: data.title
     };
   } catch (error) {
     console.error("Error creating novel info.json:", error);
     const errorMessage = error instanceof Error ? error.message : "Error desconocido al crear el archivo de información de la novela.";
-    // Comprobar si el error es porque el archivo ya existe (código 422 de GitHub)
     if (errorMessage.includes('422') || (error && typeof error === 'object' && 'status' in error && error.status === 422)) {
       return {
         message: `Error al crear la información de la novela: Ya existe una novela con el ID '${novelId}'. El título debe ser único.`,
@@ -120,6 +120,7 @@ const saveChapterSchema = z.object({
   chapterNumber: z.coerce.number().int().positive("El número de capítulo debe ser un entero positivo."),
   chapterTitle: z.string().optional(),
   chapterContent: z.string().min(1, "El contenido del capítulo no puede estar vacío."),
+  // creatorId: z.string().min(1, "El ID del creador es necesario para guardar el capítulo."), // For server-side auth (future)
 });
 
 interface SaveChapterState {
@@ -137,6 +138,7 @@ export async function saveChapterAction(
     chapterNumber: formData.get('chapterNumber') as string, 
     chapterTitle: formData.get('chapterTitle') as string | undefined,
     chapterContent: formData.get('chapterContent') as string,
+    // creatorId: formData.get('creatorId') as string, // For server-side auth (future)
   };
 
   const validatedFields = saveChapterSchema.safeParse(rawFormData);
@@ -153,15 +155,25 @@ export async function saveChapterAction(
 
   const { novelId, chapterNumber, chapterTitle, chapterContent } = validatedFields.data;
   
-  // Comprobar si el contenido del capítulo (después de quitar HTML básico de un editor vacío) está realmente vacío
+  // Server-side check if novel belongs to user would go here in a real auth system
+  // For now, UI controls access.
+  // const novelInfoPath = `${novelId}/info.json`;
+  // const novelInfoFile = await fetchFileContent(novelInfoPath);
+  // if (!novelInfoFile) {
+  //   return { message: `Error: No se encontró información de la novela '${novelId}'.`, success: false };
+  // }
+  // const novelInfoData = JSON.parse(novelInfoFile.content) as InfoJson;
+  // if (novelInfoData.creatorId !== rawFormData.creatorId) {
+  //   return { message: "Error: No tienes permiso para modificar esta novela.", success: false };
+  // }
+
+
   const tempDiv = typeof document !== 'undefined' ? document.createElement('div') : null;
   let textContentForCheck = chapterContent;
   if (tempDiv) {
       tempDiv.innerHTML = chapterContent;
       textContentForCheck = tempDiv.textContent || tempDiv.innerText || "";
   } else {
-      // Fallback simple si document no está disponible (debería estarlo en server actions via JSDOM o similar si es necesario)
-      // o simplemente confiar en que la validación min(1) del schema es suficiente
       textContentForCheck = chapterContent.replace(/<[^>]*>/g, '').trim();
   }
 
@@ -172,10 +184,8 @@ export async function saveChapterAction(
     }
   }
 
-  let finalHtmlContent = chapterContent; // Asumimos que chapterContent ya es HTML del editor
+  let finalHtmlContent = chapterContent; 
 
-  // Si se proporciona un título de capítulo, lo añadimos como H1 al principio,
-  // a menos que el contenido ya comience con un H1 (para evitar duplicados si el editor lo añade)
   if (chapterTitle && chapterTitle.trim() !== '') {
     const trimmedContent = finalHtmlContent.trim();
     if (!trimmedContent.toLowerCase().startsWith('<h1')) {
@@ -188,13 +198,11 @@ export async function saveChapterAction(
   const commitMessage = `feat: Add/Update chapter ${chapterNumber} for ${novelId}`;
 
   try {
-    // Para actualizar un archivo existente, GitHub necesita el SHA del archivo actual.
     const existingFileSha = await getFileSha(filePathInRepo);
     await createFileInRepo(filePathInRepo, finalHtmlContent, commitMessage, existingFileSha || undefined);
 
-    // Revalidar la página de detalles de la novela y la página del capítulo específico
     revalidatePath(`/novels/${novelId}`);
-    revalidatePath(`/novels/${novelId}/chapters/chapter-${chapterNumber}`); // Asume que el ID del capítulo es chapter-N
+    revalidatePath(`/novels/${novelId}/chapters/chapter-${chapterNumber}`);
 
     return {
       message: `Capítulo ${chapterNumber} ${existingFileSha ? 'actualizado' : 'guardado'} con éxito para la novela '${novelId}'.`,
@@ -213,7 +221,8 @@ export async function saveChapterAction(
 
 const deleteNovelSchema = z.object({
   novelId: z.string().min(1, "El ID de la novela es obligatorio."),
-  infoJsonSha: z.string().min(1, "El SHA del archivo info.json es obligatorio para la eliminación.")
+  infoJsonSha: z.string().min(1, "El SHA del archivo info.json es obligatorio para la eliminación."),
+  // creatorId: z.string().min(1, "El ID del creador es necesario para eliminar la novela."), // For server-side auth (future)
 });
 
 interface DeleteNovelState {
@@ -229,6 +238,7 @@ export async function deleteNovelAction(
   const rawFormData = {
     novelId: formData.get('novelId') as string,
     infoJsonSha: formData.get('infoJsonSha') as string,
+    // creatorId: formData.get('creatorId') as string, // For server-side auth (future)
   };
 
   const validatedFields = deleteNovelSchema.safeParse(rawFormData);
@@ -244,6 +254,18 @@ export async function deleteNovelAction(
   }
 
   const { novelId, infoJsonSha } = validatedFields.data;
+  
+  // Server-side check if novel belongs to user would go here in a real auth system
+  // const novelInfoPath = `${novelId}/info.json`;
+  // const novelInfoFile = await fetchFileContent(novelInfoPath);
+  // if (!novelInfoFile) {
+  //   return { message: `Error: No se encontró información de la novela '${novelId}'.`, success: false };
+  // }
+  // const novelInfoData = JSON.parse(novelInfoFile.content) as InfoJson;
+  // if (novelInfoData.creatorId !== rawFormData.creatorId) {
+  //   return { message: "Error: No tienes permiso para eliminar esta novela.", success: false };
+  // }
+
   const filePath = `${novelId}/info.json`;
   const commitMessage = `feat: Delete novel info for ${novelId}`;
 

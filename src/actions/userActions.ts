@@ -110,14 +110,17 @@ export async function registerUserAction(
      console.error("Error fetching user list for email check:", error);
   }
 
+  // Generate a unique ID for the user
+  const userId = Date.now().toString(36) + Math.random().toString(36).substring(2, 7);
 
   const userJson: User = {
+    id: userId,
     username,
     email,
     password, // Storing password in plain text - UNSAFE FOR PRODUCTION
   };
   const userJsonContent = JSON.stringify(userJson, null, 2);
-  const commitMessage = `feat: Register new user - ${username}`;
+  const commitMessage = `feat: Register new user - ${username} (ID: ${userId})`;
 
   try {
     await createFileInRepo(filePath, userJsonContent, commitMessage);
@@ -140,10 +143,23 @@ const loginUserSchema = z.object({
   password: z.string().min(1, "La contraseña es obligatoria."),
 });
 
+interface LoginSuccessState {
+  message: string;
+  success: true;
+  user: Pick<User, 'id' | 'username'>; // Return id and username
+}
+interface LoginErrorState {
+  message: string;
+  success: false;
+  user?: undefined;
+}
+type LoginState = LoginSuccessState | LoginErrorState;
+
+
 export async function loginUserAction(
-  prevState: { message: string; success: boolean; username?: string; } | null,
+  prevState: LoginState | null,
   formData: FormData
-): Promise<{ message: string; success: boolean; username?: string; }> {
+): Promise<LoginState> {
   const rawFormData = {
     identifier: formData.get('identifier') as string,
     password: formData.get('password') as string,
@@ -160,7 +176,7 @@ export async function loginUserAction(
 
   const { identifier, password } = validatedFields.data;
   let userToVerify: User | null = null;
-  let foundBy: 'username' | 'email' | null = null;
+  // let foundBy: 'username' | 'email' | null = null; // Not strictly needed for return value
 
   // Try fetching by username first
   const usernameFilePath = `users/${identifier}.json`;
@@ -168,7 +184,7 @@ export async function loginUserAction(
     const userFileByUsername = await fetchFileContent(usernameFilePath);
     if (userFileByUsername) {
       userToVerify = JSON.parse(userFileByUsername.content) as User;
-      foundBy = 'username';
+      // foundBy = 'username';
     }
   } catch (error) {
     // console.log("User not found by username, will try by email if applicable.");
@@ -187,7 +203,7 @@ export async function loginUserAction(
                 const otherUser: User = JSON.parse(fileData.content);
                 if (otherUser.email && otherUser.email.toLowerCase() === identifier.toLowerCase()) {
                   userToVerify = otherUser;
-                  foundBy = 'email';
+                  // foundBy = 'email';
                   break; 
                 }
               } catch (parseError) {
@@ -206,7 +222,11 @@ export async function loginUserAction(
   if (userToVerify) {
     // IMPORTANT: This is plain text password comparison. UNSAFE FOR PRODUCTION.
     if (userToVerify.password === password) {
-      return { message: `Inicio de sesión exitoso para '${userToVerify.username}'.`, success: true, username: userToVerify.username };
+      return { 
+        message: `Inicio de sesión exitoso para '${userToVerify.username}'.`, 
+        success: true, 
+        user: { id: userToVerify.id, username: userToVerify.username } // Return user id and username
+      };
     } else {
       return { message: "Contraseña incorrecta.", success: false };
     }

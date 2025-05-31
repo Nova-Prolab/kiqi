@@ -13,11 +13,17 @@ import Link from 'next/link';
 import { LogIn, UserPlus, KeyRound } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/hooks/useAuth';
+import type { User } from '@/lib/types';
 
-const initialLoginState = {
+// Adjust initialLoginState to expect a user object on success
+const initialLoginState: { 
+  message: string; 
+  success: boolean; 
+  user?: Pick<User, 'id' | 'username'>; 
+} = {
   message: '',
   success: false,
-  username: undefined as string | undefined,
+  user: undefined,
 };
 
 function SubmitButton() {
@@ -50,8 +56,8 @@ export default function LoginForm() {
         description: state.message,
         variant: state.success ? 'default' : 'destructive',
       });
-      if (state.success && state.username) {
-        login(state.username); 
+      if (state.success && state.user) {
+        login(state.user); // Pass the user object { id, username }
         router.push('/admin/dashboard'); 
       }
     }

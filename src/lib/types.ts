@@ -16,7 +16,7 @@ export interface InfoJson {
   etiquetas?: string[];
   categoria?: string;
   traductor?: string;
-  creatorId?: string; // Username of the user who created the novel
+  creatorId?: string; // Unique ID of the user who created the novel
 }
 
 export interface Novel {
@@ -34,7 +34,7 @@ export interface Novel {
   categoria?: string;
   traductor?: string;
   lastUpdateDate?: string; // This will be populated by fecha_lanzamiento
-  creatorId?: string; // Username of the user who created the novel
+  creatorId?: string; // Unique ID of the user who created the novel
 }
 
 // For Reader Settings Context
@@ -91,12 +91,13 @@ export interface CreateNovelInput {
   tags?: string; // Comma-separated string
   translator?: string;
   releaseDate?: string;
-  creatorId?: string; // To be passed to the action
+  creatorId?: string; // User's unique ID
 }
 
 // For User "Accounts"
 export interface User {
+  id: string; // Unique user ID
   username: string;
   email: string;
-  password?: string; // Added password field - for simulation only, NOT secure
+  password?: string; // Storing password in plain text - UNSAFE FOR PRODUCTION
 }
