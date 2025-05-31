@@ -14,14 +14,14 @@ interface TranslationDialogProps {
   targetLanguage: TranslateChapterInput['targetLanguage'] | null;
   isOpen: boolean;
   onOpenChange: (isOpen: boolean) => void;
-  onLanguageChangeRequest: () => void; 
+  onLanguageChangeRequest: () => void;
   onApplyTranslation: (translatedHtml: string) => void;
 }
 
-export default function TranslationDialog({ 
-  originalHtmlContent, 
-  targetLanguage, 
-  isOpen, 
+export default function TranslationDialog({
+  originalHtmlContent,
+  targetLanguage,
+  isOpen,
   onOpenChange,
   onLanguageChangeRequest,
   onApplyTranslation
@@ -36,7 +36,7 @@ export default function TranslationDialog({
     setIsLoading(true);
     setError(null);
     setTranslatedContent(null);
-    
+
     const result = await translateChapterAction(originalHtmlContent, targetLanguage);
     if (result.translatedContent) {
       setTranslatedContent(result.translatedContent);
@@ -45,19 +45,17 @@ export default function TranslationDialog({
     }
     setIsLoading(false);
   };
-  
+
   useEffect(() => {
     if (isOpen && targetLanguage && originalHtmlContent) {
       handleTranslate();
     } else if (!isOpen) {
-      // Reset state when dialog is closed, but don't clear translatedContent
-      // so it's still there if dialog is reopened for same language quickly.
-      // Only clear if language changes or explicitly told to.
-      // setTranslatedContent(null); 
+      // Do not clear translatedContent here to allow quick reopen
       setIsLoading(false);
       setError(null);
     }
-  }, [isOpen, targetLanguage, originalHtmlContent]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isOpen, targetLanguage, originalHtmlContent]); // handleTranslate is memoized by useCallback implicitly if not defined inside useEffect
 
   const handleApplyAndClose = () => {
     if (translatedContent) {
@@ -75,51 +73,70 @@ export default function TranslationDialog({
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-[625px] md:max-w-[700px] lg:max-w-[800px] max-h-[90vh] flex flex-col">
         <DialogHeader>
-          <DialogTitle className="flex items-center">
-            <Languages className="mr-2 h-5 w-5"/> {title}
+          <DialogTitle className="flex items-center text-primary">
+            <Languages className="mr-2 h-6 w-6"/> {title}
           </DialogTitle>
           {targetLanguage && (
             <DialogDescription>
-              Traducción generada por IA del capítulo actual a {targetLanguage}. El formato HTML se preserva donde es posible.
+              Traducción generada por IA del capítulo actual a {targetLanguage}. Se intenta preservar el formato HTML.
             </DialogDescription>
           )}
         </DialogHeader>
-        <div className="py-4 space-y-4 flex-grow min-h-[200px] flex flex-col overflow-hidden">
+        <div className="py-4 space-y-4 flex-grow min-h-[250px] flex flex-col overflow-hidden">
           {isLoading && (
-            <div className="flex-grow flex flex-col items-center justify-center space-y-2">
-              <Loader2 className="h-10 w-10 animate-spin text-primary" />
-              <p className="text-muted-foreground">Traduciendo a {targetLanguage} con Gemini...</p>
+            <div className="flex-grow flex flex-col items-center justify-center space-y-3 p-4 text-center">
+              <div className="relative mb-2">
+                <Languages className="h-20 w-20 text-primary animate-pulse opacity-50" />
+                <Loader2 className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 h-10 w-10 text-primary animate-spin" />
+              </div>
+              <p className="text-xl font-semibold text-primary">Gemini está traduciendo...</p>
+              <p className="text-muted-foreground text-sm max-w-xs">
+                Convirtiendo el texto a {targetLanguage}. Este proceso puede tardar unos segundos.
+              </p>
             </div>
           )}
           {error && !isLoading && (
-            <div className="flex-grow flex flex-col items-center justify-center text-destructive p-4 bg-destructive/10 rounded-md">
-              <AlertTriangle className="h-8 w-8 mb-2" />
-              <p className="font-semibold text-center">Error al Traducir Capítulo</p>
-              <p className="text-sm text-center">{error}</p>
+            <div className="flex-grow flex flex-col items-center justify-center text-destructive p-4 bg-destructive/10 rounded-md text-center">
+              <AlertTriangle className="h-10 w-10 mb-3" />
+              <p className="text-lg font-semibold">Error al Traducir Capítulo</p>
+              <p className="text-sm mt-1">{error}</p>
+              <Button onClick={handleTranslate} variant="outline" className="mt-4">
+                <Languages className="mr-2 h-4 w-4" />
+                 Reintentar Traducción
+              </Button>
             </div>
           )}
           {translatedContent && !isLoading && (
-            <ScrollArea className="flex-grow rounded-md border p-4 prose prose-sm sm:prose md:prose-lg max-w-none">
+            <ScrollArea className="flex-grow rounded-md border p-4 prose prose-sm sm:prose md:prose-lg max-w-none bg-muted/20 shadow-inner">
               <div dangerouslySetInnerHTML={{ __html: translatedContent }} />
             </ScrollArea>
           )}
           {!targetLanguage && !isLoading && !error && (
-             <div className="flex-grow flex flex-col items-center justify-center">
-                <p className="text-muted-foreground">Por favor, selecciona un idioma de destino primero.</p>
+             <div className="flex-grow flex flex-col items-center justify-center text-center p-4">
+                <Languages className="h-16 w-16 text-muted-foreground mb-4" />
+                <p className="text-lg font-medium mb-2">Selecciona un Idioma</p>
+                <p className="text-muted-foreground text-sm mb-6 max-w-sm">
+                  Por favor, elige un idioma de destino para iniciar la traducción del capítulo.
+                </p>
+                <Button onClick={onLanguageChangeRequest} variant="default" size="lg">
+                   Elegir Idioma de Traducción
+                </Button>
              </div>
           )}
         </div>
-        <DialogFooter className="gap-2 sm:justify-between mt-auto flex-wrap">
+        <DialogFooter className="gap-2 sm:justify-between mt-auto pt-4 border-t flex-wrap">
           <div className="flex gap-2 flex-wrap justify-center sm:justify-start">
-            {targetLanguage && (
+            {targetLanguage && (hasAttemptedGeneration || error) && !isLoading && (
               <Button onClick={handleTranslate} variant="outline" disabled={isLoading}>
                 {isLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Languages className="mr-2 h-4 w-4" />}
-                Reintentar Traducción
+                {error ? 'Reintentar' : 'Regenerar Traducción'}
               </Button>
             )}
-            <Button onClick={onLanguageChangeRequest} variant="secondary">
-              Cambiar Idioma
-            </Button>
+            {targetLanguage && (
+                <Button onClick={onLanguageChangeRequest} variant="secondary">
+                    Cambiar Idioma
+                </Button>
+            )}
           </div>
           <div className="flex gap-2 flex-wrap justify-center sm:justify-end">
             {translatedContent && !isLoading && !error && (
@@ -128,7 +145,7 @@ export default function TranslationDialog({
                 Aplicar Traducción
               </Button>
             )}
-            <Button onClick={() => onOpenChange(false)} variant={!targetLanguage && !isLoading && !error ? "default" : "secondary"}>Cerrar</Button>
+            <Button onClick={() => onOpenChange(false)} variant={(!targetLanguage || (error && !isLoading)) ? "default" : "secondary"}>Cerrar</Button>
           </div>
         </DialogFooter>
       </DialogContent>

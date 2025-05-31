@@ -1,18 +1,11 @@
 
-'use client'; // Mark as client component for auth check
+'use client';
 
 import CreateNovelForm from '@/components/admin/CreateNovelForm';
-import type { Metadata } from 'next';
 import { useAuth } from '@/hooks/useAuth';
 import { useRouter } from 'next/navigation';
 import { useEffect } from 'react';
-
-// Metadata can still be defined, but it's static for this page.
-// export const metadata: Metadata = { 
-// We'll handle title in the client component or keep it simple
-// title: 'Crear Nueva Novela - Literary Nexus',
-// description: 'Añade una nueva novela al catálogo.',
-// };
+import { Loader2 } from 'lucide-react';
 
 export default function CreateNovelPage() {
   const { currentUser, isLoading } = useAuth();
@@ -27,8 +20,9 @@ export default function CreateNovelPage() {
   if (isLoading || !currentUser) {
     return (
       <section className="py-8">
-        <div className="container mx-auto px-4 text-center">
-          <p>Cargando...</p>
+        <div className="container mx-auto px-4 text-center flex flex-col items-center justify-center min-h-[calc(100vh-20rem)]">
+          <Loader2 className="h-12 w-12 text-primary animate-spin mb-4" />
+          <p className="text-lg text-muted-foreground">Verificando sesión...</p>
         </div>
       </section>
     );
@@ -36,7 +30,7 @@ export default function CreateNovelPage() {
 
   return (
     <section className="py-8">
-      <title>Crear Nueva Novela - Literary Nexus</title> {/* Set title here or in CreateNovelForm */}
+      <title>Crear Nueva Novela - Literary Nexus</title>
       <div className="container mx-auto px-4">
         <CreateNovelForm />
       </div>

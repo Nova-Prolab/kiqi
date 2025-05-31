@@ -6,7 +6,7 @@ import { useSearchParams, useRouter } from 'next/navigation';
 import type { Novel } from '@/lib/types';
 import NovelCard from '@/components/novel/NovelCard';
 import { Input } from '@/components/ui/input';
-import { Search, BookX, Tags, LayoutGrid, Star, FilterX, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Search, BookX, Tags, LayoutGrid, Star, FilterX, ChevronLeft, ChevronRight, Loader2 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
@@ -17,22 +17,21 @@ interface NovelBrowserProps {
 }
 
 const PREDEFINED_CATEGORIES: string[] = [
-  "Acción", "Aventura", "Ciencia Ficción", "Fantasía", "Romance", 
-  "Misterio", "Suspense", "Terror", "Comedia", "Drama", 
-  "Histórico", "Urbano", "Wuxia", "Xianxia", "Realismo Mágico", 
+  "Acción", "Aventura", "Ciencia Ficción", "Fantasía", "Romance",
+  "Misterio", "Suspense", "Terror", "Comedia", "Drama",
+  "Histórico", "Urbano", "Wuxia", "Xianxia", "Realismo Mágico",
   "Cyberpunk", "Steampunk", "LitRPG", "GameLit", "Post-apocalíptico",
   "Sobrenatural", "Escolar", "Artes Marciales", "Mecha", "Slice of Life",
   "Psicológico", "Tragedia", "Superhéroes", "Crimen", "Militar"
 ];
 
 const PREDEFINED_TAGS: string[] = [
-  "magia", "espadas", "reencarnación", "sistema", 
-  "cultivo", "harén", "protagonista astuto", "protagonista OP", "academia", 
-  "monstruos", "tecnología avanzada", "viajes en el tiempo", "isekai", "supervivencia", 
+  "magia", "espadas", "reencarnación", "sistema",
+  "cultivo", "harén", "protagonista astuto", "protagonista OP", "academia",
+  "monstruos", "tecnología avanzada", "viajes en el tiempo", "isekai", "supervivencia",
   "venganza", "comedia romántica", "drama psicológico", "construcción de mundos", "elementos de juego",
   "no humano", "política", "guerra", "amistad", "familia", "traición", "poderes", "secretos",
   "antihéroe", "imperio", "nobleza", "IA", "realidad virtual", "dioses", "demonios"
-  // "destacado" is intentionally omitted from PREDEFINED_TAGS for filtering UI
 ];
 
 const ITEMS_PER_PAGE = 24;
@@ -52,7 +51,7 @@ export default function NovelBrowser({ initialNovels }: NovelBrowserProps) {
     const query = searchParams.get('q');
     if (query) {
       setSearchTerm(query);
-      setCurrentPage(1); // Reset page when query changes
+      setCurrentPage(1);
 
       const lowerQuery = query.toLowerCase();
       if (lowerQuery.startsWith('categoría:')) {
@@ -64,21 +63,18 @@ export default function NovelBrowser({ initialNovels }: NovelBrowserProps) {
         setSelectedTag(tagValue);
         setSelectedCategory(null);
       } else if (lowerQuery.startsWith('autor:') || lowerQuery.startsWith('traductor:')) {
-        // For author/translator searches via URL, we don't auto-select a category/tag badge
         setSelectedCategory(null);
         setSelectedTag(null);
       }
     }
   }, [searchParams]);
 
-  // Effect to reset current page to 1 if filters change
   useEffect(() => {
     setCurrentPage(1);
   }, [selectedCategory, selectedTag, searchTerm]);
 
-
   const featuredNovels = useMemo(() => {
-    return initialNovels.filter(novel => 
+    return initialNovels.filter(novel =>
       novel.etiquetas?.some(tag => tag.toLowerCase() === 'destacado')
     );
   }, [initialNovels]);
@@ -97,14 +93,14 @@ export default function NovelBrowser({ initialNovels }: NovelBrowserProps) {
     const tagsFromNovels = new Set<string>();
     initialNovels.forEach(novel => {
       novel.etiquetas?.forEach(tag => {
-        if (tag.toLowerCase() !== 'destacado') { 
-            tagsFromNovels.add(tag);
+        if (tag.toLowerCase() !== 'destacado') {
+          tagsFromNovels.add(tag);
         }
       });
     });
     return Array.from(new Set([...PREDEFINED_TAGS, ...tagsFromNovels])).sort();
   }, [initialNovels]);
-  
+
   const categoryCounts = useMemo(() => {
     const counts: { [key: string]: number } = {};
     initialNovels.forEach(novel => {
@@ -113,7 +109,7 @@ export default function NovelBrowser({ initialNovels }: NovelBrowserProps) {
       }
     });
     PREDEFINED_CATEGORIES.forEach(cat => {
-        if (!(cat in counts)) counts[cat] = 0;
+      if (!(cat in counts)) counts[cat] = 0;
     });
     return counts;
   }, [initialNovels]);
@@ -122,19 +118,19 @@ export default function NovelBrowser({ initialNovels }: NovelBrowserProps) {
     const counts: { [key: string]: number } = {};
     initialNovels.forEach(novel => {
       novel.etiquetas?.forEach(tag => {
-        if (tag.toLowerCase() !== 'destacado') { 
+        if (tag.toLowerCase() !== 'destacado') {
           counts[tag] = (counts[tag] || 0) + 1;
         }
       });
     });
     PREDEFINED_TAGS.forEach(tag => {
-        if (!(tag in counts)) counts[tag] = 0;
+      if (!(tag in counts)) counts[tag] = 0;
     });
     return counts;
   }, [initialNovels]);
 
   const filteredNovels = useMemo(() => {
-    let novelsToFilter = [...initialNovels]; 
+    let novelsToFilter = [...initialNovels];
     const lowerSearchTerm = searchTerm.toLowerCase();
 
     let authorQuery: string | null = null;
@@ -151,10 +147,10 @@ export default function NovelBrowser({ initialNovels }: NovelBrowserProps) {
       generalQueryText = lowerSearchTerm.substring(10 + (translatorQuery?.length || 0)).trim();
     } else if (lowerSearchTerm.startsWith('categoría:')) {
       categoryQueryFromSearch = lowerSearchTerm.substring(10).trim();
-      generalQueryText = ""; 
+      generalQueryText = "";
     } else if (lowerSearchTerm.startsWith('etiqueta:')) {
       tagQueryFromSearch = lowerSearchTerm.substring(9).trim();
-      generalQueryText = ""; 
+      generalQueryText = "";
     }
     generalQueryText = generalQueryText.trim();
 
@@ -168,7 +164,7 @@ export default function NovelBrowser({ initialNovels }: NovelBrowserProps) {
       if (activeTagFilter && !novel.etiquetas?.map(t => t.toLowerCase()).includes(activeTagFilter.toLowerCase())) {
         return false;
       }
-      
+
       if (authorQuery && !novel.author.toLowerCase().includes(authorQuery)) {
         return false;
       }
@@ -176,12 +172,12 @@ export default function NovelBrowser({ initialNovels }: NovelBrowserProps) {
       if (translatorQuery && !(novel.traductor?.toLowerCase().includes(translatorQuery))) {
         return false;
       }
-      
+
       if (generalQueryText) {
         const titleMatch = novel.title.toLowerCase().includes(generalQueryText);
         const authorGeneralMatch = !authorQuery && novel.author.toLowerCase().includes(generalQueryText);
         const translatorGeneralMatch = !translatorQuery && novel.traductor?.toLowerCase().includes(generalQueryText);
-        
+
         if (categoryQueryFromSearch || tagQueryFromSearch || authorQuery || translatorQuery) {
           if(!titleMatch && generalQueryText) return false;
         } else {
@@ -204,7 +200,6 @@ export default function NovelBrowser({ initialNovels }: NovelBrowserProps) {
   const filteredNovelsTitle = useMemo(() => {
     if (selectedCategory) return `Categoría: ${selectedCategory}`;
     if (selectedTag) return `Etiqueta: ${selectedTag}`;
-    // Check specific search prefixes after general category/tag selections
     const lowerSearch = searchTerm.toLowerCase();
     if (lowerSearch.startsWith('categoría:')) return `Categoría: ${searchTerm.substring(10)}`;
     if (lowerSearch.startsWith('etiqueta:')) return `Etiqueta: ${searchTerm.substring(9)}`;
@@ -214,20 +209,22 @@ export default function NovelBrowser({ initialNovels }: NovelBrowserProps) {
     return "Todas las Novelas";
   }, [searchTerm, selectedCategory, selectedTag]);
 
-
-  // Moved the `if (!mounted)` block to after all hook declarations
   if (!mounted) {
     return (
-      <div className="space-y-8">
+      <div className="space-y-8 py-10">
+        <div className="flex flex-col items-center justify-center text-center">
+          <Loader2 className="h-12 w-12 text-primary animate-spin mb-4" />
+          <p className="text-lg text-muted-foreground">Cargando novelas...</p>
+        </div>
         <div className="py-8 sm:py-10 px-4">
           <div className="max-w-2xl mx-auto">
             <div className="h-14 sm:h-16 bg-muted rounded-xl animate-pulse"></div>
           </div>
         </div>
         <div className="h-10 bg-muted rounded w-1/4 mb-4 animate-pulse mx-auto"></div>
-        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4 sm:gap-6">
-          {[...Array(ITEMS_PER_PAGE)].map((_, index) => (
-            <div key={index} className="bg-card p-3 rounded-lg shadow animate-pulse">
+        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4 sm:gap-6 animate-pulse">
+          {[...Array(ITEMS_PER_PAGE > 12 ? 12 : ITEMS_PER_PAGE)].map((_, index) => (
+            <div key={index} className="bg-card p-3 rounded-lg shadow">
               <div className="aspect-[3/4] w-full bg-muted rounded-t-md mb-2"></div>
               <div className="h-4 bg-muted rounded w-3/4 mb-1.5"></div>
               <div className="h-3 bg-muted rounded w-1/2 mb-1.5"></div>
@@ -246,44 +243,44 @@ export default function NovelBrowser({ initialNovels }: NovelBrowserProps) {
     const lowerNewSearchTerm = newSearchTerm.toLowerCase();
     if (lowerNewSearchTerm.startsWith('categoría:')) {
       const catVal = newSearchTerm.substring(10).trim();
-      setSelectedCategory(catVal); 
+      setSelectedCategory(catVal);
       setSelectedTag(null);
     } else if (lowerNewSearchTerm.startsWith('etiqueta:')) {
       const tagVal = newSearchTerm.substring(9).trim();
       setSelectedTag(tagVal);
       setSelectedCategory(null);
-    } else if (!newSearchTerm) { 
-        if(selectedCategory && searchTerm.toLowerCase().startsWith('categoría:')){
-            setSelectedCategory(null);
-        }
-        if(selectedTag && searchTerm.toLowerCase().startsWith('etiqueta:')){
-            setSelectedTag(null);
-        }
+    } else if (!newSearchTerm) {
+      if(selectedCategory && searchTerm.toLowerCase().startsWith('categoría:')){
+        setSelectedCategory(null);
+      }
+      if(selectedTag && searchTerm.toLowerCase().startsWith('etiqueta:')){
+        setSelectedTag(null);
+      }
     }
   };
-  
+
   const handleCategorySelect = (category: string | null) => {
     setSelectedCategory(category);
-    setSelectedTag(null); 
+    setSelectedTag(null);
     if (category) {
       setSearchTerm(`Categoría:${category}`);
     } else {
-      setSearchTerm(''); 
+      setSearchTerm('');
     }
     router.push(`/?q=${category ? `Categoría:${encodeURIComponent(category)}` : ''}`, { scroll: false });
   };
 
   const handleTagSelect = (tag: string | null) => {
     setSelectedTag(tag);
-    setSelectedCategory(null); 
+    setSelectedCategory(null);
     if (tag) {
       setSearchTerm(`Etiqueta:${tag}`);
     } else {
-      setSearchTerm(''); 
+      setSearchTerm('');
     }
     router.push(`/?q=${tag ? `Etiqueta:${encodeURIComponent(tag)}` : ''}`, { scroll: false });
   };
-  
+
   const clearAllFilters = () => {
     setSelectedCategory(null);
     setSelectedTag(null);
@@ -293,7 +290,7 @@ export default function NovelBrowser({ initialNovels }: NovelBrowserProps) {
 
   const handlePageChange = (newPage: number) => {
     setCurrentPage(newPage);
-    window.scrollTo(0, 0); 
+    window.scrollTo(0, 0);
   };
 
   const activeFilterCount = [selectedCategory, selectedTag, searchTerm ? 'search' : null].filter(Boolean).length;
@@ -318,22 +315,27 @@ export default function NovelBrowser({ initialNovels }: NovelBrowserProps) {
       </section>
 
       {featuredNovels.length > 0 && !isFiltering && (
-        <section>
-          <div className="flex items-center justify-between mb-6">
-            <h2 className="text-2xl sm:text-3xl font-bold text-primary flex items-center">
-              <Star className="mr-3 h-6 w-6 sm:h-7 sm:w-7" />
+        <section className="bg-gradient-to-br from-primary/10 via-background to-background py-8 rounded-xl shadow-lg border border-primary/30">
+          <div className="container mx-auto px-4">
+            <h2 className="text-2xl sm:text-3xl font-bold text-primary flex items-center mb-6">
+              <Star className="mr-3 h-7 w-7 text-amber-400" />
               Novelas Destacadas
             </h2>
+            <div className="flex overflow-x-auto space-x-4 sm:space-x-6 pb-4 -mx-4 px-4">
+              {/* The negative margins and padding help extend the scroll area visually to the container edges */}
+              {featuredNovels.slice(0,10).map((novel) => (
+                <div key={`featured-${novel.id}`} className="flex-none w-40 sm:w-48 md:w-52">
+                  <NovelCard novel={novel} />
+                </div>
+              ))}
+            </div>
           </div>
-          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4 sm:gap-6">
-            {featuredNovels.slice(0,6).map((novel) => ( 
-              <NovelCard key={`featured-${novel.id}`} novel={novel} />
-            ))}
-          </div>
-          <Separator className="my-8 sm:my-10" />
         </section>
       )}
       
+      {isFiltering && featuredNovels.length > 0 && <Separator className="my-8 sm:my-10" />}
+
+
       <section>
         <h2 className="text-2xl sm:text-3xl font-bold text-primary mb-6">
             {filteredNovelsTitle}
@@ -453,7 +455,7 @@ export default function NovelBrowser({ initialNovels }: NovelBrowserProps) {
                     Todas ({initialNovels.length})
                 </Badge>
             {allUniqueTags.map(tag => (
-                (tagCounts[tag] > 0 || PREDEFINED_TAGS.includes(tag)) && 
+                (tagCounts[tag] > 0 || PREDEFINED_TAGS.includes(tag)) &&
                 <Badge
                     key={tag}
                     variant={selectedTag === tag || searchTerm.toLowerCase() === `etiqueta:${tag.toLowerCase()}` ? 'default' : 'outline'}
@@ -472,4 +474,3 @@ export default function NovelBrowser({ initialNovels }: NovelBrowserProps) {
     </div>
   );
 }
-

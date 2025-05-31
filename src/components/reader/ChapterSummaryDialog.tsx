@@ -5,7 +5,7 @@ import { useState, useEffect } from 'react';
 import { getChapterSummaryAction } from '@/actions/summaryActions';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
-import { Loader2, AlertTriangle, BrainCircuit, FileText } from 'lucide-react'; // Added BrainCircuit, FileText
+import { Loader2, AlertTriangle, BrainCircuit, FileText } from 'lucide-react';
 import { ScrollArea } from '@/components/ui/scroll-area';
 
 interface ChapterSummaryDialogProps {
@@ -14,9 +14,9 @@ interface ChapterSummaryDialogProps {
   onOpenChange: (isOpen: boolean) => void;
 }
 
-// Helper function to strip HTML and count words
 const countWordsInHtml = (html: string): number => {
   if (!html) return 0;
+  if (typeof document === 'undefined') return 0; // Avoid errors during SSR or if document is not available
   const tempDiv = document.createElement('div');
   tempDiv.innerHTML = html;
   const text = tempDiv.textContent || tempDiv.innerText || "";
@@ -32,7 +32,7 @@ export default function ChapterSummaryDialog({ chapterHtmlContent, isOpen, onOpe
   const [wordCount, setWordCount] = useState(0);
 
   useEffect(() => {
-    if (isOpen) {
+    if (isOpen && typeof document !== 'undefined') { // Ensure document is available for word count
       setWordCount(countWordsInHtml(chapterHtmlContent));
     }
   }, [isOpen, chapterHtmlContent]);
@@ -50,7 +50,7 @@ export default function ChapterSummaryDialog({ chapterHtmlContent, isOpen, onOpe
     }
     setIsLoading(false);
   };
-  
+
   useEffect(() => {
     if (!isOpen) {
       setSummary(null);
@@ -66,19 +66,24 @@ export default function ChapterSummaryDialog({ chapterHtmlContent, isOpen, onOpe
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-[625px] md:max-w-[700px] lg:max-w-[800px] max-h-[90vh] flex flex-col">
         <DialogHeader>
-          <DialogTitle className="flex items-center">
-            <BrainCircuit className="mr-2 h-5 w-5 text-primary"/> Resumen del Capítulo (IA)
+          <DialogTitle className="flex items-center text-primary">
+            <BrainCircuit className="mr-2 h-6 w-6"/> Resumen del Capítulo (IA)
           </DialogTitle>
           <DialogDescription>
-            Obtén un resumen generado por IA del capítulo actual. 
+            Obtén un resumen generado por IA del capítulo actual.
             <span className="block text-xs text-muted-foreground mt-1">
               Original: {wordCount.toLocaleString()} palabras.
             </span>
           </DialogDescription>
         </DialogHeader>
-        <div className="py-4 space-y-4 flex-grow min-h-[200px] flex flex-col">
+        <div className="py-4 space-y-4 flex-grow min-h-[250px] flex flex-col">
           {!hasAttemptedGeneration && !isLoading && (
-            <div className="flex-grow flex items-center justify-center">
+            <div className="flex-grow flex flex-col items-center justify-center text-center p-4">
+               <BrainCircuit className="h-16 w-16 text-primary/70 mb-4" />
+               <p className="text-lg font-medium mb-2">¿Listo para un resumen rápido?</p>
+               <p className="text-muted-foreground text-sm mb-6 max-w-sm">
+                 Gemini analizará el contenido del capítulo y te proporcionará los puntos clave en español.
+               </p>
                <Button onClick={handleGenerateSummary} disabled={isLoading} size="lg">
                 {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                 <BrainCircuit className="mr-2 h-5 w-5" />
@@ -87,36 +92,42 @@ export default function ChapterSummaryDialog({ chapterHtmlContent, isOpen, onOpe
             </div>
           )}
           {isLoading && (
-            <div className="flex-grow flex flex-col items-center justify-center space-y-3 p-4">
-              <div className="relative">
-                <BrainCircuit className="h-16 w-16 text-primary animate-pulse" />
-                <Loader2 className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 h-8 w-8 text-primary/70 animate-spin" />
+            <div className="flex-grow flex flex-col items-center justify-center space-y-3 p-4 text-center">
+              <div className="relative mb-2">
+                <BrainCircuit className="h-20 w-20 text-primary animate-pulse opacity-50" />
+                <Loader2 className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 h-10 w-10 text-primary animate-spin" />
               </div>
-              <p className="text-lg font-medium text-primary">Gemini está pensando...</p>
-              <p className="text-muted-foreground text-sm">Generando un resumen conciso para ti.</p>
+              <p className="text-xl font-semibold text-primary">Gemini está pensando...</p>
+              <p className="text-muted-foreground text-sm max-w-xs">
+                Analizando el texto y elaborando un resumen conciso para ti. ¡Un momento!
+              </p>
             </div>
           )}
           {error && !isLoading && (
-            <div className="flex-grow flex flex-col items-center justify-center text-destructive p-4 bg-destructive/10 rounded-md">
-              <AlertTriangle className="h-8 w-8 mb-2" />
-              <p className="font-semibold text-center">Error al Generar Resumen</p>
-              <p className="text-sm text-center">{error}</p>
+            <div className="flex-grow flex flex-col items-center justify-center text-destructive p-4 bg-destructive/10 rounded-md text-center">
+              <AlertTriangle className="h-10 w-10 mb-3" />
+              <p className="text-lg font-semibold">Error al Generar Resumen</p>
+              <p className="text-sm mt-1">{error}</p>
+              <Button onClick={handleGenerateSummary} variant="outline" className="mt-4">
+                <BrainCircuit className="mr-2 h-4 w-4" />
+                Intentar de Nuevo
+             </Button>
             </div>
           )}
           {summary && !isLoading && (
-            <ScrollArea className="flex-grow rounded-md border p-4 bg-muted/20">
+            <ScrollArea className="flex-grow rounded-md border p-4 bg-muted/20 shadow-inner">
               <p className="whitespace-pre-line leading-relaxed text-sm">{summary}</p>
             </ScrollArea>
           )}
         </div>
-        <DialogFooter className="gap-2 sm:justify-between mt-auto">
-          {hasAttemptedGeneration && !isLoading && (
+        <DialogFooter className="gap-2 sm:justify-between mt-auto pt-4 border-t">
+          {(hasAttemptedGeneration || error) && !isLoading && (
              <Button onClick={handleGenerateSummary} variant="outline" disabled={isLoading}>
               {isLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <BrainCircuit className="mr-2 h-4 w-4" />}
-              Regenerar
+              {error ? 'Intentar de Nuevo' : 'Regenerar Resumen'}
             </Button>
           )}
-          <Button onClick={() => onOpenChange(false)} variant={hasAttemptedGeneration && !isLoading ? "secondary" : "default"}>Cerrar</Button>
+          <Button onClick={() => onOpenChange(false)} variant={hasAttemptedGeneration && !isLoading && !error ? "secondary" : "default"}>Cerrar</Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>

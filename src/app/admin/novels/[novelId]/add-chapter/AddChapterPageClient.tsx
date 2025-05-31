@@ -2,7 +2,7 @@
 'use client';
 
 import ManageNovelChapters from '@/components/admin/ManageNovelChapters';
-import { useRouter, usePathname, notFound } from 'next/navigation';
+import { useRouter, usePathname, notFound }_from_ 'next/navigation';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { ArrowLeft, Loader2, ShieldAlert } from 'lucide-react';
@@ -11,7 +11,7 @@ import type { Novel } from '@/lib/types';
 import { useAuth } from '@/hooks/useAuth';
 
 interface AddChapterPageClientProps {
-  novel: Novel | null; // Novel puede ser null si no se encontró o hubo error
+  novel: Novel | null;
 }
 
 export default function AddChapterPageClient({ novel: initialNovel }: AddChapterPageClientProps) {
@@ -19,8 +19,6 @@ export default function AddChapterPageClient({ novel: initialNovel }: AddChapter
   const router = useRouter();
   const pathname = usePathname();
 
-  // Estado para manejar el novel, aunque ya viene como prop,
-  // podríamos necesitarlo si quisiéramos re-fetchear o algo en el cliente (no es el caso ahora)
   const [novel, setNovel] = useState<Novel | null>(initialNovel);
   const [isAuthorized, setIsAuthorized] = useState(false);
   const [isCheckingAuth, setIsCheckingAuth] = useState(true);
@@ -28,7 +26,7 @@ export default function AddChapterPageClient({ novel: initialNovel }: AddChapter
 
   useEffect(() => {
     if (authIsLoading) {
-      return; // Esperar a que la autenticación se cargue
+      return;
     }
 
     if (!currentUser) {
@@ -37,15 +35,13 @@ export default function AddChapterPageClient({ novel: initialNovel }: AddChapter
     }
 
     if (initialNovel) {
-      setNovel(initialNovel); // Sincronizar el estado si la prop cambia (aunque no debería en este flujo)
+      setNovel(initialNovel);
       if (initialNovel.creatorId === currentUser.id) {
         setIsAuthorized(true);
       } else {
         setIsAuthorized(false);
       }
     } else {
-      // Si initialNovel es null (pasado desde el Server Component), significa que no se encontró.
-      // El Server Component ya debería haber llamado a notFound(), pero como una doble verificación:
       notFound();
     }
     setIsCheckingAuth(false);
@@ -56,29 +52,21 @@ export default function AddChapterPageClient({ novel: initialNovel }: AddChapter
   if (authIsLoading || isCheckingAuth) {
     return (
       <section className="py-8">
-        <div className="container mx-auto px-4 text-center">
-          <Loader2 className="h-8 w-8 animate-spin mx-auto mb-4" />
-          <p>Cargando información de la novela y autenticación...</p>
+        <div className="container mx-auto px-4 text-center flex flex-col items-center justify-center min-h-[calc(100vh-20rem)]">
+          <Loader2 className="h-12 w-12 text-primary animate-spin mx-auto mb-4" />
+          <p className="text-lg text-muted-foreground">Cargando información y autenticación...</p>
         </div>
       </section>
     );
   }
 
-  // A este punto, authIsLoading y isCheckingAuth son false.
-  // currentUser debería estar definido debido al redirect anterior.
-  // novel debería estar definido o notFound() ya fue llamado.
-
   if (!novel) {
-    // Este caso debería ser manejado por el notFound() del Server Component
-    // o el notFound() en el useEffect. Lo mantenemos como una salvaguarda.
     console.error("AddChapterPageClient: novel es null o undefined después de la carga y autenticación.");
     notFound();
-    return null; // o un error más explícito
+    return null;
   }
-  
+
   if (!currentUser) {
-     // Este caso también debería ser manejado por la redirección en el useEffect.
-     // Si llegamos aquí, algo muy raro pasó.
     console.error("AddChapterPageClient: currentUser es null después de la carga y autenticación.");
     router.push(`/auth/login?redirect=${pathname}`);
     return <p>Redirigiendo a inicio de sesión...</p>;
@@ -105,11 +93,8 @@ export default function AddChapterPageClient({ novel: initialNovel }: AddChapter
     );
   }
 
-  // At this point, novel is not null, user is logged in and authorized
   return (
     <section className="py-8">
-      {/* El título se genera en el Server Component, podemos añadir uno en cliente si es necesario */}
-      {/* <title>{`Gestionar Capítulos: ${novel.title} - Literary Nexus`}</title> */}
       <div className="container mx-auto px-4 max-w-3xl">
         <Button variant="outline" asChild className="mb-6">
           <Link href="/admin/dashboard">

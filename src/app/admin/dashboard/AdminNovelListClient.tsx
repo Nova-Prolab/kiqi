@@ -5,7 +5,7 @@ import type { Novel } from '@/lib/types';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
-import { ListChecks, Trash2, Eye, AlertTriangle, UserCircle, ShieldCheck } from 'lucide-react';
+import { ListChecks, Trash2, Eye, AlertTriangle, UserCircle, ShieldCheck, Loader2 } from 'lucide-react';
 import Image from 'next/image';
 import {
   AlertDialog,
@@ -39,7 +39,7 @@ function DeleteButtonContent() {
         <>
             {pending ? (
                 <>
-                    <Trash2 className="mr-2 h-4 w-4 animate-pulse" /> Eliminando...
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Eliminando...
                 </>
             ) : (
                 <>
@@ -51,7 +51,7 @@ function DeleteButtonContent() {
 }
 
 interface AdminNovelListClientProps {
-  novels: Novel[]; // Todas las novelas fetcheadas del repo
+  novels: Novel[];
 }
 
 export default function AdminNovelListClient({ novels: allFetchedNovels }: AdminNovelListClientProps) {
@@ -60,11 +60,11 @@ export default function AdminNovelListClient({ novels: allFetchedNovels }: Admin
   const [deleteState, deleteFormAction, isDeletePending] = useActionState(deleteNovelAction, initialDeleteState);
   const { toast } = useToast();
   const [isPendingFormReset, startFormResetTransition] = useTransition();
-  
+
   const [clientNovels, setClientNovels] = useState<Novel[]>(allFetchedNovels);
 
   useEffect(() => {
-    setClientNovels(allFetchedNovels); // Sync with fetched novels if they change
+    setClientNovels(allFetchedNovels);
   }, [allFetchedNovels]);
 
   useEffect(() => {
@@ -87,7 +87,7 @@ export default function AdminNovelListClient({ novels: allFetchedNovels }: Admin
       }
     }
   }, [deleteState, toast, isDeletePending, isPendingFormReset]);
-  
+
   const managedNovels = useMemo(() => {
     if (!currentUser) return [];
     return clientNovels.filter(novel => novel.creatorId === currentUser.id);
@@ -96,32 +96,20 @@ export default function AdminNovelListClient({ novels: allFetchedNovels }: Admin
 
   if (authIsLoading || !currentUser) {
     return (
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {[...Array(3)].map((_, i) => (
-          <Card key={i} className="animate-pulse">
-            <CardHeader className="flex-row gap-4 items-start">
-                <div className="relative w-20 h-28 bg-muted rounded shrink-0"></div>
-                <div className="flex-grow space-y-2">
-                    <div className="h-6 bg-muted rounded w-3/4"></div>
-                    <div className="h-4 bg-muted rounded w-1/2"></div>
-                </div>
-            </CardHeader>
-            <CardContent><div className="h-4 bg-muted rounded w-1/3 mb-2"></div></CardContent>
-            <CardFooter><div className="h-10 bg-muted rounded w-full"></div></CardFooter>
-          </Card>
-        ))}
+      <div className="flex flex-col items-center justify-center py-20 text-center">
+        <Loader2 className="h-12 w-12 text-primary animate-spin mb-4" />
+        <p className="text-lg text-muted-foreground">Cargando panel de administración...</p>
       </div>
     );
   }
-  
+
   const renderNovelCard = (novel: Novel) => {
     const infoSha = novel.infoJsonSha;
     if (!infoSha) {
-      // This should ideally not happen for a managed novel if info.json exists.
       console.warn(`La novela gestionada ${novel.id} no tiene infoJsonSha. No se podrá eliminar.`);
     }
     return (
-      <Card key={novel.id} className="flex flex-col border-primary/50 shadow-lg">
+      <Card key={novel.id} className="flex flex-col border-primary/50 shadow-lg hover:shadow-primary/20 transition-shadow duration-300">
         <CardHeader className="flex-row gap-4 items-start">
           <div className="relative w-20 h-28 aspect-[2/3] rounded overflow-hidden shrink-0 bg-muted">
             {novel.coverImage && novel.coverImage !== 'https://placehold.co/300x450.png?text=No+Cover' ? (
@@ -133,7 +121,7 @@ export default function AdminNovelListClient({ novels: allFetchedNovels }: Admin
                     className="object-cover"
                 />
             ) : (
-                <div className="w-full h-full flex items-center justify-center text-xs text-muted-foreground">Sin portada</div>
+                <div className="w-full h-full flex items-center justify-center text-xs text-muted-foreground bg-muted/50">Sin portada</div>
             )}
           </div>
           <div className="flex-grow">
@@ -192,30 +180,24 @@ export default function AdminNovelListClient({ novels: allFetchedNovels }: Admin
       </Card>
     );
   };
-  
-  if (!authIsLoading && managedNovels.length === 0) {
+
+  if (managedNovels.length === 0) {
       return (
-          <div className="text-center py-12 border-2 border-dashed border-muted-foreground/30 rounded-lg">
-            <UserCircle className="mx-auto h-12 w-12 text-muted-foreground mb-4" />
-            <p className="text-xl text-muted-foreground">No estás gestionando ninguna novela.</p>
-            <p className="mt-2 text-sm text-muted-foreground">
-                Puedes <Link href="/admin/create-novel" className="text-primary hover:underline">crear una nueva novela</Link> para empezar a gestionarla aquí.
+          <div className="text-center py-12 border-2 border-dashed border-muted-foreground/30 rounded-lg mt-8">
+            <UserCircle className="mx-auto h-16 w-16 text-muted-foreground mb-4" />
+            <h2 className="text-2xl font-semibold text-foreground mb-2">No estás gestionando ninguna novela</h2>
+            <p className="mt-1 text-muted-foreground">
+                Puedes <Link href="/admin/create-novel" className="text-primary hover:underline font-medium">crear una nueva novela</Link> para empezar a gestionarla aquí.
             </p>
           </div>
       )
   }
 
   return (
-    <div className="space-y-8">
-      {managedNovels.length > 0 && (
-        <section>
-          {/* Título opcional, si solo hay una sección puede no ser necesario */}
-          {/* <h2 className="text-2xl font-semibold mb-4 text-primary">Tus Novelas Gestionadas</h2> */}
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {managedNovels.map(novel => renderNovelCard(novel))}
-          </div>
-        </section>
-      )}
+    <div className="space-y-8 mt-8">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        {managedNovels.map(novel => renderNovelCard(novel))}
+      </div>
     </div>
   );
 }
