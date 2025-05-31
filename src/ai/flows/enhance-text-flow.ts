@@ -19,7 +19,8 @@ const EnhancementTypeSchema = z.enum([
 ]);
 export type EnhancementType = z.infer<typeof EnhancementTypeSchema>;
 
-export const EnhanceTextInputSchema = z.object({
+// Do not export the Zod schema object from a 'use server' file
+const EnhanceTextInputSchema = z.object({
   text: z.string().describe('The text to be enhanced or used as context.'),
   enhancementType: EnhancementTypeSchema.describe(
     'The type of enhancement to perform.'
@@ -27,7 +28,8 @@ export const EnhanceTextInputSchema = z.object({
 });
 export type EnhanceTextInput = z.infer<typeof EnhanceTextInputSchema>;
 
-export const EnhanceTextOutputSchema = z.object({
+// Do not export the Zod schema object from a 'use server' file
+const EnhanceTextOutputSchema = z.object({
   enhancedText: z
     .string()
     .describe('The resulting text after enhancement.'),
@@ -52,6 +54,7 @@ const getPromptInstructions = (type: EnhancementType) => {
     case 'summarizeSection':
       return "Resume brevemente la siguiente sección de texto en español, en no más de tres frases: '{{{text}}}'. Proporciona solo el resumen.";
     default:
+      // Should not happen given the enum, but as a fallback:
       return 'Por favor, procesa el siguiente texto: {{{text}}}';
   }
 };
@@ -65,16 +68,26 @@ const enhanceTextFlow = ai.defineFlow(
   async (input) => {
     const promptInstructions = getPromptInstructions(input.enhancementType);
 
+    // Define the prompt dynamically based on the enhancement type
     const dynamicPrompt = ai.definePrompt({
         name: `enhanceTextPrompt_${input.enhancementType}`, // Unique name for prompt instance
-        input: { schema: EnhanceTextInputSchema },
-        output: { schema: EnhanceTextOutputSchema },
+        input: { schema: EnhanceTextInputSchema }, // Use the internal schema
+        output: { schema: EnhanceTextOutputSchema }, // Use the internal schema
         prompt: promptInstructions,
+        // Optional: Add safety settings if needed for specific content types
+        // config: {
+        //   safetySettings: [
+        //     { category: 'HARM_CATEGORY_HARASSMENT', threshold: 'BLOCK_NONE' },
+        //     { category: 'HARM_CATEGORY_HATE_SPEECH', threshold: 'BLOCK_NONE' },
+        //   ],
+        // },
       });
 
     const { output } = await dynamicPrompt(input);
-    if (!output || !output.enhancedText) {
-      throw new Error('La IA no pudo generar una respuesta.');
+    if (!output || typeof output.enhancedText === 'undefined') { // Check for undefined explicitly
+      // Log the input and the raw output for debugging
+      console.error('AI enhancement failed. Input:', input, 'Raw AI Output:', output);
+      throw new Error('La IA no pudo generar una respuesta o la respuesta fue inválida.');
     }
     return output;
   }
