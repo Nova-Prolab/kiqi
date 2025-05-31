@@ -30,7 +30,7 @@ export default function CreateNovelPage() {
 
   return (
     <section className="py-8">
-      <title>Crear Nueva Novela - Literary Nexus</title>
+      <title>Crear Nueva Novela - NovaNexus</title>
       <div className="container mx-auto px-4">
         <CreateNovelForm />
       </div>

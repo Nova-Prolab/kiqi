@@ -7,7 +7,7 @@ import { FilePlus } from 'lucide-react';
 import AdminNovelListClient from './AdminNovelListClient'; // Import the new client component
 
 export const metadata = {
-  title: 'Panel de Administración de Novelas - Literary Nexus',
+  title: 'Panel de Administración de Novelas - NovaNexus',
   description: 'Gestiona tus novelas y capítulos.',
 };
 
