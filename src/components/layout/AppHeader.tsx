@@ -31,15 +31,15 @@ export default function AppHeader() {
     <header className="sticky top-0 z-50 w-full border-b border-border/40 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
       <div className="container flex h-16 items-center">
         <Link href="/" className="flex items-center mr-auto">
-          <Image 
-            src="https://i.imgur.com/oDm44VN.png" 
-            alt="Kiqi! Logo" 
-            width={56} 
-            height={56} 
-            className="h-14 w-14" 
+          <Image
+            src="https://i.imgur.com/oDm44VN.png"
+            alt="Kiqi! Logo"
+            width={64}
+            height={64}
+            className="h-16 w-16"
           />
         </Link>
-        
+
         <nav className="flex items-center space-x-2 lg:space-x-4">
           {/* Future nav links can go here */}
         </nav>
