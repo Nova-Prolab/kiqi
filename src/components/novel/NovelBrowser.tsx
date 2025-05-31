@@ -51,9 +51,9 @@ export default function NovelBrowser({ initialNovels }: NovelBrowserProps) {
     const query = searchParams.get('q');
     if (query) {
       setSearchTerm(query);
-      setCurrentPage(1);
+      setCurrentPage(1); // Reset page on new search from URL
 
-      const lowerQuery = query.toLowerCase();
+      const lowerQuery = query.toLowerCase().trim();
       if (lowerQuery.startsWith('categoría:')) {
         const categoryValue = query.substring(10).trim();
         setSelectedCategory(categoryValue);
@@ -70,7 +70,7 @@ export default function NovelBrowser({ initialNovels }: NovelBrowserProps) {
   }, [searchParams]);
 
   useEffect(() => {
-    setCurrentPage(1);
+    setCurrentPage(1); // Reset page when filters change
   }, [selectedCategory, selectedTag, searchTerm]);
 
   const featuredNovels = useMemo(() => {
@@ -131,61 +131,60 @@ export default function NovelBrowser({ initialNovels }: NovelBrowserProps) {
 
   const filteredNovels = useMemo(() => {
     let novelsToFilter = [...initialNovels];
-    const lowerSearchTerm = searchTerm.toLowerCase();
+    const lowerSearchTerm = searchTerm.toLowerCase().trim();
 
     let authorQuery: string | null = null;
     let translatorQuery: string | null = null;
-    let categoryQueryFromSearch: string | null = null;
-    let tagQueryFromSearch: string | null = null;
-    let generalQueryText = lowerSearchTerm;
+    // categoryQueryFromSearchInput and tagQueryFromSearchInput are not strictly needed for filtering
+    // as selectedCategory/selectedTag (UI state) are kept in sync by handleSearchChange.
+    // We primarily rely on selectedCategory and selectedTag for filtering.
+    let generalSearchText = "";
 
     if (lowerSearchTerm.startsWith('autor:')) {
-      authorQuery = lowerSearchTerm.substring(6).split(' ')[0].trim();
-      generalQueryText = lowerSearchTerm.substring(6 + (authorQuery?.length || 0)).trim();
+      authorQuery = lowerSearchTerm.substring(6).trim();
     } else if (lowerSearchTerm.startsWith('traductor:')) {
-      translatorQuery = lowerSearchTerm.substring(10).split(' ')[0].trim();
-      generalQueryText = lowerSearchTerm.substring(10 + (translatorQuery?.length || 0)).trim();
+      translatorQuery = lowerSearchTerm.substring(10).trim();
     } else if (lowerSearchTerm.startsWith('categoría:')) {
-      categoryQueryFromSearch = lowerSearchTerm.substring(10).trim();
-      generalQueryText = "";
+      // The actual filtering for category is handled by selectedCategory state,
+      // which is updated by handleSearchChange. No need for generalSearchText here.
     } else if (lowerSearchTerm.startsWith('etiqueta:')) {
-      tagQueryFromSearch = lowerSearchTerm.substring(9).trim();
-      generalQueryText = "";
+      // Similar to category, selectedTag handles this.
+    } else {
+      generalSearchText = lowerSearchTerm; // Only if no specific prefix, it's a general search term
     }
-    generalQueryText = generalQueryText.trim();
-
+    
     novelsToFilter = novelsToFilter.filter(novel => {
-      const activeCategoryFilter = categoryQueryFromSearch || selectedCategory;
-      if (activeCategoryFilter && novel.categoria?.toLowerCase() !== activeCategoryFilter.toLowerCase()) {
+      // Filter by UI-selected category (driven by badges or "Categoría:" prefix)
+      if (selectedCategory && novel.categoria?.toLowerCase() !== selectedCategory.toLowerCase()) {
         return false;
       }
 
-      const activeTagFilter = tagQueryFromSearch || selectedTag;
-      if (activeTagFilter && !novel.etiquetas?.map(t => t.toLowerCase()).includes(activeTagFilter.toLowerCase())) {
+      // Filter by UI-selected tag (driven by badges or "Etiqueta:" prefix)
+      if (selectedTag && !novel.etiquetas?.map(t => t.toLowerCase()).includes(selectedTag.toLowerCase())) {
         return false;
       }
-
+      
+      // Filter by author query from "Autor:" prefix
       if (authorQuery && !novel.author.toLowerCase().includes(authorQuery)) {
         return false;
       }
-
+      
+      // Filter by translator query from "Traductor:" prefix
       if (translatorQuery && !(novel.traductor?.toLowerCase().includes(translatorQuery))) {
         return false;
       }
-
-      if (generalQueryText) {
-        const titleMatch = novel.title.toLowerCase().includes(generalQueryText);
-        const authorGeneralMatch = !authorQuery && novel.author.toLowerCase().includes(generalQueryText);
-        const translatorGeneralMatch = !translatorQuery && novel.traductor?.toLowerCase().includes(generalQueryText);
-
-        if (categoryQueryFromSearch || tagQueryFromSearch || authorQuery || translatorQuery) {
-          if(!titleMatch && generalQueryText) return false;
-        } else {
-          if (!titleMatch && !authorGeneralMatch && !translatorGeneralMatch) {
-            return false;
-          }
+      
+      // Filter by general search text (only if no specific field prefix like Autor/Traductor was used)
+      if (generalSearchText) {
+        const titleMatch = novel.title.toLowerCase().includes(generalSearchText);
+        const authorGeneralMatch = novel.author.toLowerCase().includes(generalSearchText);
+        const translatorGeneralMatch = novel.traductor?.toLowerCase().includes(generalSearchText);
+        
+        if (!titleMatch && !authorGeneralMatch && !translatorGeneralMatch) {
+          return false;
         }
       }
+      
       return true;
     });
     return novelsToFilter;
@@ -200,14 +199,15 @@ export default function NovelBrowser({ initialNovels }: NovelBrowserProps) {
   const filteredNovelsTitle = useMemo(() => {
     if (selectedCategory) return `Categoría: ${selectedCategory}`;
     if (selectedTag) return `Etiqueta: ${selectedTag}`;
-    const lowerSearch = searchTerm.toLowerCase();
-    if (lowerSearch.startsWith('categoría:')) return `Categoría: ${searchTerm.substring(10)}`;
-    if (lowerSearch.startsWith('etiqueta:')) return `Etiqueta: ${searchTerm.substring(9)}`;
-    if (lowerSearch.startsWith('autor:')) return `Autor: ${searchTerm.substring(6).split(' ')[0]}`;
-    if (lowerSearch.startsWith('traductor:')) return `Traductor: ${searchTerm.substring(10).split(' ')[0]}`;
-    if (searchTerm) return "Resultados de Búsqueda";
+    const lowerSearch = searchTerm.toLowerCase().trim();
+    if (lowerSearch.startsWith('categoría:')) return `Categoría: ${searchTerm.substring(10).trim()}`;
+    if (lowerSearch.startsWith('etiqueta:')) return `Etiqueta: ${searchTerm.substring(9).trim()}`;
+    if (lowerSearch.startsWith('autor:')) return `Autor: ${searchTerm.substring(6).trim()}`;
+    if (lowerSearch.startsWith('traductor:')) return `Traductor: ${searchTerm.substring(10).trim()}`;
+    if (searchTerm.trim()) return "Resultados de Búsqueda";
     return "Todas las Novelas";
   }, [searchTerm, selectedCategory, selectedTag]);
+
 
   if (!mounted) {
     return (
@@ -238,45 +238,49 @@ export default function NovelBrowser({ initialNovels }: NovelBrowserProps) {
 
   const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const newSearchTerm = e.target.value;
-    setSearchTerm(newSearchTerm);
+    setSearchTerm(newSearchTerm); // Update search term state
 
-    const lowerNewSearchTerm = newSearchTerm.toLowerCase();
+    const lowerNewSearchTerm = newSearchTerm.toLowerCase().trim();
+
+    // Update UI filter states (selectedCategory, selectedTag) based on search term prefixes
     if (lowerNewSearchTerm.startsWith('categoría:')) {
-      const catVal = newSearchTerm.substring(10).trim();
+      const catVal = newSearchTerm.substring(10).trim(); // Use original casing for display
       setSelectedCategory(catVal);
       setSelectedTag(null);
     } else if (lowerNewSearchTerm.startsWith('etiqueta:')) {
-      const tagVal = newSearchTerm.substring(9).trim();
+      const tagVal = newSearchTerm.substring(9).trim(); // Use original casing for display
       setSelectedTag(tagVal);
       setSelectedCategory(null);
-    } else if (!newSearchTerm) {
-      if(selectedCategory && searchTerm.toLowerCase().startsWith('categoría:')){
-        setSelectedCategory(null);
-      }
-      if(selectedTag && searchTerm.toLowerCase().startsWith('etiqueta:')){
-        setSelectedTag(null);
-      }
+    } else if (lowerNewSearchTerm.startsWith('autor:') || lowerNewSearchTerm.startsWith('traductor:')) {
+      // If searching by author/translator prefix, clear badge-selected category/tag
+      setSelectedCategory(null);
+      setSelectedTag(null);
+    } else if (lowerNewSearchTerm === "") {
+      // If search term is cleared, reset UI filters
+      setSelectedCategory(null);
+      setSelectedTag(null);
     }
+    // If it's a general text search (no prefix and not empty), selectedCategory/Tag remain as they were (if set by badges).
   };
 
   const handleCategorySelect = (category: string | null) => {
     setSelectedCategory(category);
-    setSelectedTag(null);
+    setSelectedTag(null); // Clear tag filter when category is selected
     if (category) {
-      setSearchTerm(`Categoría:${category}`);
+      setSearchTerm(`Categoría:${category}`); // Update search box to reflect badge click
     } else {
-      setSearchTerm('');
+      setSearchTerm(''); // Clear search box if "Todas" categories is clicked
     }
     router.push(`/?q=${category ? `Categoría:${encodeURIComponent(category)}` : ''}`, { scroll: false });
   };
 
   const handleTagSelect = (tag: string | null) => {
     setSelectedTag(tag);
-    setSelectedCategory(null);
+    setSelectedCategory(null); // Clear category filter when tag is selected
     if (tag) {
-      setSearchTerm(`Etiqueta:${tag}`);
+      setSearchTerm(`Etiqueta:${tag}`); // Update search box
     } else {
-      setSearchTerm('');
+      setSearchTerm(''); // Clear search box
     }
     router.push(`/?q=${tag ? `Etiqueta:${encodeURIComponent(tag)}` : ''}`, { scroll: false });
   };
@@ -293,8 +297,8 @@ export default function NovelBrowser({ initialNovels }: NovelBrowserProps) {
     window.scrollTo(0, 0);
   };
 
-  const activeFilterCount = [selectedCategory, selectedTag, searchTerm ? 'search' : null].filter(Boolean).length;
-  const isFiltering = selectedCategory || selectedTag || searchTerm;
+  const activeFilterCount = [selectedCategory, selectedTag, searchTerm.trim() ? 'search' : null].filter(Boolean).length;
+  const isFiltering = selectedCategory || selectedTag || searchTerm.trim();
 
   return (
     <div className="space-y-10">
@@ -304,7 +308,7 @@ export default function NovelBrowser({ initialNovels }: NovelBrowserProps) {
             <Search className="absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-muted-foreground" />
             <Input
               type="search"
-              placeholder="Buscar por título, autor, traductor, o usar Categoría: / Etiqueta: / Autor: / Traductor:"
+              placeholder="Buscar por título, autor, o usar Categoría:/Etiqueta:/Autor:/Traductor:"
               className="w-full pl-12 pr-4 py-3 rounded-lg shadow-xl text-base focus:ring-2 focus:ring-primary border-border h-14 sm:h-16 text-lg"
               value={searchTerm}
               onChange={handleSearchChange}
@@ -322,7 +326,6 @@ export default function NovelBrowser({ initialNovels }: NovelBrowserProps) {
               Novelas Destacadas
             </h2>
             <div className="flex overflow-x-auto space-x-4 sm:space-x-6 pb-4 -mx-4 px-4">
-              {/* The negative margins and padding help extend the scroll area visually to the container edges */}
               {featuredNovels.slice(0,10).map((novel) => (
                 <div key={`featured-${novel.id}`} className="flex-none w-40 sm:w-48 md:w-52">
                   <NovelCard novel={novel} />
@@ -339,7 +342,7 @@ export default function NovelBrowser({ initialNovels }: NovelBrowserProps) {
       <section>
         <h2 className="text-2xl sm:text-3xl font-bold text-primary mb-6">
             {filteredNovelsTitle}
-            {(isFiltering || searchTerm) && ` (${filteredNovels.length})`}
+            {(isFiltering || searchTerm.trim()) && ` (${filteredNovels.length})`}
         </h2>
         {paginatedNovels.length > 0 ? (
           <>
@@ -410,7 +413,7 @@ export default function NovelBrowser({ initialNovels }: NovelBrowserProps) {
           </CardHeader>
           <CardContent className="flex flex-wrap gap-2">
             <Badge
-              variant={selectedCategory === null && !searchTerm.toLowerCase().startsWith('categoría:') ? 'default' : 'outline'}
+              variant={selectedCategory === null ? 'default' : 'outline'}
               className="cursor-pointer text-sm px-3 py-1.5"
               onClick={() => handleCategorySelect(null)}
               role="button"
@@ -423,7 +426,7 @@ export default function NovelBrowser({ initialNovels }: NovelBrowserProps) {
               (categoryCounts[category] > 0 || PREDEFINED_CATEGORIES.includes(category)) &&
               <Badge
                 key={category}
-                variant={selectedCategory === category || searchTerm.toLowerCase() === `categoría:${category.toLowerCase()}` ? 'default' : 'outline'}
+                variant={selectedCategory === category ? 'default' : 'outline'}
                 className="cursor-pointer text-sm px-3 py-1.5"
                 onClick={() => handleCategorySelect(category)}
                 role="button"
@@ -445,7 +448,7 @@ export default function NovelBrowser({ initialNovels }: NovelBrowserProps) {
             </CardHeader>
             <CardContent className="flex flex-wrap gap-2">
                 <Badge
-                    variant={selectedTag === null && !searchTerm.toLowerCase().startsWith('etiqueta:') ? 'default' : 'outline'}
+                    variant={selectedTag === null ? 'default' : 'outline'}
                     className="cursor-pointer text-sm px-3 py-1.5"
                     onClick={() => handleTagSelect(null)}
                     role="button"
@@ -458,7 +461,7 @@ export default function NovelBrowser({ initialNovels }: NovelBrowserProps) {
                 (tagCounts[tag] > 0 || PREDEFINED_TAGS.includes(tag)) &&
                 <Badge
                     key={tag}
-                    variant={selectedTag === tag || searchTerm.toLowerCase() === `etiqueta:${tag.toLowerCase()}` ? 'default' : 'outline'}
+                    variant={selectedTag === tag ? 'default' : 'outline'}
                     className="cursor-pointer text-sm px-3 py-1.5"
                     onClick={() => handleTagSelect(tag)}
                     role="button"
@@ -474,3 +477,5 @@ export default function NovelBrowser({ initialNovels }: NovelBrowserProps) {
     </div>
   );
 }
+
+    
