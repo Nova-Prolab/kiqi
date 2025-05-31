@@ -183,10 +183,10 @@ export default function AdminNovelListClient({ novels: allFetchedNovels }: Admin
 
   if (managedNovels.length === 0) {
       return (
-          <div className="text-center py-12 border-2 border-dashed border-muted-foreground/30 rounded-lg mt-8">
+          <div className="text-center py-12 border-2 border-dashed border-muted-foreground/30 rounded-lg mt-8 max-w-xs sm:max-w-md mx-auto">
             <UserCircle className="mx-auto h-16 w-16 text-muted-foreground mb-4" />
             <h2 className="text-2xl font-semibold text-foreground mb-2">No estás gestionando ninguna novela</h2>
-            <p className="mt-1 text-muted-foreground">
+            <p className="mt-1 text-muted-foreground break-words px-2"> {/* Added break-words and slight horizontal padding for inner text */}
                 Puedes <Link href="/admin/create-novel" className="text-primary hover:underline font-medium">crear una nueva novela</Link> para empezar a gestionarla aquí.
             </p>
           </div>
@@ -201,3 +201,4 @@ export default function AdminNovelListClient({ novels: allFetchedNovels }: Admin
     </div>
   );
 }
+
