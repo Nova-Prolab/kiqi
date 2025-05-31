@@ -25,6 +25,7 @@ import { useToast } from "@/hooks/use-toast";
 import { useEffect, useState, useMemo } from 'react';
 import { useAuth } from '@/hooks/useAuth';
 import { useRouter } from 'next/navigation';
+import { Badge } from '@/components/ui/badge'; // Added import for Badge
 
 
 const initialDeleteState = {
@@ -70,7 +71,7 @@ export default function AdminNovelListClient({ novels: allFetchedNovels }: Admin
   }, [currentUser, authIsLoading, router]);
 
   useEffect(() => {
-    if (deleteState?.message && !isDeletePending) {
+    if (deleteState?.message && !isDeletePending && !isPendingFormReset) { // Check for !isPendingFormReset
       toast({
         title: deleteState.success ? 'Novela Eliminada (Info)' : 'Error al Eliminar',
         description: deleteState.message,
@@ -82,7 +83,7 @@ export default function AdminNovelListClient({ novels: allFetchedNovels }: Admin
         });
       }
     }
-  }, [deleteState, toast, isDeletePending]);
+  }, [deleteState, toast, isDeletePending, isPendingFormReset]);
   
   const managedNovels = useMemo(() => {
     if (!currentUser) return [];
@@ -90,7 +91,8 @@ export default function AdminNovelListClient({ novels: allFetchedNovels }: Admin
   }, [clientNovels, currentUser]);
 
   const officialNovels = useMemo(() => {
-    return clientNovels.filter(novel => !novel.creatorId || (currentUser && novel.creatorId !== currentUser.id));
+    if(!currentUser) return clientNovels; // If no user, all non-managed are "official"
+    return clientNovels.filter(novel => !novel.creatorId || novel.creatorId !== currentUser.id);
   }, [clientNovels, currentUser]);
 
 
@@ -157,7 +159,7 @@ export default function AdminNovelListClient({ novels: allFetchedNovels }: Admin
               <Eye className="mr-1.5 h-3.5 w-3.5" /> Ver Novela
             </Link>
           </Button>
-          {isManaged && (
+          {isManaged && currentUser && ( // Ensure currentUser is checked for creatorId access
             <>
               <Button asChild variant="secondary" className="w-full sm:w-auto text-xs">
                 <Link href={`/admin/novels/${novel.id}/add-chapter`}>
@@ -203,7 +205,7 @@ export default function AdminNovelListClient({ novels: allFetchedNovels }: Admin
     );
   };
   
-  if (clientNovels.length === 0) {
+  if (clientNovels.length === 0 && managedNovels.length === 0 && officialNovels.length === 0) { // Check all lists
       return (
           <div className="text-center py-12">
             <p className="text-xl text-muted-foreground">No se encontraron novelas en el repositorio.</p>
@@ -225,7 +227,7 @@ export default function AdminNovelListClient({ novels: allFetchedNovels }: Admin
         </section>
       )}
 
-      {managedNovels.length === 0 && (
+      {currentUser && managedNovels.length === 0 && ( // Only show this if user is logged in
         <div className="text-center py-12 border-2 border-dashed border-muted-foreground/30 rounded-lg">
             <UserCircle className="mx-auto h-12 w-12 text-muted-foreground mb-4" />
             <p className="text-xl text-muted-foreground">No estás gestionando ninguna novela.</p>
