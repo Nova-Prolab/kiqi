@@ -76,7 +76,7 @@ export default function AdminNovelListClient({ novels: allFetchedNovels }: Admin
   useEffect(() => {
     if (deleteState?.message && !isDeletePending && !isPendingFormReset) {
       toast({
-        title: deleteState.success ? 'Novela Eliminada (Info)' : 'Error al Eliminar',
+        title: deleteState.success ? 'Novela Eliminada' : 'Error al Eliminar',
         description: deleteState.message,
         variant: deleteState.success ? 'default' : 'destructive',
       });
@@ -92,13 +92,6 @@ export default function AdminNovelListClient({ novels: allFetchedNovels }: Admin
     if (!currentUser) return [];
     return clientNovels.filter(novel => novel.creatorId === currentUser.id);
   }, [clientNovels, currentUser]);
-
-  const officialNovels = useMemo(() => {
-    if(!currentUser) return clientNovels; // If no user, all non-managed are "official" for display purpose
-    // Filter out novels managed by the current user to avoid duplication if logic changes
-    const managedIds = managedNovels.map(n => n.id);
-    return clientNovels.filter(novel => !managedIds.includes(novel.id) && (!novel.creatorId || novel.creatorId !== currentUser.id));
-  }, [clientNovels, currentUser, managedNovels]);
 
 
   if (authIsLoading || !currentUser) {
@@ -121,13 +114,14 @@ export default function AdminNovelListClient({ novels: allFetchedNovels }: Admin
     );
   }
   
-  const renderNovelCard = (novel: Novel, isManaged: boolean) => {
+  const renderNovelCard = (novel: Novel) => {
     const infoSha = novel.infoJsonSha;
-    if (isManaged && !infoSha) {
+    if (!infoSha) {
+      // This should ideally not happen for a managed novel if info.json exists.
       console.warn(`La novela gestionada ${novel.id} no tiene infoJsonSha. No se podrá eliminar.`);
     }
     return (
-      <Card key={novel.id} className={`flex flex-col ${isManaged ? 'border-primary/50 shadow-lg' : 'border-border'}`}>
+      <Card key={novel.id} className="flex flex-col border-primary/50 shadow-lg">
         <CardHeader className="flex-row gap-4 items-start">
           <div className="relative w-20 h-28 aspect-[2/3] rounded overflow-hidden shrink-0 bg-muted">
             {novel.coverImage && novel.coverImage !== 'https://placehold.co/300x450.png?text=No+Cover' ? (
@@ -154,9 +148,7 @@ export default function AdminNovelListClient({ novels: allFetchedNovels }: Admin
             <p className="text-xs text-muted-foreground">
                 ID: {novel.id}
             </p>
-            {isManaged && <Badge variant="default" className="mt-2 text-xs"><UserCircle className="mr-1 h-3 w-3" />Gestionada por ti</Badge>}
-            {!isManaged && <Badge variant="secondary" className="mt-2 text-xs"><ShieldCheck className="mr-1 h-3 w-3" />Oficial</Badge>}
-
+            <Badge variant="default" className="mt-2 text-xs"><UserCircle className="mr-1 h-3 w-3" />Gestionada por ti</Badge>
         </CardContent>
         <CardFooter className="flex flex-col sm:flex-row items-center gap-2 pt-4">
           <Button asChild variant="outline" className="w-full sm:w-auto text-xs">
@@ -164,53 +156,48 @@ export default function AdminNovelListClient({ novels: allFetchedNovels }: Admin
               <Eye className="mr-1.5 h-3.5 w-3.5" /> Ver Novela
             </Link>
           </Button>
-          {isManaged && currentUser && (
-            <>
-              <Button asChild variant="secondary" className="w-full sm:w-auto text-xs">
-                <Link href={`/admin/novels/${novel.id}/add-chapter`}>
-                  <ListChecks className="mr-1.5 h-3.5 w-3.5" /> Gestionar Capítulos
-                </Link>
+          <Button asChild variant="secondary" className="w-full sm:w-auto text-xs">
+            <Link href={`/admin/novels/${novel.id}/add-chapter`}>
+              <ListChecks className="mr-1.5 h-3.5 w-3.5" /> Gestionar Capítulos
+            </Link>
+          </Button>
+          <AlertDialog>
+            <AlertDialogTrigger asChild>
+              <Button variant="destructive" className="w-full sm:w-auto text-xs" disabled={!infoSha || isDeletePending}>
+                <Trash2 className="mr-1.5 h-3.5 w-3.5" /> Eliminar
               </Button>
-               <AlertDialog>
-                <AlertDialogTrigger asChild>
-                  <Button variant="destructive" className="w-full sm:w-auto text-xs" disabled={!infoSha || isDeletePending}>
-                    <Trash2 className="mr-1.5 h-3.5 w-3.5" /> Eliminar
-                  </Button>
-                </AlertDialogTrigger>
-                <AlertDialogContent>
-                  <AlertDialogHeader>
-                    <AlertDialogTitle className="flex items-center">
-                        <AlertTriangle className="text-destructive mr-2"/>Confirmar Eliminación
-                    </AlertDialogTitle>
-                    <AlertDialogDescription>
-                      ¿Estás seguro de que quieres eliminar la novela "{novel.title}"?
-                      <br />
-                      Esta acción es irreversible.
-                    </AlertDialogDescription>
-                  </AlertDialogHeader>
-                  <AlertDialogFooter>
-                    <AlertDialogCancel>Cancelar</AlertDialogCancel>
-                    <form action={deleteFormAction} className="inline-flex">
-                        <input type="hidden" name="novelId" value={novel.id} />
-                        <input type="hidden" name="infoJsonSha" value={infoSha || ''} />
-                        <Button type="submit" variant="destructive" disabled={isDeletePending}>
-                           <DeleteButtonContent/>
-                        </Button>
-                    </form>
-                  </AlertDialogFooter>
-                </AlertDialogContent>
-              </AlertDialog>
-            </>
-          )}
+            </AlertDialogTrigger>
+            <AlertDialogContent>
+              <AlertDialogHeader>
+                <AlertDialogTitle className="flex items-center">
+                    <AlertTriangle className="text-destructive mr-2"/>Confirmar Eliminación
+                </AlertDialogTitle>
+                <AlertDialogDescription>
+                  ¿Estás seguro de que quieres eliminar la novela "{novel.title}"? <br /> Esta acción es irreversible
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                <form action={deleteFormAction} className="inline-flex">
+                    <input type="hidden" name="novelId" value={novel.id} />
+                    <input type="hidden" name="infoJsonSha" value={infoSha || ''} />
+                    <Button type="submit" variant="destructive" disabled={isDeletePending}>
+                        <DeleteButtonContent/>
+                    </Button>
+                </form>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
         </CardFooter>
       </Card>
     );
   };
   
-  if (!authIsLoading && clientNovels.length === 0 && managedNovels.length === 0 && officialNovels.length === 0) {
+  if (!authIsLoading && managedNovels.length === 0) {
       return (
-          <div className="text-center py-12">
-            <p className="text-xl text-muted-foreground">No se encontraron novelas en el repositorio.</p>
+          <div className="text-center py-12 border-2 border-dashed border-muted-foreground/30 rounded-lg">
+            <UserCircle className="mx-auto h-12 w-12 text-muted-foreground mb-4" />
+            <p className="text-xl text-muted-foreground">No estás gestionando ninguna novela.</p>
             <p className="mt-2 text-sm text-muted-foreground">
                 Puedes <Link href="/admin/create-novel" className="text-primary hover:underline">crear una nueva novela</Link> para empezar a gestionarla aquí.
             </p>
@@ -222,39 +209,13 @@ export default function AdminNovelListClient({ novels: allFetchedNovels }: Admin
     <div className="space-y-8">
       {managedNovels.length > 0 && (
         <section>
-          <h2 className="text-2xl font-semibold mb-4 text-primary">Novelas Gestionadas por Ti</h2>
+          {/* Título opcional, si solo hay una sección puede no ser necesario */}
+          {/* <h2 className="text-2xl font-semibold mb-4 text-primary">Tus Novelas Gestionadas</h2> */}
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {managedNovels.map(novel => renderNovelCard(novel, true))}
-          </div>
-        </section>
-      )}
-
-      {currentUser && managedNovels.length === 0 && (
-        <div className="text-center py-12 border-2 border-dashed border-muted-foreground/30 rounded-lg">
-            <UserCircle className="mx-auto h-12 w-12 text-muted-foreground mb-4" />
-            <p className="text-xl text-muted-foreground">No estás gestionando ninguna novela.</p>
-            <p className="mt-2 text-sm text-muted-foreground">
-                <Link href="/admin/create-novel" className="text-primary hover:underline">Crea una nueva novela</Link> para empezar a gestionarla aquí.
-            </p>
-        </div>
-      )}
-      
-      {officialNovels.length > 0 && (
-         <section>
-          <div className="flex items-center mt-10 mb-4">
-            <ShieldCheck className="mr-2 h-6 w-6 text-secondary" />
-            <h2 className="text-2xl font-semibold text-secondary">Otras Novelas (Oficiales/No Gestionadas)</h2>
-          </div>
-          <p className="text-sm text-muted-foreground mb-4">
-            Estas novelas no tienen un `creatorId` asignado o no coinciden con tu ID de usuario. Solo puedes verlas; para gestionarlas, deben ser creadas con tu cuenta o modificadas directamente en GitHub para asignarte la propiedad.
-          </p>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 opacity-70">
-            {officialNovels.map(novel => renderNovelCard(novel, false))}
+            {managedNovels.map(novel => renderNovelCard(novel))}
           </div>
         </section>
       )}
     </div>
   );
 }
-
-    
