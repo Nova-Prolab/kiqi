@@ -1,13 +1,18 @@
 
 'use server';
 
-import { translateChapter } from '@/ai/flows/translate-chapter-flow';
+// import { translateChapter } from '@/ai/flows/translate-chapter-flow'; // Commented out
 import type { TranslateChapterInput, TranslateChapterOutput } from '@/ai/flows/translate-chapter-flow';
 
 export async function translateChapterAction(
   chapterHtmlContent: string,
   targetLanguage: TranslateChapterInput['targetLanguage']
 ): Promise<{ translatedContent?: string; error?: string }> {
+  // Immediately return a "coming soon" message
+  return { error: 'Función de IA (Traducción de Capítulo) no disponible. ¡Próximamente!' };
+
+  // Original logic commented out:
+  /*
   if (!chapterHtmlContent || chapterHtmlContent.trim().length === 0) {
     return { error: 'Chapter content cannot be empty.' };
   }
@@ -28,4 +33,5 @@ export async function translateChapterAction(
     }
     return { error: 'An unexpected error occurred while translating the chapter.' };
   }
+  */
 }

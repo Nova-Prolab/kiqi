@@ -4,8 +4,8 @@
 import { useActionState, useEffect, useRef, useState, useTransition } from 'react';
 import { useFormStatus } from 'react-dom';
 import { saveChapterAction } from '@/actions/novelAdminActions';
-import { enhanceTextAction } from '@/actions/aiChapterActions'; // New AI action
-import type { EnhancementType } from '@/ai/flows/enhance-text-flow'; // Type for AI
+// import { enhanceTextAction } from '@/actions/aiChapterActions'; // AI action removed
+// import type { EnhancementType } from '@/ai/flows/enhance-text-flow'; // Type for AI removed
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -23,7 +23,7 @@ import {
   Sparkles, // Suggest Dialogue
   Lightbulb, // Suggest Plot Idea
   SpellCheck, // Correct Grammar
-  Heading1, Heading2, Heading3, Pilcrow, Quote, Minus // New formatting icons
+  Heading1, Heading2, Heading3, Pilcrow, Quote, Minus
 } from 'lucide-react';
 import Link from 'next/link';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
@@ -64,13 +64,14 @@ export default function ManageNovelChapters({ novelId, novelTitle }: ManageNovel
   const [chapterContent, setChapterContent] = useState('');
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
-  const [isAiLoading, setIsAiLoading] = useState(false);
-  const [aiError, setAiError] = useState<string | null>(null);
-  const [activeAiFeature, setActiveAiFeature] = useState<EnhancementType | null>(null);
+  // AI related states and functions removed
+  // const [isAiLoading, setIsAiLoading] = useState(false);
+  // const [aiError, setAiError] = useState<string | null>(null);
+  // const [activeAiFeature, setActiveAiFeature] = useState<EnhancementType | null>(null);
 
 
   useEffect(() => {
-    if (state?.message && !isSavePending && !isPendingFormActions) { // Check isSavePending as well
+    if (state?.message && !isSavePending && !isPendingFormActions) {
       toast({
         title: state.success ? 'Capítulo Guardado' : 'Error al Guardar Capítulo',
         description: state.message,
@@ -80,11 +81,7 @@ export default function ManageNovelChapters({ novelId, novelTitle }: ManageNovel
 
       if (state.success) {
         startFormResetTransition(() => {
-          formRef.current?.reset(); // Resets native form fields
-          // For chapterContent, which is controlled, we might need to clear it if desired,
-          // or perhaps the user wants to continue editing the next chapter.
-          // For now, let's clear it after successful save of a chapter.
-          // If it's an "edit" scenario (loading existing content), this behavior might need adjustment.
+          formRef.current?.reset();
           // setChapterContent(''); 
         });
       }
@@ -121,8 +118,7 @@ export default function ManageNovelChapters({ novelId, novelTitle }: ManageNovel
     }
 
     if (!selectedText && (formatType === 'h1' || formatType === 'h2' || formatType === 'h3' || formatType === 'p' || formatType === 'blockquote')) {
-      // Insert new line with tags if no text is selected for block elements
-      const lineContent = `Título de ejemplo`; // Placeholder for new line
+      const lineContent = `Título de ejemplo`;
       newText = `${textarea.value.substring(0, start)}${prefix}${lineContent}${suffix}\n${textarea.value.substring(end)}`;
       setChapterContent(newText);
       setTimeout(() => {
@@ -135,7 +131,6 @@ export default function ManageNovelChapters({ novelId, novelTitle }: ManageNovel
         return;
     }
 
-
     newText = `${textarea.value.substring(0, start)}${prefix}${selectedText}${suffix}${insertLine && end === textarea.value.length ? '\n' : ''}${textarea.value.substring(end)}`;
     setChapterContent(newText);
 
@@ -145,103 +140,27 @@ export default function ManageNovelChapters({ novelId, novelTitle }: ManageNovel
     }, 0);
   };
 
-  const handleAiFeature = async (featureType: EnhancementType) => {
-    const textarea = textareaRef.current;
-    if (!textarea) return;
+  // handleAiFeature function removed
 
-    let textToEnhance = textarea.value.substring(textarea.selectionStart, textarea.selectionEnd);
-    const selectionStart = textarea.selectionStart;
-    const selectionEnd = textarea.selectionEnd;
-
-    if (!textToEnhance && (featureType === 'suggestDialogue' || featureType === 'correctGrammar' || featureType === 'summarizeSection')) {
-      toast({ title: "Texto Requerido", description: `Por favor, selecciona algo de texto para '${featureType}'.`, variant: "destructive" });
-      return;
-    }
-    if (!textToEnhance && featureType === 'suggestPlotIdea') {
-        // For plot idea, if no selection, consider using a small portion of text around cursor or whole content?
-        // For now, let's use the whole content if no selection.
-        textToEnhance = chapterContent;
-        if(!textToEnhance) {
-             toast({ title: "Contenido Requerido", description: "Escribe algo de contenido en el capítulo para obtener una idea de trama.", variant: "destructive" });
-             return;
-        }
-    }
-
-
-    setIsAiLoading(true);
-    setAiError(null);
-    setActiveAiFeature(featureType);
-
-    try {
-      const result = await enhanceTextAction({ text: textToEnhance, enhancementType: featureType });
-      if (result.enhancedText) {
-        // Insert or replace text
-        if (selectionStart !== selectionEnd || featureType === 'correctGrammar' || featureType === 'summarizeSection') { // If there was a selection or it's a replacement task
-            const newFullText = chapterContent.substring(0, selectionStart) + result.enhancedText + chapterContent.substring(selectionEnd);
-            setChapterContent(newFullText);
-             setTimeout(() => {
-                textarea.focus();
-                textarea.setSelectionRange(selectionStart, selectionStart + result.enhancedText.length);
-            }, 0);
-        } else { // For suggestions like dialogue or plot idea if no text was selected (plot idea might append)
-            const newFullText = `${chapterContent.substring(0, selectionEnd)}\n\n${result.enhancedText}\n\n${chapterContent.substring(selectionEnd)}`;
-            setChapterContent(newFullText);
-            setTimeout(() => {
-                textarea.focus();
-                textarea.setSelectionRange(selectionEnd + 2, selectionEnd + 2 + result.enhancedText.length);
-            }, 0);
-        }
-        toast({ title: "Sugerencia de IA Aplicada", description: `La sugerencia para '${featureType}' ha sido aplicada.`, variant: "default" });
-
-      } else if (result.error) {
-        setAiError(result.error);
-        toast({ title: "Error de IA", description: result.error, variant: "destructive" });
-      }
-    } catch (e: any) {
-      setAiError(e.message || "Un error desconocido ocurrió con la IA.");
-      toast({ title: "Error de IA", description: e.message || "Un error desconocido ocurrió con la IA.", variant: "destructive" });
-    } finally {
-      setIsAiLoading(false);
-      setActiveAiFeature(null);
-    }
-  };
-  
-  const AiButton = ({ featureType, icon: Icon, label, tooltip }: { featureType: EnhancementType, icon: React.ElementType, label: string, tooltip: string }) => (
-    <Tooltip>
-        <TooltipTrigger asChild>
-            <Button 
-                type="button" 
-                variant="ghost" 
-                size="icon" 
-                onClick={() => handleAiFeature(featureType)} 
-                disabled={isAiLoading}
-                aria-label={label}
-            >
-                {isAiLoading && activeAiFeature === featureType ? <Loader2 className="h-4 w-4 animate-spin" /> : <Icon className="h-4 w-4" />}
-            </Button>
-        </TooltipTrigger>
-        <TooltipContent><p>{tooltip}</p></TooltipContent>
-    </Tooltip>
-  );
-
+  // AiButton component removed, direct disabled buttons with tooltips will be used.
 
   return (
-    <Card className="mt-8 border-primary/50 shadow-lg flex flex-col h-full"> {/* h-full for card to expand */}
+    <Card className="mt-8 border-primary/50 shadow-lg flex flex-col h-full">
       <CardHeader>
         <CardTitle className="flex items-center text-xl">
           <Edit3 className="mr-3 h-6 w-6 text-primary" />
           Escribir/Editar Capítulo para: <span className="ml-2 font-semibold">{novelTitle}</span>
         </CardTitle>
         <CardDescription>
-          Escribe el contenido del capítulo. Usa las herramientas para formato básico HTML o asistencia de IA.
-          Si guardas un capítulo con un número existente, se sobrescribirá.
+          Escribe el contenido del capítulo. Usa las herramientas para formato básico HTML.
+          Si guardas un capítulo con un número existente, se sobrescribirá. Las funciones de IA están temporalmente desactivadas.
         </CardDescription>
       </CardHeader>
-      <form action={formAction} ref={formRef} className="flex flex-col flex-grow"> {/* flex-grow for form */}
+      <form action={formAction} ref={formRef} className="flex flex-col flex-grow">
         <input type="hidden" name="novelId" value={novelId} />
         <input type="hidden" name="chapterContent" value={chapterContent} />
 
-        <CardContent className="space-y-6 flex flex-col flex-grow"> {/* flex-grow for content */}
+        <CardContent className="space-y-6 flex flex-col flex-grow">
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
             <div className="space-y-2 sm:col-span-1">
               <Label htmlFor="chapterNumber">Número de Capítulo <span className="text-destructive">*</span></Label>
@@ -269,12 +188,11 @@ export default function ManageNovelChapters({ novelId, novelTitle }: ManageNovel
             </div>
           </div>
 
-          <div className="space-y-2 flex flex-col flex-grow"> {/* flex-grow for editor area */}
+          <div className="space-y-2 flex flex-col flex-grow">
             <Label htmlFor="chapterContentArea">Contenido del Capítulo <span className="text-destructive">*</span></Label>
             
             <TooltipProvider delayDuration={100}>
               <div className="flex flex-wrap items-center gap-1 p-2 border rounded-t-md bg-muted/50">
-                {/* Basic Formatting */}
                 <Tooltip><TooltipTrigger asChild><Button type="button" variant="ghost" size="icon" onClick={() => applyFormat('bold')} aria-label="Negrita"><Bold className="h-4 w-4" /></Button></TooltipTrigger><TooltipContent><p>Negrita (Ctrl+B)</p></TooltipContent></Tooltip>
                 <Tooltip><TooltipTrigger asChild><Button type="button" variant="ghost" size="icon" onClick={() => applyFormat('italic')} aria-label="Cursiva"><Italic className="h-4 w-4" /></Button></TooltipTrigger><TooltipContent><p>Cursiva (Ctrl+I)</p></TooltipContent></Tooltip>
                 <Tooltip><TooltipTrigger asChild><Button type="button" variant="ghost" size="icon" onClick={() => applyFormat('highlight')} aria-label="Resaltar"><Highlighter className="h-4 w-4" /></Button></TooltipTrigger><TooltipContent><p>Resaltar</p></TooltipContent></Tooltip>
@@ -288,12 +206,11 @@ export default function ManageNovelChapters({ novelId, novelTitle }: ManageNovel
 
                 <div className="mx-1 h-5 border-l border-border"></div>
 
-                {/* AI Features */}
-                <AiButton featureType="suggestDialogue" icon={Sparkles} label="Sugerir Diálogo" tooltip="Sugerir Diálogo (IA) - Selecciona texto para contexto" />
-                <AiButton featureType="suggestPlotIdea" icon={Lightbulb} label="Sugerir Idea" tooltip="Sugerir Idea de Trama (IA) - Usa texto seleccionado o todo el capítulo" />
-                <AiButton featureType="correctGrammar" icon={SpellCheck} label="Corregir Ortografía" tooltip="Corregir Ortografía y Gramática (IA) - Selecciona texto" />
-                <AiButton featureType="summarizeSection" icon={Edit3} label="Resumir Sección" tooltip="Resumir Sección (IA) - Selecciona texto" />
-
+                {/* AI Features Disabled */}
+                <Tooltip><TooltipTrigger asChild><Button type="button" variant="ghost" size="icon" disabled aria-label="Sugerir Diálogo (Próximamente)"><Sparkles className="h-4 w-4" /></Button></TooltipTrigger><TooltipContent><p>Sugerir Diálogo (Próximamente)</p></TooltipContent></Tooltip>
+                <Tooltip><TooltipTrigger asChild><Button type="button" variant="ghost" size="icon" disabled aria-label="Sugerir Idea (Próximamente)"><Lightbulb className="h-4 w-4" /></Button></TooltipTrigger><TooltipContent><p>Sugerir Idea de Trama (Próximamente)</p></TooltipContent></Tooltip>
+                <Tooltip><TooltipTrigger asChild><Button type="button" variant="ghost" size="icon" disabled aria-label="Corregir Ortografía (Próximamente)"><SpellCheck className="h-4 w-4" /></Button></TooltipTrigger><TooltipContent><p>Corregir Ortografía y Gramática (Próximamente)</p></TooltipContent></Tooltip>
+                <Tooltip><TooltipTrigger asChild><Button type="button" variant="ghost" size="icon" disabled aria-label="Resumir Sección (Próximamente)"><Edit3 className="h-4 w-4" /></Button></TooltipTrigger><TooltipContent><p>Resumir Sección (Próximamente)</p></TooltipContent></Tooltip>
               </div>
             </TooltipProvider>
             
@@ -305,20 +222,20 @@ export default function ManageNovelChapters({ novelId, novelTitle }: ManageNovel
               placeholder="Escribe el contenido del capítulo aquí. Puedes usar las herramientas de formato o escribir HTML directamente (ej: <p>Párrafo</p>, <strong>Negrita</strong>)."
               rows={30} 
               required
-              disabled={isSavePending || isPendingFormActions || isAiLoading}
+              disabled={isSavePending || isPendingFormActions /* || isAiLoading removed */}
               className="min-h-[calc(100vh-28rem)] sm:min-h-[calc(100vh-25rem)] resize-y rounded-t-none focus:z-10 flex-grow w-full" 
             />
              <p className="text-xs text-muted-foreground mt-1">El contenido se guardará como HTML. Las herramientas insertan etiquetas HTML.</p>
-             {aiError && <p className="text-xs text-destructive mt-1">Error IA: {aiError}</p>}
+             {/* aiError display removed */}
           </div>
            <p className="text-xs text-muted-foreground"><span className="text-destructive">*</span> Campos obligatorios</p>
         </CardContent>
-        <CardFooter className="flex flex-col items-start sm:flex-row sm:justify-end gap-4 pt-6 mt-auto"> {/* mt-auto to push footer down */}
+        <CardFooter className="flex flex-col items-start sm:flex-row sm:justify-end gap-4 pt-6 mt-auto">
           <SubmitChapterButton />
         </CardFooter>
       </form>
 
-      {state?.message && !isSavePending && !isPendingFormActions && ( // Use isSavePending
+      {state?.message && !isSavePending && !isPendingFormActions && (
         <div className="p-4 mt-4 text-sm rounded-md">
           {state.success && state.chapterPath && (
             <div className="bg-green-50 dark:bg-green-900/30 border border-green-300 dark:border-green-700 p-4 rounded-md text-green-700 dark:text-green-300">

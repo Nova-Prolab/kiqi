@@ -12,8 +12,8 @@ import { ChevronLeft, ChevronRight, Home } from 'lucide-react';
 import Link from 'next/link';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Card } from '../ui/card';
-import TranslationDialog from './TranslationDialog';
-import type { TranslateChapterInput } from '@/ai/flows/translate-chapter-flow';
+import TranslationDialog from './TranslationDialog'; // Stays for now, but won't be triggered
+// import type { TranslateChapterInput } from '@/ai/flows/translate-chapter-flow'; // Not needed if translation is disabled
 
 interface ReaderViewProps {
   novel: Novel;
@@ -26,7 +26,7 @@ export default function ReaderView({ novel, currentChapter }: ReaderViewProps) {
   const {
     fontClass, 
     themeClass, 
-    lineHeightClass, // Added lineHeightClass
+    lineHeightClass,
     isImmersive,
     setIsImmersive,
     theme, 
@@ -43,12 +43,14 @@ export default function ReaderView({ novel, currentChapter }: ReaderViewProps) {
   const doubleClickRevealTimerRef = useRef<NodeJS.Timeout | null>(null);
 
   const [isMounted, setIsMounted] = useState(false);
+  
+  // Translation related state removed or will not be used
   const [isTranslationDialogOpen, setIsTranslationDialogOpen] = useState(false);
-  const [selectedTargetLanguage, setSelectedTargetLanguage] = useState<TranslateChapterInput['targetLanguage'] | null>(null);
-  const [translationControlsOpen, setTranslationControlsOpen] = useState(false);
+  // const [selectedTargetLanguage, setSelectedTargetLanguage] = useState<TranslateChapterInput['targetLanguage'] | null>(null); // Removed
+  // const [translationControlsOpen, setTranslationControlsOpen] = useState(false); // Removed
 
   const [effectiveChapterContent, setEffectiveChapterContent] = useState<string>(currentChapter.content);
-  const [isTranslationApplied, setIsTranslationApplied] = useState<boolean>(false);
+  // const [isTranslationApplied, setIsTranslationApplied] = useState<boolean>(false); // Removed
 
   const [isMouseOverImmersiveControls, setIsMouseOverImmersiveControls] = useState(false);
   const [forceShowImmersiveControlsByDoubleClick, setForceShowImmersiveControlsByDoubleClick] = useState(false);
@@ -74,7 +76,7 @@ export default function ReaderView({ novel, currentChapter }: ReaderViewProps) {
     }
 
     setEffectiveChapterContent(currentChapter.content);
-    setIsTranslationApplied(false); 
+    // setIsTranslationApplied(false); // Reset if translation was a feature
     if (scrollViewportRef.current) {
       scrollViewportRef.current.scrollTop = 0;
     }
@@ -140,32 +142,12 @@ export default function ReaderView({ novel, currentChapter }: ReaderViewProps) {
     }
   };
 
-  const handleOpenTranslationDialog = (language: TranslateChapterInput['targetLanguage']) => {
-    setSelectedTargetLanguage(language);
-    setIsTranslationDialogOpen(true);
-  };
+  // Translation handler functions removed or simplified
+  // const handleOpenTranslationDialog = (language: TranslateChapterInput['targetLanguage']) => { ... };
+  // const handleRequestLanguageChange = () => { ... };
+  // const handleApplyTranslation = (translatedHtml: string) => { ... };
+  // const handleRevertToOriginal = () => { ... };
 
-  const handleRequestLanguageChange = () => {
-    setIsTranslationDialogOpen(false);
-    setTranslationControlsOpen(true);
-    setTimeout(() => setTranslationControlsOpen(false), 50);
-  };
-
-  const handleApplyTranslation = (translatedHtml: string) => {
-    setEffectiveChapterContent(translatedHtml);
-    setIsTranslationApplied(true);
-    if (scrollViewportRef.current) {
-      scrollViewportRef.current.scrollTop = 0;
-    }
-  };
-
-  const handleRevertToOriginal = () => {
-    setEffectiveChapterContent(currentChapter.content);
-    setIsTranslationApplied(false);
-    if (scrollViewportRef.current) {
-      scrollViewportRef.current.scrollTop = 0;
-    }
-  };
 
   const handleImmersiveTopAreaDoubleClick = () => {
     if (!isImmersive) return;
@@ -216,7 +198,7 @@ export default function ReaderView({ novel, currentChapter }: ReaderViewProps) {
             <h1 className="text-xl md:text-2xl font-bold text-primary truncate">{novel.title}</h1>
             <h2 className="text-md md:text-lg text-muted-foreground truncate">
               Capítulo {currentChapter.order}: {currentChapter.title}
-              {isTranslationApplied && <span className="text-sm text-accent ml-2">(Traducido)</span>}
+              {/* isTranslationApplied check removed */}
             </h2>
           </header>
         </Card>
@@ -231,14 +213,15 @@ export default function ReaderView({ novel, currentChapter }: ReaderViewProps) {
       )}
 
       <ReaderControls
-        chapterHtmlContent={effectiveChapterContent}
+        chapterHtmlContent={effectiveChapterContent} // Still pass for AudioPlayer
         onToggleImmersive={handleToggleImmersive}
         isImmersive={isImmersive}
         novelId={novel.id}
-        onTranslateRequest={handleOpenTranslationDialog}
-        forceTranslationMenuOpen={translationControlsOpen}
-        isTranslationApplied={isTranslationApplied}
-        onRevertToOriginal={handleRevertToOriginal}
+        // Translation props removed
+        // onTranslateRequest={handleOpenTranslationDialog}
+        // forceTranslationMenuOpen={translationControlsOpen}
+        // isTranslationApplied={isTranslationApplied}
+        // onRevertToOriginal={handleRevertToOriginal}
         isVisibleInImmersiveMode={actualImmersiveControlsVisible}
         onHoverStateChange={setIsMouseOverImmersiveControls}
       />
@@ -280,16 +263,15 @@ export default function ReaderView({ novel, currentChapter }: ReaderViewProps) {
         </Card>
       </ScrollArea>
 
+      {/* TranslationDialog is still here but won't be actively triggered for translation */}
       <TranslationDialog
         isOpen={isTranslationDialogOpen}
         onOpenChange={setIsTranslationDialogOpen}
         originalHtmlContent={currentChapter.content}
-        targetLanguage={selectedTargetLanguage}
-        onLanguageChangeRequest={handleRequestLanguageChange}
-        onApplyTranslation={handleApplyTranslation}
+        targetLanguage={null} // Pass null as no language selected
+        onLanguageChangeRequest={() => { /* No-op or open a dummy menu */ setIsTranslationDialogOpen(false); }}
+        onApplyTranslation={() => { /* No-op */ }}
       />
     </div>
   );
 }
-
-    

@@ -1,12 +1,17 @@
 
 'use server';
 
-import { enhanceText } from '@/ai/flows/enhance-text-flow';
+// import { enhanceText } from '@/ai/flows/enhance-text-flow'; // Commented out
 import type { EnhanceTextInput, EnhanceTextOutput } from '@/ai/flows/enhance-text-flow';
 
 export async function enhanceTextAction(
   input: EnhanceTextInput
 ): Promise<{ enhancedText?: string; error?: string }> {
+  // Immediately return a "coming soon" message
+  return { error: 'Función de IA (Mejora de Texto) no disponible. ¡Próximamente!' };
+
+  // Original logic commented out:
+  /*
   if (!input.text || input.text.trim().length === 0) {
     return { error: 'El texto de entrada no puede estar vacío.' };
   }
@@ -24,4 +29,5 @@ export async function enhanceTextAction(
     }
     return { error: 'Ocurrió un error inesperado durante la mejora con IA.' };
   }
+  */
 }

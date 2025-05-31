@@ -31,34 +31,31 @@ import {
   Paintbrush, 
   BookOpen,
   CaseSensitive,
-  AlignJustify, // For Line Height
-  ALargeSmall   // For Font Size
+  AlignJustify,
+  ALargeSmall
 } from 'lucide-react';
 import React, { useState, useEffect, ChangeEvent } from 'react';
 import ChapterSummaryDialog from './ChapterSummaryDialog';
 import AudioPlayer from './AudioPlayer';
 import Link from 'next/link';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
-import type { TranslateChapterInput } from '@/ai/flows/translate-chapter-flow';
+// import type { TranslateChapterInput } from '@/ai/flows/translate-chapter-flow'; // Not needed for disabled feature
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 
-const TARGET_LANGUAGES: {label: string, value: TranslateChapterInput['targetLanguage']}[] = [
-  { label: "English", value: "English" },
-  { label: "Português", value: "Portuguese" },
-  { label: "Français", value: "French" },
-  { label: "Italiano", value: "Italian" },
-];
+// TARGET_LANGUAGES not needed as translation is disabled
+// const TARGET_LANGUAGES: {label: string, value: TranslateChapterInput['targetLanguage']}[] = [ ... ];
 
 interface ReaderControlsProps {
   chapterHtmlContent: string;
   onToggleImmersive: () => void;
   isImmersive: boolean;
   novelId: string;
-  onTranslateRequest: (language: TranslateChapterInput['targetLanguage']) => void;
-  forceTranslationMenuOpen?: boolean;
-  isTranslationApplied: boolean;
-  onRevertToOriginal: () => void;
+  // Props for translation removed as feature is disabled
+  // onTranslateRequest: (language: TranslateChapterInput['targetLanguage']) => void;
+  // forceTranslationMenuOpen?: boolean;
+  // isTranslationApplied: boolean;
+  // onRevertToOriginal: () => void;
   isVisibleInImmersiveMode: boolean;
   onHoverStateChange: (isHovering: boolean) => void;
 }
@@ -106,7 +103,6 @@ const FONT_FAMILIES: { label: string, value: ReaderFontFamily, style?: React.CSS
   { label: 'Personalizada', value: 'custom' },
 ];
 
-
 const isValidHexColor = (color: string) => /^#[0-9A-F]{6}$/i.test(color);
 
 export default function ReaderControls({ 
@@ -114,10 +110,10 @@ export default function ReaderControls({
   onToggleImmersive, 
   isImmersive, 
   novelId,
-  onTranslateRequest,
-  forceTranslationMenuOpen = false,
-  isTranslationApplied,
-  onRevertToOriginal,
+  // onTranslateRequest, // Removed
+  // forceTranslationMenuOpen = false, // Removed
+  // isTranslationApplied, // Removed
+  // onRevertToOriginal, // Removed
   isVisibleInImmersiveMode,
   onHoverStateChange
 }: ReaderControlsProps) {
@@ -139,18 +135,14 @@ export default function ReaderControls({
   } = useReaderSettings();
 
   const [isSummaryDialogOpen, setIsSummaryDialogOpen] = useState(false);
-  const [isTranslateMenuOpen, setIsTranslateMenuOpen] = useState(forceTranslationMenuOpen);
+  // const [isTranslateMenuOpen, setIsTranslateMenuOpen] = useState(forceTranslationMenuOpen); // Removed
 
   const [tempCustomFont, setTempCustomFont] = useState(customFontFamily || '');
   const [bgColorInput, setBgColorInput] = useState(customBackground || '#FFFFFF');
   const [fgColorInput, setFgColorInput] = useState(customForeground || '#000000');
 
-  useEffect(() => {
-    if (forceTranslationMenuOpen) {
-      setIsTranslateMenuOpen(true);
-    }
-  }, [forceTranslationMenuOpen]);
-  
+  // useEffect for forceTranslationMenuOpen removed
+
   useEffect(() => {
     setBgColorInput(customBackground || '#FFFFFF');
   }, [customBackground]);
@@ -162,7 +154,6 @@ export default function ReaderControls({
   useEffect(() => {
     setTempCustomFont(customFontFamily || '');
   }, [customFontFamily]);
-
 
   const handleCustomBgChange = (e: ChangeEvent<HTMLInputElement>) => {
     const newColor = e.target.value;
@@ -196,18 +187,7 @@ export default function ReaderControls({
     }
   };
 
-  const handleLanguageSelect = (language: TranslateChapterInput['targetLanguage']) => {
-    onTranslateRequest(language);
-    setIsTranslateMenuOpen(false); 
-  };
-
-  const handleTranslateButtonClick = () => {
-    if (isTranslationApplied) {
-      onRevertToOriginal();
-    } else {
-      setIsTranslateMenuOpen(true);
-    }
-  };
+  // handleLanguageSelect and handleTranslateButtonClick removed or simplified
 
   const handleCustomFontApply = () => {
     if (tempCustomFont.trim()) {
@@ -215,9 +195,6 @@ export default function ReaderControls({
     }
   };
   
-  const translateButtonTooltip = isTranslationApplied ? "Ver Texto Original" : "Traducir Capítulo";
-  const TranslateIcon = isTranslationApplied ? BookText : Languages;
-
   const baseClasses = "reader-controls p-2 bg-card/90 backdrop-blur-sm shadow-md border-b transition-transform duration-300 ease-in-out";
   let immersiveSpecificClasses = "";
   if (isImmersive) {
@@ -268,7 +245,7 @@ export default function ReaderControls({
             <DropdownMenuContent 
               align="center" 
               className="w-80 sm:w-96"
-              onCloseAutoFocus={(e) => e.preventDefault()} // Prevents auto-closing when interacting with inputs
+              onCloseAutoFocus={(e) => e.preventDefault()}
             >
               <DropdownMenuLabel className="flex items-center"><Palette className="mr-2 h-4 w-4" />Apariencia</DropdownMenuLabel>
               <DropdownMenuSeparator />
@@ -315,7 +292,7 @@ export default function ReaderControls({
                         value={tempCustomFont}
                         onChange={(e) => setTempCustomFont(e.target.value)}
                         className="h-8 text-sm flex-grow"
-                        onClick={(e) => e.stopPropagation()} // Prevent menu closing
+                        onClick={(e) => e.stopPropagation()}
                       />
                        <Button size="sm" variant="outline" onClick={handleCustomFontApply} className="h-8 px-2.5 text-xs">Aplicar</Button>
                     </div>
@@ -347,7 +324,7 @@ export default function ReaderControls({
                           value={customBackground || '#FFFFFF'}
                           onChange={handleCustomBgChange}
                           className="h-7 w-7 p-0 border rounded cursor-pointer"
-                          onClick={(e) => e.stopPropagation()} // Prevent menu closing
+                          onClick={(e) => e.stopPropagation()}
                         />
                         <Input
                           type="text"
@@ -356,7 +333,7 @@ export default function ReaderControls({
                           placeholder="#FFFFFF"
                           className="h-8 text-sm flex-grow"
                           maxLength={7}
-                          onClick={(e) => e.stopPropagation()} // Prevent menu closing
+                          onClick={(e) => e.stopPropagation()}
                         />
                       </div>
                       <div className="flex items-center gap-2">
@@ -367,7 +344,7 @@ export default function ReaderControls({
                           value={customForeground || '#000000'}
                           onChange={handleCustomFgChange}
                           className="h-7 w-7 p-0 border rounded cursor-pointer"
-                           onClick={(e) => e.stopPropagation()} // Prevent menu closing
+                           onClick={(e) => e.stopPropagation()}
                         />
                         <Input
                           type="text"
@@ -376,7 +353,7 @@ export default function ReaderControls({
                           placeholder="#000000"
                           className="h-8 text-sm flex-grow"
                           maxLength={7}
-                          onClick={(e) => e.stopPropagation()} // Prevent menu closing
+                          onClick={(e) => e.stopPropagation()}
                         />
                       </div>
                     </div>
@@ -388,11 +365,11 @@ export default function ReaderControls({
           <TooltipProvider delayDuration={100}>
             <Tooltip>
               <TooltipTrigger asChild>
-                <Button variant="ghost" size="icon" onClick={() => setIsSummaryDialogOpen(true)} aria-label="Resumen del capítulo">
+                <Button variant="ghost" size="icon" disabled aria-label="Resumen del capítulo (Próximamente)">
                   <TextQuote />
                 </Button>
               </TooltipTrigger>
-              <TooltipContent><p>Resumen del Capítulo</p></TooltipContent>
+              <TooltipContent><p>Resumen del Capítulo (Próximamente)</p></TooltipContent>
             </Tooltip>
           </TooltipProvider>
           <ChapterSummaryDialog 
@@ -401,34 +378,22 @@ export default function ReaderControls({
             onOpenChange={setIsSummaryDialogOpen} 
           />
           
-          <DropdownMenu open={!isTranslationApplied && isTranslateMenuOpen} onOpenChange={!isTranslationApplied ? setIsTranslateMenuOpen : undefined}>
-            <TooltipProvider delayDuration={100}>
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <Button 
-                    variant="ghost" 
-                    size="icon" 
-                    aria-label={translateButtonTooltip}
-                    onClick={handleTranslateButtonClick}
-                  >
-                    <TranslateIcon />
-                  </Button>
-                </TooltipTrigger>
-                <TooltipContent><p>{translateButtonTooltip}</p></TooltipContent>
-              </Tooltip>
-            </TooltipProvider>
-            {!isTranslationApplied && (
-              <DropdownMenuContent align="center" onCloseAutoFocus={(e) => e.preventDefault()}>
-                <DropdownMenuLabel>Traducir a</DropdownMenuLabel>
-                <DropdownMenuSeparator />
-                {TARGET_LANGUAGES.map(lang => (
-                  <DropdownMenuItem key={lang.value} onClick={() => handleLanguageSelect(lang.value)}>
-                    {lang.label}
-                  </DropdownMenuItem>
-                ))}
-              </DropdownMenuContent>
-            )}
-          </DropdownMenu>
+          <TooltipProvider delayDuration={100}>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button 
+                  variant="ghost" 
+                  size="icon" 
+                  aria-label="Traducir Capítulo (Próximamente)"
+                  disabled // Translation feature disabled
+                >
+                  <Languages />
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent><p>Traducir Capítulo (Próximamente)</p></TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
+          {/* Translation DropdownMenu removed */}
 
           <AudioPlayer textToRead={chapterHtmlContent} />
         </div>
@@ -449,5 +414,3 @@ export default function ReaderControls({
     </div>
   );
 }
-
-    
