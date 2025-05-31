@@ -10,6 +10,9 @@ export interface Chapter {
 export const AGE_RATING_VALUES = ['all', 'pg', 'teen', 'mature', 'adults'] as const;
 export type AgeRating = typeof AGE_RATING_VALUES[number];
 
+export const STATUS_VALUES = ['ongoing', 'completed', 'hiatus', 'dropped'] as const;
+export type NovelStatus = typeof STATUS_VALUES[number];
+
 export interface InfoJson {
   titulo: string;
   descripcion: string;
@@ -21,6 +24,8 @@ export interface InfoJson {
   categoria?: string;
   traductor?: string;
   creatorId?: string; // Unique ID of the user who created the novel
+  rating_platform?: number; // 0-5, site's own rating
+  status?: NovelStatus; // e.g., 'completed', 'ongoing'
 }
 
 export interface Novel {
@@ -40,6 +45,8 @@ export interface Novel {
   traductor?: string;
   lastUpdateDate?: string; // This will be populated by fecha_lanzamiento
   creatorId?: string; // Unique ID of the user who created the novel
+  rating_platform?: number;
+  status?: NovelStatus;
 }
 
 // For Reader Settings Context
@@ -99,7 +106,9 @@ export interface CreateNovelInput {
   translator?: string;
   releaseDate?: string;
   creatorId: string; // User's unique ID - now mandatory
-  ageRating: AgeRating; 
+  ageRating: AgeRating;
+  rating_platform?: number;
+  status?: NovelStatus;
 }
 
 // For User "Accounts"

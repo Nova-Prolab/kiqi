@@ -3,15 +3,23 @@
 
 import Image from 'next/image';
 import Link from 'next/link';
-import type { Novel, RecentChapterInfo } from '@/lib/types';
+import type { Novel, RecentChapterInfo, NovelStatus } from '@/lib/types';
 import { useRecentlyRead } from '@/hooks/useRecentlyRead';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { List, ChevronRight, BookOpen, ArrowLeft, Tag, CalendarDays, UserCircle, Clock, History, BookCheck, FileText, Users, Shield, BarChart, Loader2 } from 'lucide-react';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { Progress } from '@/components/ui/progress';
+import StarRatingDisplay from '@/components/ui/StarRatingDisplay';
+import NovelCard from '@/components/novel/NovelCard';
+import { fetchNovels } from '@/lib/github';
+import { 
+  List, ChevronRight, BookOpen, ArrowLeft, Tag, CalendarDays, UserCircle, Clock, History, 
+  BookCheck, FileText, Users, Shield, BarChart, Loader2, Award, ThumbsUp, TrendingUp,
+  CheckCircle, PauseCircle, XCircle, BookCopy
+} from 'lucide-react';
 import { Separator } from '@/components/ui/separator';
 import { Badge } from '@/components/ui/badge';
 import React, { useState, useEffect, useMemo } from 'react';
-import AgeRatingBadge from '@/components/ui/AgeRatingBadge'; // Import the new component
+import AgeRatingBadge from '@/components/ui/AgeRatingBadge';
 
 interface NovelDetailClientProps {
   novel: Novel;
@@ -19,6 +27,15 @@ interface NovelDetailClientProps {
 
 const MAX_INITIAL_SUMMARY_LINES = 6;
 const MAX_RECENT_TO_DISPLAY = 3;
+const MAX_SIMILAR_NOVELS_TO_DISPLAY = 5;
+
+const novelStatusDetails: Record<NovelStatus, { text: string; Icon: React.ElementType; colorClass: string }> = {
+  ongoing: { text: 'En curso', Icon: Clock, colorClass: 'bg-sky-100 text-sky-700 dark:bg-sky-900/60 dark:text-sky-300' },
+  completed: { text: 'Completada', Icon: CheckCircle, colorClass: 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/60 dark:text-emerald-300' },
+  hiatus: { text: 'En Hiato', Icon: PauseCircle, colorClass: 'bg-orange-100 text-orange-700 dark:bg-orange-900/60 dark:text-orange-300' },
+  dropped: { text: 'Abandonada', Icon: XCircle, colorClass: 'bg-rose-100 text-rose-700 dark:bg-rose-900/60 dark:text-rose-300' },
+};
+
 
 function FullScreenChapterLoader() {
   return (
@@ -40,8 +57,23 @@ export default function NovelDetailClient({ novel }: NovelDetailClientProps) {
   const [isMounted, setIsMounted] = useState(false);
   const [isNavigatingToChapter, setIsNavigatingToChapter] = useState(false);
 
+  const [allNovels, setAllNovels] = useState<Novel[]>([]);
+  const [isLoadingAllNovels, setIsLoadingAllNovels] = useState(true);
+
   useEffect(() => {
     setIsMounted(true);
+    async function loadAllNovels() {
+      try {
+        const fetchedNovels = await fetchNovels();
+        setAllNovels(fetchedNovels);
+      } catch (error) {
+        console.error("Error fetching all novels for similar novels section:", error);
+        setAllNovels([]); // Set to empty array on error
+      } finally {
+        setIsLoadingAllNovels(false);
+      }
+    }
+    loadAllNovels();
   }, []);
 
   useEffect(() => {
@@ -54,7 +86,6 @@ export default function NovelDetailClient({ novel }: NovelDetailClientProps) {
 
   const processedSummaryContent = useMemo(() => {
     if (!novel?.summary) return "";
-    // Explicitly replace literal '\\n' and also actual '\n' if any mixed in
     return novel.summary.replace(/\\n/g, '\n');
   }, [novel?.summary]);
 
@@ -65,7 +96,7 @@ export default function NovelDetailClient({ novel }: NovelDetailClientProps) {
       setIsLongSummary(true);
     } else {
       setIsLongSummary(false);
-      setIsSummaryExpanded(false); // Reset expansion if summary is short
+      setIsSummaryExpanded(false); 
     }
   }, [summaryLines]);
 
@@ -77,9 +108,45 @@ export default function NovelDetailClient({ novel }: NovelDetailClientProps) {
     setIsNavigatingToChapter(true);
   };
 
+  const readingProgress = useMemo(() => {
+    if (!isMounted || sortedChapters.length === 0) return { percent: 0, lastReadOrder: 0 };
+    const recentForThisNovel = getRecentlyReadChaptersForNovel(novel.id);
+    if (recentForThisNovel.length === 0) return { percent: 0, lastReadOrder: 0 };
+    
+    const highestOrderRead = Math.max(...recentForThisNovel.map(ch => ch.order), 0);
+    const totalChapters = sortedChapters.length;
+    const percent = totalChapters > 0 ? (highestOrderRead / totalChapters) * 100 : 0;
+    return { percent: Math.min(100, percent), lastReadOrder: highestOrderRead };
+  }, [isMounted, sortedChapters, getRecentlyReadChaptersForNovel, novel.id]);
+
+  const similarNovels = useMemo(() => {
+    if (!novel || allNovels.length === 0 || isLoadingAllNovels) return [];
+
+    const currentNovelTags = new Set(novel.etiquetas?.map(t => t.toLowerCase()) || []);
+    
+    return allNovels
+      .filter(n => n.id !== novel.id) // Exclude current novel
+      .map(n => {
+        let score = 0;
+        // Score by category match
+        if (novel.categoria && n.categoria && novel.categoria.toLowerCase() === n.categoria.toLowerCase()) {
+          score += 5; // Higher score for same category
+        }
+        // Score by common tags
+        const commonTags = n.etiquetas?.filter(tag => currentNovelTags.has(tag.toLowerCase())).length || 0;
+        score += commonTags;
+        return { ...n, score };
+      })
+      .filter(n => n.score > 0) // Only include novels with some similarity
+      .sort((a, b) => b.score - a.score) // Sort by score descending
+      .slice(0, MAX_SIMILAR_NOVELS_TO_DISPLAY);
+  }, [novel, allNovels, isLoadingAllNovels]);
+
   if (!novel) {
     return <p>Información de la novela no disponible.</p>;
   }
+  
+  const statusInfo = novel.status ? novelStatusDetails[novel.status] : null;
 
   return (
     <>
@@ -135,6 +202,12 @@ export default function NovelDetailClient({ novel }: NovelDetailClientProps) {
                   {novel.author}
                 </Link>
               </p>
+              {novel.rating_platform !== undefined && novel.rating_platform > 0 && (
+                <div className="mt-2 flex items-center gap-2">
+                    <StarRatingDisplay rating={novel.rating_platform} size={20} />
+                    <span className="text-sm text-amber-500 font-medium">Aprobado por Kiqi!</span>
+                </div>
+              )}
             </header>
 
             <Card className="border">
@@ -161,42 +234,57 @@ export default function NovelDetailClient({ novel }: NovelDetailClientProps) {
               <CardHeader>
                   <CardTitle className="text-xl">Detalles</CardTitle>
               </CardHeader>
-              <CardContent className="space-y-3">
+              <CardContent className="space-y-3 text-sm">
                    {novel.ageRating && (
-                     <div className="flex items-center text-sm">
-                        <Shield className="mr-2 h-4 w-4 text-muted-foreground" />
-                        <strong>Clasificación:</strong>
+                     <div className="flex items-center">
+                        <Shield className="mr-2.5 h-4 w-4 text-muted-foreground flex-shrink-0" />
+                        <strong className="w-32 sm:w-40 flex-shrink-0">Clasificación:</strong>
                         <span className="ml-2"><AgeRatingBadge rating={novel.ageRating} /></span>
                       </div>
                    )}
+                  {statusInfo && (
+                     <div className="flex items-center">
+                        <statusInfo.Icon className="mr-2.5 h-4 w-4 text-muted-foreground flex-shrink-0" />
+                        <strong className="w-32 sm:w-40 flex-shrink-0">Estado:</strong>
+                        <Badge className={statusInfo.colorClass + " ml-2"}>{statusInfo.text}</Badge>
+                      </div>
+                   )}
                   {novel.categoria && (
-                      <div className="flex items-center text-sm">
-                          <List className="mr-2 h-4 w-4 text-muted-foreground" />
-                          <strong>Categoría:</strong>
+                      <div className="flex items-center">
+                          <List className="mr-2.5 h-4 w-4 text-muted-foreground flex-shrink-0" />
+                          <strong className="w-32 sm:w-40 flex-shrink-0">Categoría:</strong>
                           <Link href={`/?q=Categoría:${encodeURIComponent(novel.categoria)}`} className="ml-2">
                               <Badge variant="outline" className="cursor-pointer hover:bg-accent/80 hover:text-accent-foreground">{novel.categoria}</Badge>
                           </Link>
                       </div>
                   )}
                   {novel.traductor && (
-                      <div className="flex items-center text-sm">
-                          <UserCircle className="mr-2 h-4 w-4 text-muted-foreground" />
-                          <strong>Traductor:</strong>
+                      <div className="flex items-center">
+                          <UserCircle className="mr-2.5 h-4 w-4 text-muted-foreground flex-shrink-0" />
+                          <strong className="w-32 sm:w-40 flex-shrink-0">Traductor:</strong>
                           <Link href={`/?q=Traductor:${encodeURIComponent(novel.traductor)}`} className="ml-2 text-primary hover:underline">
                               {novel.traductor}
                           </Link>
                       </div>
                   )}
-                  {novel.lastUpdateDate && (
-                      <div className="flex items-center text-sm">
-                          <Clock className="mr-2 h-4 w-4 text-muted-foreground" />
-                          <strong>Última Actualización:</strong><span className="ml-2">{novel.lastUpdateDate}</span>
+                  {novel.lastUpdateDate && ( // Typically, this would be the last chapter upload date
+                      <div className="flex items-center">
+                          <CalendarDays className="mr-2.5 h-4 w-4 text-muted-foreground flex-shrink-0" />
+                          <strong className="w-32 sm:w-40 flex-shrink-0">Lanzamiento:</strong>
+                          <span className="ml-2">{novel.fecha_lanzamiento || novel.lastUpdateDate}</span>
+                      </div>
+                  )}
+                  {novel.chapters && (
+                     <div className="flex items-center">
+                        <FileText className="mr-2.5 h-4 w-4 text-muted-foreground flex-shrink-0" />
+                        <strong className="w-32 sm:w-40 flex-shrink-0">Capítulos:</strong>
+                        <span className="ml-2">{novel.chapters.length}</span>
                       </div>
                   )}
                   {novel.etiquetas && novel.etiquetas.length > 0 && (
-                      <div className="flex items-start text-sm">
-                          <Tag className="mr-2 h-4 w-4 text-muted-foreground mt-0.5" />
-                          <strong>Etiquetas:</strong>
+                      <div className="flex items-start">
+                          <Tag className="mr-2.5 h-4 w-4 text-muted-foreground mt-0.5 flex-shrink-0" />
+                          <strong className="w-32 sm:w-40 flex-shrink-0 mt-0.5">Etiquetas:</strong>
                           <div className="ml-2 flex flex-wrap gap-1">
                               {novel.etiquetas.map(tag => (
                                   <Link key={tag} href={`/?q=Etiqueta:${encodeURIComponent(tag)}`} legacyBehavior>
@@ -212,6 +300,40 @@ export default function NovelDetailClient({ novel }: NovelDetailClientProps) {
         </section>
 
         <Separator />
+
+        {isMounted && sortedChapters.length > 0 && (
+          <section>
+            <Card className="border shadow-sm">
+              <CardHeader>
+                  <CardTitle className="text-xl sm:text-2xl flex items-center text-primary/90">
+                      <TrendingUp className="mr-3 h-5 w-5 sm:h-6 sm:w-6"/>
+                      Tu Progreso
+                  </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                  {readingProgress.lastReadOrder > 0 ? (
+                    <p className="text-sm text-muted-foreground">
+                      Has leído hasta el <span className="font-semibold text-foreground">Capítulo {readingProgress.lastReadOrder}</span> de {sortedChapters.length}.
+                    </p>
+                  ) : (
+                    <p className="text-sm text-muted-foreground">
+                      ¡Empieza a leer esta novela para ver tu progreso aquí! Hay {sortedChapters.length} capítulos disponibles.
+                    </p>
+                  )}
+                  <Progress value={readingProgress.percent} aria-label={`${readingProgress.percent.toFixed(0)}% leído`} className="h-3"/>
+                   {readingProgress.percent > 0 && readingProgress.percent < 100 && readingProgress.lastReadOrder < sortedChapters.length && (
+                     <Button variant="outline" size="sm" asChild className="mt-3" onClick={handleChapterLinkClick}>
+                       <Link href={`/novels/${novel.id}/chapters/${sortedChapters[readingProgress.lastReadOrder].id}`}>
+                         Continuar Leyendo (Cap. {readingProgress.lastReadOrder + 1})
+                         <ChevronRight className="ml-1 h-4 w-4" />
+                       </Link>
+                     </Button>
+                   )}
+              </CardContent>
+            </Card>
+             <Separator className="my-8" />
+          </section>
+        )}
 
         {isMounted && recentChapterDetails.length > 0 && (
           <section>
@@ -249,6 +371,22 @@ export default function NovelDetailClient({ novel }: NovelDetailClientProps) {
             <Separator className="my-8" />
           </section>
         )}
+        
+        {isMounted && !isLoadingAllNovels && similarNovels.length > 0 && (
+          <section>
+            <h2 className="text-2xl sm:text-3xl font-semibold mb-6 flex items-center text-primary">
+              <BookCopy className="mr-3 h-6 w-6 sm:h-7 sm:w-7" />
+              También te podría gustar
+            </h2>
+            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4 sm:gap-5">
+              {similarNovels.map((simNovel) => (
+                <NovelCard key={`similar-${simNovel.id}`} novel={simNovel} />
+              ))}
+            </div>
+             <Separator className="my-8" />
+          </section>
+        )}
+
 
         <section>
           <h2 className="text-2xl sm:text-3xl font-semibold mb-6 flex items-center text-primary">

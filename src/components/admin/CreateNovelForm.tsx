@@ -12,11 +12,11 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from '@/hooks/use-toast';
 import Link from 'next/link';
-import { ArrowLeft, CheckCircle, AlertTriangle, BookPlus, ListChecks, ShieldQuestion } from 'lucide-react';
+import { ArrowLeft, CheckCircle, AlertTriangle, BookPlus, Star, TrendingUp } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { useRouter } from 'next/navigation';
-import type { AgeRating } from '@/lib/types';
-import { AGE_RATING_VALUES } from '@/lib/types';
+import type { AgeRating, NovelStatus } from '@/lib/types';
+import { AGE_RATING_VALUES, STATUS_VALUES } from '@/lib/types';
 
 const initialNovelState = {
   message: '',
@@ -42,6 +42,23 @@ const ageRatingLabels: Record<AgeRating, string> = {
   adults: '+18 (Adultos)',
 };
 
+const platformRatingOptions: { value: string, label: string }[] = [
+  { value: '0', label: '0 Estrellas (Sin Calificar)' },
+  { value: '1', label: '1 Estrella' },
+  { value: '2', label: '2 Estrellas' },
+  { value: '3', label: '3 Estrellas' },
+  { value: '4', label: '4 Estrellas' },
+  { value: '5', label: '5 Estrellas (Excelente)' },
+];
+
+const novelStatusLabels: Record<NovelStatus, string> = {
+  ongoing: 'En curso',
+  completed: 'Completada',
+  hiatus: 'En Hiato',
+  dropped: 'Abandonada',
+};
+
+
 export default function CreateNovelForm() {
   const [novelState, formAction, isPending] = useActionState(createNovelAction, initialNovelState);
   const { toast } = useToast();
@@ -49,6 +66,8 @@ export default function CreateNovelForm() {
   const router = useRouter();
   const formRef = useRef<HTMLFormElement>(null);
   const [selectedAgeRating, setSelectedAgeRating] = useState<AgeRating | ''>('');
+  const [selectedPlatformRating, setSelectedPlatformRating] = useState<string>('0');
+  const [selectedStatus, setSelectedStatus] = useState<NovelStatus | ''>('');
 
 
   useEffect(() => {
@@ -61,6 +80,8 @@ export default function CreateNovelForm() {
       if (novelState.success) {
         formRef.current?.reset();
         setSelectedAgeRating(''); 
+        setSelectedPlatformRating('0');
+        setSelectedStatus('');
       }
     }
   }, [novelState, toast, isPending]);
@@ -92,6 +113,9 @@ export default function CreateNovelForm() {
         <form action={formAction} ref={formRef}>
           <input type="hidden" name="creatorId" value={currentUser.id} />
           <input type="hidden" name="ageRating" value={selectedAgeRating} />
+          <input type="hidden" name="rating_platform" value={selectedPlatformRating} />
+          <input type="hidden" name="status" value={selectedStatus} />
+
           <CardContent className="space-y-6">
             <div className="space-y-2">
               <Label htmlFor="title">Título de la Novela <span className="text-destructive">*</span></Label>
@@ -103,26 +127,48 @@ export default function CreateNovelForm() {
               <Input id="author" name="author" placeholder="Ej: Nombre del Autor" required />
             </div>
             
-            <div className="space-y-2">
-              <Label htmlFor="ageRating">Clasificación de Edad <span className="text-destructive">*</span></Label>
-              <Select 
-                name="ageRatingSelect" /* Name on Select for UI, actual value via hidden input */
-                onValueChange={(value) => setSelectedAgeRating(value as AgeRating)}
-                value={selectedAgeRating}
-                required
-              >
-                <SelectTrigger className="w-full">
-                  <SelectValue placeholder="Selecciona una clasificación de edad" />
-                </SelectTrigger>
-                <SelectContent>
-                  {AGE_RATING_VALUES.map(rating => (
-                    <SelectItem key={rating} value={rating}>
-                      {ageRatingLabels[rating]}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+              <div className="space-y-2">
+                <Label htmlFor="ageRating">Clasificación de Edad <span className="text-destructive">*</span></Label>
+                <Select 
+                  name="ageRatingSelect" /* Name on Select for UI, actual value via hidden input */
+                  onValueChange={(value) => setSelectedAgeRating(value as AgeRating)}
+                  value={selectedAgeRating}
+                  required
+                >
+                  <SelectTrigger className="w-full">
+                    <SelectValue placeholder="Selecciona una clasificación de edad" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {AGE_RATING_VALUES.map(rating => (
+                      <SelectItem key={rating} value={rating}>
+                        {ageRatingLabels[rating]}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="platformRating">Calificación de la Plataforma (Opcional)</Label>
+                <Select
+                  name="platformRatingSelect"
+                  onValueChange={(value) => setSelectedPlatformRating(value)}
+                  value={selectedPlatformRating}
+                >
+                  <SelectTrigger className="w-full">
+                     <SelectValue placeholder="Selecciona una calificación" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {platformRatingOptions.map(option => (
+                      <SelectItem key={option.value} value={option.value}>
+                        {option.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
             </div>
+
 
             <div className="space-y-2">
               <Label htmlFor="description">Descripción <span className="text-destructive">*</span></Label>
@@ -158,9 +204,31 @@ export default function CreateNovelForm() {
                 <Input id="translator" name="translator" placeholder="Ej: Grupo de Traducción" />
               </div>
             </div>
-            <div className="space-y-2">
-              <Label htmlFor="releaseDate">Fecha de Lanzamiento (Opcional)</Label>
-              <Input id="releaseDate" name="releaseDate" type="date" />
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+              <div className="space-y-2">
+                <Label htmlFor="releaseDate">Fecha de Lanzamiento (Opcional)</Label>
+                <Input id="releaseDate" name="releaseDate" type="date" />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="status">Estado de la Novela (Opcional)</Label>
+                <Select
+                  name="statusSelect"
+                  onValueChange={(value) => setSelectedStatus(value as NovelStatus)}
+                  value={selectedStatus}
+                >
+                  <SelectTrigger className="w-full">
+                    <SelectValue placeholder="Selecciona un estado" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="">(Sin especificar)</SelectItem>
+                    {STATUS_VALUES.map(statusVal => (
+                      <SelectItem key={statusVal} value={statusVal}>
+                        {novelStatusLabels[statusVal]}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
             </div>
              <p className="text-xs text-muted-foreground"><span className="text-destructive">*</span> Campos obligatorios</p>
           </CardContent>

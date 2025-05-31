@@ -3,8 +3,8 @@
 
 import { z } from 'zod';
 import { createFileInRepo, deleteFileInRepo, getFileSha, fetchFileContent } from '@/lib/github';
-import type { InfoJson, CreateNovelInput, SaveChapterInput, ChapterUploadState, AgeRating } from '@/lib/types';
-import { AGE_RATING_VALUES } from '@/lib/types';
+import type { InfoJson, CreateNovelInput, SaveChapterInput, AgeRating, NovelStatus } from '@/lib/types';
+import { AGE_RATING_VALUES, STATUS_VALUES } from '@/lib/types';
 import { revalidatePath } from 'next/cache';
 
 const createNovelSchema = z.object({
@@ -18,6 +18,8 @@ const createNovelSchema = z.object({
   releaseDate: z.string().optional(), // Expects YYYY-MM-DD format if provided
   creatorId: z.string().min(1, "El ID del creador es obligatorio."), // User's unique ID
   ageRating: z.enum(AGE_RATING_VALUES, { required_error: "La clasificación de edad es obligatoria." }),
+  rating_platform: z.coerce.number().int().min(0).max(5).optional(),
+  status: z.enum(STATUS_VALUES).optional(),
 });
 
 function slugify(text: string): string {
@@ -46,6 +48,8 @@ export async function createNovelAction(
     releaseDate: formData.get('releaseDate') as string | undefined,
     creatorId: formData.get('creatorId') as string,
     ageRating: formData.get('ageRating') as AgeRating | undefined,
+    rating_platform: formData.get('rating_platform') ? parseInt(formData.get('rating_platform') as string, 10) : undefined,
+    status: formData.get('status') as NovelStatus | undefined,
   };
 
   const validatedFields = createNovelSchema.safeParse(rawFormData);
@@ -82,6 +86,8 @@ export async function createNovelAction(
     fecha_lanzamiento: data.releaseDate || undefined,
     creatorId: data.creatorId,
     ageRating: data.ageRating,
+    rating_platform: data.rating_platform,
+    status: data.status,
   };
 
   const infoJsonContent = JSON.stringify(infoJson, null, 2);

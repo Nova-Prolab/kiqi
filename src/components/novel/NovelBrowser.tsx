@@ -3,14 +3,16 @@
 
 import { useState, useEffect, useMemo } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
-import type { Novel } from '@/lib/types';
+import type { Novel, AgeRating, NovelStatus } from '@/lib/types';
+import { AGE_RATING_VALUES, STATUS_VALUES } from '@/lib/types';
 import NovelCard from '@/components/novel/NovelCard';
 import { Input } from '@/components/ui/input';
-import { Search, BookX, Tags, LayoutGrid, Star, FilterX, ChevronLeft, ChevronRight, Loader2 } from 'lucide-react';
+import { Search, BookX, Tags, LayoutGrid, Star, FilterX, ChevronLeft, ChevronRight, Loader2, Shield, ClockIcon } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import AgeRatingBadge from '@/components/ui/AgeRatingBadge';
 
 interface NovelBrowserProps {
   initialNovels: Novel[];
@@ -34,6 +36,21 @@ const PREDEFINED_TAGS: string[] = [
   "antihéroe", "imperio", "nobleza", "IA", "realidad virtual", "dioses", "demonios"
 ];
 
+const ageRatingLabels: Record<AgeRating, string> = {
+  all: 'Todos',
+  pg: '+10',
+  teen: '+13',
+  mature: '+17',
+  adults: '+18',
+};
+
+const novelStatusLabels: Record<NovelStatus, string> = {
+  ongoing: 'En curso',
+  completed: 'Completada',
+  hiatus: 'En Hiato',
+  dropped: 'Abandonada',
+};
+
 const ITEMS_PER_PAGE = 24;
 
 export default function NovelBrowser({ initialNovels }: NovelBrowserProps) {
@@ -43,35 +60,31 @@ export default function NovelBrowser({ initialNovels }: NovelBrowserProps) {
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
   const [selectedTag, setSelectedTag] = useState<string | null>(null);
+  const [selectedAgeRating, setSelectedAgeRating] = useState<AgeRating | null>(null);
+  const [selectedStatus, setSelectedStatus] = useState<NovelStatus | null>(null);
   const [mounted, setMounted] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
 
   useEffect(() => {
     setMounted(true);
     const query = searchParams.get('q');
-    if (query) {
-      setSearchTerm(query);
-      setCurrentPage(1); // Reset page on new search from URL
+    const categoryQuery = searchParams.get('category');
+    const tagQuery = searchParams.get('tag');
+    const ageQuery = searchParams.get('ageRating') as AgeRating | null;
+    const statusQuery = searchParams.get('status') as NovelStatus | null;
 
-      const lowerQuery = query.toLowerCase().trim();
-      if (lowerQuery.startsWith('categoría:')) {
-        const categoryValue = query.substring(10).trim();
-        setSelectedCategory(categoryValue);
-        setSelectedTag(null);
-      } else if (lowerQuery.startsWith('etiqueta:')) {
-        const tagValue = query.substring(9).trim();
-        setSelectedTag(tagValue);
-        setSelectedCategory(null);
-      } else if (lowerQuery.startsWith('autor:') || lowerQuery.startsWith('traductor:')) {
-        setSelectedCategory(null);
-        setSelectedTag(null);
-      }
-    }
+    if (query) setSearchTerm(query);
+    if (categoryQuery) setSelectedCategory(categoryQuery);
+    if (tagQuery) setSelectedTag(tagQuery);
+    if (ageQuery && AGE_RATING_VALUES.includes(ageQuery)) setSelectedAgeRating(ageQuery);
+    if (statusQuery && STATUS_VALUES.includes(statusQuery)) setSelectedStatus(statusQuery);
+    
+    setCurrentPage(1); 
   }, [searchParams]);
 
   useEffect(() => {
-    setCurrentPage(1); // Reset page when filters change
-  }, [selectedCategory, selectedTag, searchTerm]);
+    setCurrentPage(1); // Reset page when any filter changes
+  }, [selectedCategory, selectedTag, selectedAgeRating, selectedStatus, searchTerm]);
 
   const featuredNovels = useMemo(() => {
     return initialNovels.filter(novel =>
@@ -82,9 +95,7 @@ export default function NovelBrowser({ initialNovels }: NovelBrowserProps) {
   const allUniqueCategories = useMemo(() => {
     const categoriesFromNovels = new Set<string>();
     initialNovels.forEach(novel => {
-      if (novel.categoria) {
-        categoriesFromNovels.add(novel.categoria);
-      }
+      if (novel.categoria) categoriesFromNovels.add(novel.categoria);
     });
     return Array.from(new Set([...PREDEFINED_CATEGORIES, ...categoriesFromNovels])).sort();
   }, [initialNovels]);
@@ -93,9 +104,7 @@ export default function NovelBrowser({ initialNovels }: NovelBrowserProps) {
     const tagsFromNovels = new Set<string>();
     initialNovels.forEach(novel => {
       novel.etiquetas?.forEach(tag => {
-        if (tag.toLowerCase() !== 'destacado') {
-          tagsFromNovels.add(tag);
-        }
+        if (tag.toLowerCase() !== 'destacado') tagsFromNovels.add(tag);
       });
     });
     return Array.from(new Set([...PREDEFINED_TAGS, ...tagsFromNovels])).sort();
@@ -104,9 +113,7 @@ export default function NovelBrowser({ initialNovels }: NovelBrowserProps) {
   const categoryCounts = useMemo(() => {
     const counts: { [key: string]: number } = {};
     initialNovels.forEach(novel => {
-      if (novel.categoria) {
-        counts[novel.categoria] = (counts[novel.categoria] || 0) + 1;
-      }
+      if (novel.categoria) counts[novel.categoria] = (counts[novel.categoria] || 0) + 1;
     });
     PREDEFINED_CATEGORIES.forEach(cat => {
       if (!(cat in counts)) counts[cat] = 0;
@@ -118,13 +125,33 @@ export default function NovelBrowser({ initialNovels }: NovelBrowserProps) {
     const counts: { [key: string]: number } = {};
     initialNovels.forEach(novel => {
       novel.etiquetas?.forEach(tag => {
-        if (tag.toLowerCase() !== 'destacado') {
-          counts[tag] = (counts[tag] || 0) + 1;
-        }
+        if (tag.toLowerCase() !== 'destacado') counts[tag] = (counts[tag] || 0) + 1;
       });
     });
     PREDEFINED_TAGS.forEach(tag => {
       if (!(tag in counts)) counts[tag] = 0;
+    });
+    return counts;
+  }, [initialNovels]);
+
+  const ageRatingCounts = useMemo(() => {
+    const counts: { [key: string]: number } = {};
+    initialNovels.forEach(novel => {
+      if (novel.ageRating) counts[novel.ageRating] = (counts[novel.ageRating] || 0) + 1;
+    });
+    AGE_RATING_VALUES.forEach(ar => {
+      if (!(ar in counts)) counts[ar] = 0;
+    });
+    return counts;
+  }, [initialNovels]);
+
+  const statusCounts = useMemo(() => {
+    const counts: { [key: string]: number } = {};
+    initialNovels.forEach(novel => {
+      if (novel.status) counts[novel.status] = (counts[novel.status] || 0) + 1;
+    });
+    STATUS_VALUES.forEach(st => {
+      if (!(st in counts)) counts[st] = 0;
     });
     return counts;
   }, [initialNovels]);
@@ -135,60 +162,38 @@ export default function NovelBrowser({ initialNovels }: NovelBrowserProps) {
 
     let authorQuery: string | null = null;
     let translatorQuery: string | null = null;
-    // categoryQueryFromSearchInput and tagQueryFromSearchInput are not strictly needed for filtering
-    // as selectedCategory/selectedTag (UI state) are kept in sync by handleSearchChange.
-    // We primarily rely on selectedCategory and selectedTag for filtering.
-    let generalSearchText = "";
+    let generalSearchText = lowerSearchTerm;
 
     if (lowerSearchTerm.startsWith('autor:')) {
       authorQuery = lowerSearchTerm.substring(6).trim();
+      generalSearchText = ""; // Don't use general search if author prefix is used
     } else if (lowerSearchTerm.startsWith('traductor:')) {
       translatorQuery = lowerSearchTerm.substring(10).trim();
-    } else if (lowerSearchTerm.startsWith('categoría:')) {
-      // The actual filtering for category is handled by selectedCategory state,
-      // which is updated by handleSearchChange. No need for generalSearchText here.
-    } else if (lowerSearchTerm.startsWith('etiqueta:')) {
-      // Similar to category, selectedTag handles this.
-    } else {
-      generalSearchText = lowerSearchTerm; // Only if no specific prefix, it's a general search term
+      generalSearchText = ""; // Don't use general search if translator prefix is used
+    } else if (lowerSearchTerm.startsWith('categoría:') || lowerSearchTerm.startsWith('etiqueta:')) {
+      generalSearchText = ""; // These are handled by selectedCategory/Tag states
     }
     
     novelsToFilter = novelsToFilter.filter(novel => {
-      // Filter by UI-selected category (driven by badges or "Categoría:" prefix)
-      if (selectedCategory && novel.categoria?.toLowerCase() !== selectedCategory.toLowerCase()) {
-        return false;
-      }
-
-      // Filter by UI-selected tag (driven by badges or "Etiqueta:" prefix)
-      if (selectedTag && !novel.etiquetas?.map(t => t.toLowerCase()).includes(selectedTag.toLowerCase())) {
-        return false;
-      }
+      if (selectedCategory && novel.categoria?.toLowerCase() !== selectedCategory.toLowerCase()) return false;
+      if (selectedTag && !novel.etiquetas?.map(t => t.toLowerCase()).includes(selectedTag.toLowerCase())) return false;
+      if (selectedAgeRating && novel.ageRating !== selectedAgeRating) return false;
+      if (selectedStatus && novel.status !== selectedStatus) return false;
       
-      // Filter by author query from "Autor:" prefix
-      if (authorQuery && !novel.author.toLowerCase().includes(authorQuery)) {
-        return false;
-      }
+      if (authorQuery && !novel.author.toLowerCase().includes(authorQuery)) return false;
+      if (translatorQuery && !(novel.traductor?.toLowerCase().includes(translatorQuery))) return false;
       
-      // Filter by translator query from "Traductor:" prefix
-      if (translatorQuery && !(novel.traductor?.toLowerCase().includes(translatorQuery))) {
-        return false;
-      }
-      
-      // Filter by general search text (only if no specific field prefix like Autor/Traductor was used)
       if (generalSearchText) {
         const titleMatch = novel.title.toLowerCase().includes(generalSearchText);
         const authorGeneralMatch = novel.author.toLowerCase().includes(generalSearchText);
         const translatorGeneralMatch = novel.traductor?.toLowerCase().includes(generalSearchText);
-        
-        if (!titleMatch && !authorGeneralMatch && !translatorGeneralMatch) {
-          return false;
-        }
+        if (!titleMatch && !authorGeneralMatch && !translatorGeneralMatch) return false;
       }
       
       return true;
     });
     return novelsToFilter;
-  }, [initialNovels, searchTerm, selectedCategory, selectedTag]);
+  }, [initialNovels, searchTerm, selectedCategory, selectedTag, selectedAgeRating, selectedStatus]);
 
   const totalPages = Math.ceil(filteredNovels.length / ITEMS_PER_PAGE);
   const paginatedNovels = useMemo(() => {
@@ -199,6 +204,8 @@ export default function NovelBrowser({ initialNovels }: NovelBrowserProps) {
   const filteredNovelsTitle = useMemo(() => {
     if (selectedCategory) return `Categoría: ${selectedCategory}`;
     if (selectedTag) return `Etiqueta: ${selectedTag}`;
+    if (selectedAgeRating) return `Clasificación: ${ageRatingLabels[selectedAgeRating]}`;
+    if (selectedStatus) return `Estado: ${novelStatusLabels[selectedStatus]}`;
     const lowerSearch = searchTerm.toLowerCase().trim();
     if (lowerSearch.startsWith('categoría:')) return `Categoría: ${searchTerm.substring(10).trim()}`;
     if (lowerSearch.startsWith('etiqueta:')) return `Etiqueta: ${searchTerm.substring(9).trim()}`;
@@ -206,8 +213,7 @@ export default function NovelBrowser({ initialNovels }: NovelBrowserProps) {
     if (lowerSearch.startsWith('traductor:')) return `Traductor: ${searchTerm.substring(10).trim()}`;
     if (searchTerm.trim()) return "Resultados de Búsqueda";
     return "Todas las Novelas";
-  }, [searchTerm, selectedCategory, selectedTag]);
-
+  }, [searchTerm, selectedCategory, selectedTag, selectedAgeRating, selectedStatus]);
 
   if (!mounted) {
     return (
@@ -236,69 +242,74 @@ export default function NovelBrowser({ initialNovels }: NovelBrowserProps) {
     );
   }
 
+  const updateURLParams = () => {
+    const params = new URLSearchParams();
+    if (searchTerm) params.set('q', searchTerm);
+    if (selectedCategory) params.set('category', selectedCategory);
+    if (selectedTag) params.set('tag', selectedTag);
+    if (selectedAgeRating) params.set('ageRating', selectedAgeRating);
+    if (selectedStatus) params.set('status', selectedStatus);
+    router.push(`?${params.toString()}`, { scroll: false });
+  };
+
   const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const newSearchTerm = e.target.value;
-    setSearchTerm(newSearchTerm); // Update search term state
-
+    setSearchTerm(newSearchTerm); 
     const lowerNewSearchTerm = newSearchTerm.toLowerCase().trim();
-
-    // Update UI filter states (selectedCategory, selectedTag) based on search term prefixes
-    if (lowerNewSearchTerm.startsWith('categoría:')) {
-      const catVal = newSearchTerm.substring(10).trim(); // Use original casing for display
-      setSelectedCategory(catVal);
-      setSelectedTag(null);
-    } else if (lowerNewSearchTerm.startsWith('etiqueta:')) {
-      const tagVal = newSearchTerm.substring(9).trim(); // Use original casing for display
-      setSelectedTag(tagVal);
-      setSelectedCategory(null);
-    } else if (lowerNewSearchTerm.startsWith('autor:') || lowerNewSearchTerm.startsWith('traductor:')) {
-      // If searching by author/translator prefix, clear badge-selected category/tag
-      setSelectedCategory(null);
-      setSelectedTag(null);
-    } else if (lowerNewSearchTerm === "") {
-      // If search term is cleared, reset UI filters
-      setSelectedCategory(null);
-      setSelectedTag(null);
+    if (lowerNewSearchTerm.startsWith('categoría:') || lowerNewSearchTerm.startsWith('etiqueta:') || lowerNewSearchTerm.startsWith('autor:') || lowerNewSearchTerm.startsWith('traductor:')) {
+        setSelectedCategory(null); setSelectedTag(null); setSelectedAgeRating(null); setSelectedStatus(null);
+        if (lowerNewSearchTerm.startsWith('categoría:')) setSelectedCategory(newSearchTerm.substring(10).trim());
+        if (lowerNewSearchTerm.startsWith('etiqueta:')) setSelectedTag(newSearchTerm.substring(9).trim());
+    } else if (newSearchTerm === "") {
+      // Clear search term, keep badge filters if any
     }
-    // If it's a general text search (no prefix and not empty), selectedCategory/Tag remain as they were (if set by badges).
+    updateURLParams();
   };
 
   const handleCategorySelect = (category: string | null) => {
     setSelectedCategory(category);
-    setSelectedTag(null); // Clear tag filter when category is selected
-    if (category) {
-      setSearchTerm(`Categoría:${category}`); // Update search box to reflect badge click
-    } else {
-      setSearchTerm(''); // Clear search box if "Todas" categories is clicked
-    }
-    router.push(`/?q=${category ? `Categoría:${encodeURIComponent(category)}` : ''}`, { scroll: false });
+    setSelectedTag(null); setSelectedAgeRating(null); setSelectedStatus(null);
+    setSearchTerm(category ? `Categoría:${category}` : '');
+    updateURLParams();
   };
 
   const handleTagSelect = (tag: string | null) => {
     setSelectedTag(tag);
-    setSelectedCategory(null); // Clear category filter when tag is selected
-    if (tag) {
-      setSearchTerm(`Etiqueta:${tag}`); // Update search box
-    } else {
-      setSearchTerm(''); // Clear search box
-    }
-    router.push(`/?q=${tag ? `Etiqueta:${encodeURIComponent(tag)}` : ''}`, { scroll: false });
+    setSelectedCategory(null); setSelectedAgeRating(null); setSelectedStatus(null);
+    setSearchTerm(tag ? `Etiqueta:${tag}` : '');
+    updateURLParams();
+  };
+
+  const handleAgeRatingSelect = (ageRating: AgeRating | null) => {
+    setSelectedAgeRating(ageRating);
+    setSelectedCategory(null); setSelectedTag(null); setSelectedStatus(null);
+    setSearchTerm(''); // Clear general search when specific badge filter is used
+    updateURLParams();
+  };
+
+  const handleStatusSelect = (status: NovelStatus | null) => {
+    setSelectedStatus(status);
+    setSelectedCategory(null); setSelectedTag(null); setSelectedAgeRating(null);
+    setSearchTerm(''); // Clear general search
+    updateURLParams();
   };
 
   const clearAllFilters = () => {
+    setSearchTerm('');
     setSelectedCategory(null);
     setSelectedTag(null);
-    setSearchTerm('');
+    setSelectedAgeRating(null);
+    setSelectedStatus(null);
     router.push('/', { scroll: false });
-  }
+  };
 
   const handlePageChange = (newPage: number) => {
     setCurrentPage(newPage);
     window.scrollTo(0, 0);
   };
 
-  const activeFilterCount = [selectedCategory, selectedTag, searchTerm.trim() ? 'search' : null].filter(Boolean).length;
-  const isFiltering = selectedCategory || selectedTag || searchTerm.trim();
+  const activeFilterCount = [selectedCategory, selectedTag, selectedAgeRating, selectedStatus, searchTerm.trim() ? 'search' : null].filter(Boolean).length;
+  const isFiltering = selectedCategory || selectedTag || selectedAgeRating || selectedStatus || searchTerm.trim();
 
   return (
     <div className="space-y-10">
@@ -338,7 +349,6 @@ export default function NovelBrowser({ initialNovels }: NovelBrowserProps) {
       
       {isFiltering && featuredNovels.length > 0 && <Separator className="my-8 sm:my-10" />}
 
-
       <section>
         <h2 className="text-2xl sm:text-3xl font-bold text-primary mb-6">
             {filteredNovelsTitle}
@@ -353,24 +363,12 @@ export default function NovelBrowser({ initialNovels }: NovelBrowserProps) {
             </div>
             {totalPages > 1 && (
               <div className="mt-10 flex justify-center items-center space-x-4">
-                <Button
-                  onClick={() => handlePageChange(currentPage - 1)}
-                  disabled={currentPage === 1}
-                  variant="outline"
-                >
-                  <ChevronLeft className="mr-2 h-4 w-4" />
-                  Anterior
+                <Button onClick={() => handlePageChange(currentPage - 1)} disabled={currentPage === 1} variant="outline">
+                  <ChevronLeft className="mr-2 h-4 w-4" /> Anterior
                 </Button>
-                <span className="text-sm text-muted-foreground">
-                  Página {currentPage} de {totalPages}
-                </span>
-                <Button
-                  onClick={() => handlePageChange(currentPage + 1)}
-                  disabled={currentPage === totalPages}
-                  variant="outline"
-                >
-                  Siguiente
-                  <ChevronRight className="ml-2 h-4 w-4" />
+                <span className="text-sm text-muted-foreground">Página {currentPage} de {totalPages}</span>
+                <Button onClick={() => handlePageChange(currentPage + 1)} disabled={currentPage === totalPages} variant="outline">
+                  Siguiente <ChevronRight className="ml-2 h-4 w-4" />
                 </Button>
               </div>
             )}
@@ -380,13 +378,9 @@ export default function NovelBrowser({ initialNovels }: NovelBrowserProps) {
             <BookX className="mx-auto h-16 w-16 text-muted-foreground mb-6" />
             <p className="text-2xl font-semibold text-foreground">No se encontraron novelas</p>
             {isFiltering ? (
-              <p className="mt-2 text-lg text-muted-foreground">
-                Intenta con otros términos de búsqueda o ajusta los filtros.
-              </p>
+              <p className="mt-2 text-lg text-muted-foreground">Intenta con otros términos de búsqueda o ajusta los filtros.</p>
             ) : (
-              <p className="mt-2 text-lg text-muted-foreground">
-                Parece que no hay novelas disponibles en este momento. ¡Vuelve pronto!
-              </p>
+              <p className="mt-2 text-lg text-muted-foreground">Parece que no hay novelas disponibles en este momento. ¡Vuelve pronto!</p>
             )}
           </div>
         )}
@@ -397,85 +391,49 @@ export default function NovelBrowser({ initialNovels }: NovelBrowserProps) {
       {activeFilterCount > 0 && (
         <div className="mb-6 text-center">
             <Button variant="outline" onClick={clearAllFilters} className="w-full sm:w-auto">
-                <FilterX className="mr-2 h-4 w-4" />
-                Limpiar Filtros ({activeFilterCount})
+                <FilterX className="mr-2 h-4 w-4" /> Limpiar Filtros ({activeFilterCount})
             </Button>
         </div>
       )}
 
       <section className="space-y-8">
         <Card>
-          <CardHeader>
-            <CardTitle className="text-lg flex items-center">
-              <LayoutGrid className="mr-2 h-5 w-5" />
-              Categorías
-            </CardTitle>
-          </CardHeader>
+          <CardHeader><CardTitle className="text-lg flex items-center"><LayoutGrid className="mr-2 h-5 w-5" />Categorías</CardTitle></CardHeader>
           <CardContent className="flex flex-wrap gap-2">
-            <Badge
-              variant={selectedCategory === null ? 'default' : 'outline'}
-              className="cursor-pointer text-sm px-3 py-1.5"
-              onClick={() => handleCategorySelect(null)}
-              role="button"
-              tabIndex={0}
-              onKeyDown={(e) => e.key === 'Enter' && handleCategorySelect(null)}
-            >
-              Todas ({initialNovels.length})
-            </Badge>
-            {allUniqueCategories.map(category => (
-              (categoryCounts[category] > 0 || PREDEFINED_CATEGORIES.includes(category)) &&
-              <Badge
-                key={category}
-                variant={selectedCategory === category ? 'default' : 'outline'}
-                className="cursor-pointer text-sm px-3 py-1.5"
-                onClick={() => handleCategorySelect(category)}
-                role="button"
-                tabIndex={0}
-                onKeyDown={(e) => e.key === 'Enter' && handleCategorySelect(category)}
-              >
-                {category} ({categoryCounts[category] || 0})
-              </Badge>
+            <Badge variant={selectedCategory === null ? 'default' : 'outline'} className="cursor-pointer text-sm px-3 py-1.5" onClick={() => handleCategorySelect(null)}>Todas ({initialNovels.length})</Badge>
+            {allUniqueCategories.map(category => ((categoryCounts[category] > 0 || PREDEFINED_CATEGORIES.includes(category)) &&
+              <Badge key={category} variant={selectedCategory === category ? 'default' : 'outline'} className="cursor-pointer text-sm px-3 py-1.5" onClick={() => handleCategorySelect(category)}>{category} ({categoryCounts[category] || 0})</Badge>
             ))}
           </CardContent>
         </Card>
-
         <Card>
-            <CardHeader>
-            <CardTitle className="text-lg flex items-center">
-                <Tags className="mr-2 h-5 w-5" />
-                Etiquetas
-            </CardTitle>
-            </CardHeader>
+            <CardHeader><CardTitle className="text-lg flex items-center"><Tags className="mr-2 h-5 w-5" />Etiquetas</CardTitle></CardHeader>
             <CardContent className="flex flex-wrap gap-2">
-                <Badge
-                    variant={selectedTag === null ? 'default' : 'outline'}
-                    className="cursor-pointer text-sm px-3 py-1.5"
-                    onClick={() => handleTagSelect(null)}
-                    role="button"
-                    tabIndex={0}
-                    onKeyDown={(e) => e.key === 'Enter' && handleTagSelect(null)}
-                >
-                    Todas ({initialNovels.length})
-                </Badge>
-            {allUniqueTags.map(tag => (
-                (tagCounts[tag] > 0 || PREDEFINED_TAGS.includes(tag)) &&
-                <Badge
-                    key={tag}
-                    variant={selectedTag === tag ? 'default' : 'outline'}
-                    className="cursor-pointer text-sm px-3 py-1.5"
-                    onClick={() => handleTagSelect(tag)}
-                    role="button"
-                    tabIndex={0}
-                    onKeyDown={(e) => e.key === 'Enter' && handleTagSelect(tag)}
-                >
-                    {tag} ({tagCounts[tag] || 0})
-                </Badge>
-            ))}
+                <Badge variant={selectedTag === null ? 'default' : 'outline'} className="cursor-pointer text-sm px-3 py-1.5" onClick={() => handleTagSelect(null)}>Todas ({initialNovels.length})</Badge>
+                {allUniqueTags.map(tag => ((tagCounts[tag] > 0 || PREDEFINED_TAGS.includes(tag)) &&
+                  <Badge key={tag} variant={selectedTag === tag ? 'default' : 'outline'} className="cursor-pointer text-sm px-3 py-1.5" onClick={() => handleTagSelect(tag)}>{tag} ({tagCounts[tag] || 0})</Badge>
+                ))}
+            </CardContent>
+        </Card>
+        <Card>
+            <CardHeader><CardTitle className="text-lg flex items-center"><Shield className="mr-2 h-5 w-5" />Clasificación de Edad</CardTitle></CardHeader>
+            <CardContent className="flex flex-wrap gap-2">
+                <Badge variant={selectedAgeRating === null ? 'default' : 'outline'} className="cursor-pointer text-sm px-3 py-1.5" onClick={() => handleAgeRatingSelect(null)}>Todas ({initialNovels.length})</Badge>
+                {AGE_RATING_VALUES.map(ar => ((ageRatingCounts[ar] > 0) &&
+                  <Badge key={ar} variant={selectedAgeRating === ar ? 'default' : 'outline'} className="cursor-pointer text-sm px-3 py-1.5" onClick={() => handleAgeRatingSelect(ar)}>{ageRatingLabels[ar]} ({ageRatingCounts[ar] || 0})</Badge>
+                ))}
+            </CardContent>
+        </Card>
+        <Card>
+            <CardHeader><CardTitle className="text-lg flex items-center"><ClockIcon className="mr-2 h-5 w-5" />Estado de la Novela</CardTitle></CardHeader>
+            <CardContent className="flex flex-wrap gap-2">
+                <Badge variant={selectedStatus === null ? 'default' : 'outline'} className="cursor-pointer text-sm px-3 py-1.5" onClick={() => handleStatusSelect(null)}>Todos ({initialNovels.length})</Badge>
+                {STATUS_VALUES.map(st => ((statusCounts[st] > 0) &&
+                  <Badge key={st} variant={selectedStatus === st ? 'default' : 'outline'} className="cursor-pointer text-sm px-3 py-1.5" onClick={() => handleStatusSelect(st)}>{novelStatusLabels[st]} ({statusCounts[st] || 0})</Badge>
+                ))}
             </CardContent>
         </Card>
       </section>
     </div>
   );
 }
-
-    
