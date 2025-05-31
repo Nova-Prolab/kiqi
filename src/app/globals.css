@@ -155,4 +155,99 @@
   @apply mt-6 mb-3 font-semibold; /* Adjust heading spacing */
 }
 
+/* Easter Egg Styles */
+@keyframes crazyRainbowBackground {
+  0% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+  100% { background-position: 0% 50%; }
+}
+
+@keyframes crazySpin {
+  from { transform: rotate(0deg) scale(1); }
+  50% { transform: rotate(180deg) scale(1.1); }
+  to { transform: rotate(360deg) scale(1); }
+}
+
+@keyframes slightWobble {
+  0%, 100% { transform: translateX(0) rotate(0) skew(0); }
+  25% { transform: translateX(-2px) rotate(-0.5deg) skew(-1deg); }
+  50% { transform: translateX(0px) rotate(0deg) skew(0deg); }
+  75% { transform: translateX(2px) rotate(0.5deg) skew(1deg); }
+}
+
+html.easter-egg-mode body {
+  background: linear-gradient(124deg, #ff2400, #e81d1d, #e8b71d, #e3e81d, #1de840, #1ddde8, #2b1de8, #dd00f3, #dd00f3);
+  background-size: 1800% 1800%;
+  animation: crazyRainbowBackground 18s ease infinite;
+  color: white !important;
+  transition: all 0.5s ease-in-out;
+  overflow-x: hidden; /* Prevent horizontal scrollbar from rainbow */
+}
+
+html.easter-egg-mode header,
+html.easter-egg-mode main,
+html.easter-egg-mode footer,
+html.easter-egg-mode button,
+html.easter-egg-mode input,
+html.easter-egg-mode textarea,
+html.easter-egg-mode .card,
+html.easter-egg-mode [role="dialog"],
+html.easter-egg-mode [role="menu"] {
+  filter: hue-rotate(calc(var(--hue-rotation, 0deg))) contrast(120%) saturate(150%);
+  animation: slightWobble 0.7s ease-in-out infinite alternate;
+  border-color: yellow !important;
+  --hue-rotation: 0deg; /* Initial value */
+  transition: filter 0.5s ease-in-out, border-color 0.5s ease-in-out;
+}
+
+html.easter-egg-mode img {
+  animation: crazySpin 1.5s linear infinite;
+  border-radius: 50% !important;
+  border: 3px dashed hotpink !important;
+  box-shadow: 0 0 15px 5px yellow, 0 0 25px 10px hotpink inset;
+}
+
+html.easter-egg-mode a {
+  color: lime !important;
+  font-weight: bold;
+  text-shadow: 1px 1px 2px black;
+}
+
+html.easter-egg-mode ::selection {
+  background: fuchsia !important;
+  color: yellow !important;
+}
+
+/* Override some specific ShadCN component backgrounds for better contrast in easter egg mode */
+html.easter-egg-mode .bg-background,
+html.easter-egg-mode .bg-card,
+html.easter-egg-mode .bg-popover,
+html.easter-egg-mode .bg-muted {
+  background-color: rgba(25, 0, 50, 0.6) !important; /* Dark semi-transparent purple */
+}
+
+html.easter-egg-mode .text-foreground,
+html.easter-egg-mode .text-card-foreground,
+html.easter-egg-mode .text-popover-foreground {
+  color: #f0f0f0 !important;
+}
+html.easter-egg-mode .text-muted-foreground {
+  color: #bdbdbd !important;
+}
+html.easter-egg-mode .text-primary {
+  color: #ffeb3b !important; /* Bright Yellow */
+}
+html.easter-egg-mode .text-primary-foreground {
+  color: black !important;
+}
+html.easter-egg-mode .border-border,
+html.easter-egg-mode .border-input {
+  border-color: #ff00ff !important; /* Magenta */
+}
+html.easter-egg-mode .ring-ring {
+  --ring-color: #00ffff !important; /* Cyan */
+}
+html.easter-egg-mode ::placeholder {
+  color: #a0a0a0 !important;
+}
     

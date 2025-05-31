@@ -15,7 +15,8 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar"
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import React, { useState, useEffect, useRef } from 'react';
 
 // Inline SVG for Discord Icon
 const DiscordIcon = ({ className }: { className?: string }) => (
@@ -33,27 +34,69 @@ const DiscordIcon = ({ className }: { className?: string }) => (
   </svg>
 );
 
+const EASTER_EGG_TRIGGER_COUNT = 20;
+const EASTER_EGG_DURATION = 15000; // 15 seconds
 
 export default function AppHeader() {
   const { currentUser, logout, isLoading } = useAuth();
+  const [logoClickCount, setLogoClickCount] = useState(0);
+  const [easterEggActive, setEasterEggActive] = useState(false);
+  const easterEggTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   const getInitials = (name: string | undefined) => {
     if (!name) return 'U';
     return name.substring(0, 2).toUpperCase();
   };
 
+  const handleLogoClick = () => {
+    if (easterEggActive) return; // Don't count clicks if easter egg is already active
+
+    const newCount = logoClickCount + 1;
+    setLogoClickCount(newCount);
+
+    if (newCount >= EASTER_EGG_TRIGGER_COUNT) {
+      setEasterEggActive(true);
+      setLogoClickCount(0); // Reset count
+
+      if (easterEggTimeoutRef.current) {
+        clearTimeout(easterEggTimeoutRef.current);
+      }
+      easterEggTimeoutRef.current = setTimeout(() => {
+        setEasterEggActive(false);
+      }, EASTER_EGG_DURATION);
+    }
+  };
+
+  useEffect(() => {
+    if (easterEggActive) {
+      document.documentElement.classList.add('easter-egg-mode');
+    } else {
+      document.documentElement.classList.remove('easter-egg-mode');
+    }
+
+    // Cleanup timeout on unmount
+    return () => {
+      if (easterEggTimeoutRef.current) {
+        clearTimeout(easterEggTimeoutRef.current);
+      }
+      // Ensure class is removed if component unmounts while active
+      document.documentElement.classList.remove('easter-egg-mode');
+    };
+  }, [easterEggActive]);
+
 
   return (
     <header className="sticky top-0 z-50 w-full border-b border-border/40 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
       <div className="container flex h-16 items-center">
         <div className="flex items-center mr-auto">
-          <Link href="/" className="flex items-center">
+          <Link href="/" className="flex items-center" onClick={handleLogoClick} aria-label="Kiqi! Home">
             <Image
               src="https://i.imgur.com/oDm44VN.png"
               alt="Kiqi! Logo"
               width={64}
               height={64}
               className="h-16 w-16" 
+              priority // Prioritize logo loading
             />
           </Link>
           <Button asChild variant="outline" className="ml-4 hidden sm:flex">
@@ -99,6 +142,12 @@ export default function AppHeader() {
                     <LayoutDashboard className="mr-2 h-4 w-4" />
                     <span>Panel de Administración</span>
                   </Link>
+                </DropdownMenuItem>
+                <DropdownMenuItem asChild>
+                    <Link href="/admin/create-novel">
+                        <Settings className="mr-2 h-4 w-4" /> {/* Changed icon for variety */}
+                        <span>Crear Novela</span>
+                    </Link>
                 </DropdownMenuItem>
                 <DropdownMenuSeparator />
                 <DropdownMenuItem onClick={logout}>
