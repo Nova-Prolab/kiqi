@@ -30,13 +30,13 @@ export default function AppHeader() {
   return (
     <header className="sticky top-0 z-50 w-full border-b border-border/40 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
       <div className="container flex h-16 items-center">
-        <Link href="/" className="flex items-center mr-auto"> {/* Removed space-x-2 */}
+        <Link href="/" className="flex items-center mr-auto">
           <Image 
             src="https://i.imgur.com/oDm44VN.png" 
             alt="Kiqi! Logo" 
-            width={40} // Increased size
-            height={40} // Increased size
-            className="h-10 w-10" // Tailwind classes for responsive size
+            width={48} 
+            height={48} 
+            className="h-12 w-12" 
           />
         </Link>
         
