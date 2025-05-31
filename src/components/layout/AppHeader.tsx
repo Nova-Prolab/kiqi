@@ -34,9 +34,9 @@ export default function AppHeader() {
           <Image 
             src="https://i.imgur.com/oDm44VN.png" 
             alt="Kiqi! Logo" 
-            width={48} 
-            height={48} 
-            className="h-12 w-12" 
+            width={56} 
+            height={56} 
+            className="h-14 w-14" 
           />
         </Link>
         
