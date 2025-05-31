@@ -8,7 +8,7 @@ import { notFound, useRouter, usePathname } from 'next/navigation';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { ArrowLeft, Loader2, ShieldAlert } from 'lucide-react';
-import { useEffect, useState } from 'react';
+import React, { useEffect, useState } from 'react'; // Ensured React is imported for React.use
 import type { Novel } from '@/lib/types';
 import { useAuth } from '@/hooks/useAuth';
 
@@ -16,7 +16,7 @@ import { useAuth } from '@/hooks/useAuth';
 // export async function generateMetadata({ params }: { params: { novelId: string } }): Promise<Metadata> {
 //   const novel = await fetchNovelById(params.novelId);
 //   if (!novel) {
-//     return { 
+//     return {
 //       title: 'Novela no encontrada - Literary Nexus',
 //     };
 //   }
@@ -27,7 +27,8 @@ import { useAuth } from '@/hooks/useAuth';
 // }
 
 export default function AddChapterToNovelPage({ params }: { params: { novelId: string } }) {
-  const { novelId } = params;
+  const resolvedParams = React.use(params); // Use React.use() to unwrap params
+  const { novelId } = resolvedParams; // Destructure novelId from the resolved params
   const { currentUser, isLoading: authIsLoading } = useAuth();
   const router = useRouter();
   const pathname = usePathname();
@@ -66,7 +67,7 @@ export default function AddChapterToNovelPage({ params }: { params: { novelId: s
         setIsAuthorized(false);
       }
     } else if (novel === null) { // Novel not found after fetch attempt
-        setIsAuthorized(false); 
+        setIsAuthorized(false);
     }
   }, [currentUser, novel]);
 
@@ -85,7 +86,7 @@ export default function AddChapterToNovelPage({ params }: { params: { novelId: s
   if (novel === null) { // Explicitly novel not found
     notFound();
   }
-  
+
   if (!currentUser) { // Should be caught by the redirect effect, but as a fallback
      return (
       <section className="py-8">
@@ -115,9 +116,9 @@ export default function AddChapterToNovelPage({ params }: { params: { novelId: s
       </section>
     );
   }
-  
+
   // At this point, novel is not null, user is logged in and authorized
-  const safeNovel = novel as Novel; 
+  const safeNovel = novel as Novel;
 
   return (
     <section className="py-8">

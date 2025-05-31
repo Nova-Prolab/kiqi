@@ -1,3 +1,4 @@
+
 import { fetchNovels } from '@/lib/github';
 import type { Novel } from '@/lib/types';
 import NovelBrowser from '@/components/novel/NovelBrowser';
