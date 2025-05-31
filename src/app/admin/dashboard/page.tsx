@@ -1,10 +1,12 @@
-
 import { fetchNovels } from '@/lib/github';
 import type { Novel } from '@/lib/types';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
-import { FilePlus } from 'lucide-react';
-import AdminNovelListClient from './AdminNovelListClient'; // Import the new client component
+import { FilePlus, Loader2 } from 'lucide-react';
+import AdminNovelListClient from './AdminNovelListClient';
+import { Suspense } from 'react';
+
+export const dynamic = 'force-dynamic'; // Ensure dynamic rendering
 
 export const metadata = {
   title: 'Panel de Administración de Novelas - Kiqi!',
@@ -27,7 +29,14 @@ export default async function AdminDashboardPage() {
           </Button>
         </div>
         
-        <AdminNovelListClient novels={novels} />
+        <Suspense fallback={
+          <div className="flex flex-col items-center justify-center py-20 text-center">
+            <Loader2 className="h-12 w-12 text-primary animate-spin mb-4" />
+            <p className="text-lg text-muted-foreground">Cargando panel de administración...</p>
+          </div>
+        }>
+          <AdminNovelListClient novels={novels} />
+        </Suspense>
 
       </div>
     </section>
