@@ -34,13 +34,11 @@ export default function AppHeader() {
           <Image 
             src="https://i.imgur.com/oDm44VN.png" 
             alt="Kiqi! Logo" 
-            width={32} // Adjust as needed
-            height={32} // Adjust as needed
+            width={32} 
+            height={32} 
             className="h-8 w-8" // Tailwind classes for responsive size
           />
-          <span className="font-bold text-xl text-primary tracking-tight">
-            Kiqi!
-          </span>
+          {/* Removed text logo: <span className="font-bold text-xl text-primary tracking-tight">Kiqi!</span> */}
         </Link>
         
         <nav className="flex items-center space-x-2 lg:space-x-4">
