@@ -16,7 +16,7 @@ export interface InfoJson {
   etiquetas?: string[];
   categoria?: string;
   traductor?: string;
-  creatorId?: string; // ID of the user who created the novel
+  creatorId?: string; // Username of the user who created the novel
 }
 
 export interface Novel {
@@ -34,7 +34,7 @@ export interface Novel {
   categoria?: string;
   traductor?: string;
   lastUpdateDate?: string;
-  creatorId?: string; // ID of the user who created the novel
+  creatorId?: string; // Username of the user who created the novel
 }
 
 // For Reader Settings Context
@@ -97,5 +97,5 @@ export interface CreateNovelInput {
 // For User "Accounts"
 export interface User {
   username: string;
-  discordUsername: string;
+  email: string; // Changed from discordUsername
 }

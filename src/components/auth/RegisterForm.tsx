@@ -55,7 +55,7 @@ export default function RegisterForm() {
             Crear Cuenta
           </CardTitle>
           <CardDescription>
-            Ingresa tus datos para crear una nueva cuenta. El nombre de usuario debe ser único.
+            Ingresa tus datos para crear una nueva cuenta. El nombre de usuario y el correo electrónico deben ser únicos.
           </CardDescription>
         </CardHeader>
         <form action={formAction}>
@@ -66,9 +66,9 @@ export default function RegisterForm() {
               <p className="text-xs text-muted-foreground">Mínimo 3 caracteres. Solo letras, números, '_', '-', '.'</p>
             </div>
             <div className="space-y-2">
-              <Label htmlFor="discordUsername">Usuario de Discord</Label>
-              <Input id="discordUsername" name="discordUsername" placeholder="Ej: MiUsuarioDiscord#1234 o miusuariodiscord" required />
-               <p className="text-xs text-muted-foreground">Este campo es obligatorio.</p>
+              <Label htmlFor="email">Correo Electrónico</Label>
+              <Input id="email" name="email" type="email" placeholder="Ej: tu_correo@ejemplo.com" required />
+               <p className="text-xs text-muted-foreground">Usaremos este correo para asociarlo a tu cuenta.</p>
             </div>
             {/* Password field would go here in a real system */}
           </CardContent>

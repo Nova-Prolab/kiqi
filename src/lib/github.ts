@@ -26,7 +26,8 @@ interface GitHubCommitResponse {
   };
 }
 
-async function fetchFromGitHub<T>(
+// Export this function so it can be used by userActions
+export async function fetchFromGitHub<T>(
   path: string,
   method: 'GET' | 'PUT' | 'DELETE' = 'GET',
   body?: Record<string, unknown>,
@@ -185,11 +186,9 @@ export async function fetchNovels(): Promise<Novel[]> {
       let coverImage: string;
       if (info.coverImageUrl && info.coverImageUrl.trim() !== '') {
         coverImage = info.coverImageUrl;
-        // console.log(`[GitHub Lib] Novel '${novelId}': Using coverImageUrl from info.json: ${coverImage}`);
+         // console.log(`[GitHub Lib] Novel '${novelId}': Using coverImageUrl from info.json: ${coverImage}`);
       } else {
-        // console.warn(`[GitHub Lib] Novel '${novelId}': coverImageUrl not found or empty in info.json. Attempting to use 'cover.png'.`);
-        // Attempt to construct URL for cover.png if coverImageUrl is missing
-        // This part is tricky for private repos, for now, placeholder if not in info.json
+        // console.warn(`[GitHub Lib] Novel '${novelId}': coverImageUrl not found or empty in info.json. Defaulting to placeholder.`);
         coverImage = `https://placehold.co/300x450.png?text=No+Cover`;
       }
 
@@ -227,7 +226,7 @@ export async function fetchNovels(): Promise<Novel[]> {
         id: novelId,
         title: info.titulo,
         author: info.autor,
-        summary: info.descripcion,
+        summary: info.descripcion.replace(/\\n/g, '\n'),
         coverImage: coverImage,
         chapters: chaptersMetadata,
         fecha_lanzamiento: info.fecha_lanzamiento,
@@ -236,7 +235,7 @@ export async function fetchNovels(): Promise<Novel[]> {
         traductor: info.traductor,
         lastUpdateDate: info.fecha_lanzamiento,
         infoJsonSha: infoJsonSha,
-        creatorId: info.creatorId, // Add creatorId
+        creatorId: info.creatorId,
       });
     } catch (error) {
       console.error(`[GitHub Lib] Error processing novel directory '${dir.name}':`, error);
@@ -315,7 +314,7 @@ export async function fetchNovelById(id: string): Promise<Novel | undefined> {
       id: id,
       title: info.titulo,
       author: info.autor,
-      summary: info.descripcion,
+      summary: info.descripcion.replace(/\\n/g, '\n'),
       coverImage: coverImage,
       chapters: chaptersMetadata,
       fecha_lanzamiento: info.fecha_lanzamiento,
@@ -324,7 +323,7 @@ export async function fetchNovelById(id: string): Promise<Novel | undefined> {
       traductor: info.traductor,
       lastUpdateDate: info.fecha_lanzamiento,
       infoJsonSha: infoJsonSha,
-      creatorId: info.creatorId, // Add creatorId
+      creatorId: info.creatorId,
     };
 
   } catch (error) {
@@ -384,3 +383,4 @@ export async function getFileSha(filePath: string): Promise<string | null> {
     return null;
   }
 }
+

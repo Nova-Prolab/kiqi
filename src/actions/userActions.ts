@@ -2,12 +2,21 @@
 'use server';
 
 import { z } from 'zod';
-import { createFileInRepo, fetchFileContent } from '@/lib/github';
+import { createFileInRepo, fetchFileContent, fetchFromGitHub } from '@/lib/github';
 import type { User } from '@/lib/types';
+
+// Define GitHubFile interface locally if not centrally available and needed for fetchFromGitHub response
+interface GitHubFile {
+  name: string;
+  path: string;
+  type: 'file' | 'dir';
+  // Add other properties if needed, like sha, download_url etc.
+}
+
 
 const registerUserSchema = z.object({
   username: z.string().min(3, "El nombre de usuario debe tener al menos 3 caracteres.").regex(/^[a-zA-Z0-9_.-]+$/, "Nombre de usuario inválido. Solo letras, números, '_', '-', '.' son permitidos."),
-  discordUsername: z.string().min(2, "El usuario de Discord es obligatorio."),
+  email: z.string().email("Correo electrónico inválido."),
 });
 
 export async function registerUserAction(
@@ -16,7 +25,7 @@ export async function registerUserAction(
 ): Promise<{ message: string; success: boolean; }> {
   const rawFormData = {
     username: formData.get('username') as string,
-    discordUsername: formData.get('discordUsername') as string,
+    email: formData.get('email') as string,
   };
 
   const validatedFields = registerUserSchema.safeParse(rawFormData);
@@ -28,24 +37,52 @@ export async function registerUserAction(
     };
   }
 
-  const { username, discordUsername } = validatedFields.data;
+  const { username, email } = validatedFields.data;
   const filePath = `users/${username}.json`;
 
-  // Check if user file already exists
+  // Check if user file (username) already exists
   try {
     const existingUserFile = await fetchFileContent(filePath);
     if (existingUserFile) {
       return { message: `El nombre de usuario '${username}' ya está en uso. Por favor, elige otro.`, success: false };
     }
   } catch (error) {
-    // This might be a network error or an error from fetchFileContent if it's not a 404.
-    // If fetchFileContent returns null for 404, this block might not be hit for "file not found".
-    // Let's assume fetchFileContent handles 404s by returning null and doesn't throw for that.
+    // Assuming fetchFileContent returns null for 404s and doesn't throw.
+    // If it throws for non-404, an error message will be shown by the generic catch block below.
   }
+
+  // Check if email already exists in another user's file
+  try {
+    const allUserFiles = await fetchFromGitHub<GitHubFile[]>('contents/users/');
+    if (allUserFiles && Array.isArray(allUserFiles)) {
+      for (const file of allUserFiles) {
+        if (file.type === 'file' && file.name.endsWith('.json') && file.name !== `${username}.json`) {
+          const fileData = await fetchFileContent(file.path);
+          if (fileData) {
+            try {
+              const otherUser: User = JSON.parse(fileData.content);
+              if (otherUser.email && otherUser.email.toLowerCase() === email.toLowerCase()) {
+                return { message: `El correo electrónico '${email}' ya está registrado con otro usuario.`, success: false };
+              }
+            } catch (parseError) {
+              console.warn(`Could not parse user file ${file.path} during email check:`, parseError);
+              // Continue checking other files
+            }
+          }
+        }
+      }
+    }
+  } catch (error) {
+     console.error("Error fetching user list for email check:", error);
+     // Potentially return a generic error or allow registration if user list can't be fetched?
+     // For now, let it proceed to the creation attempt which might fail or succeed.
+     // Depending on requirements, you might want to make this a hard fail.
+  }
+
 
   const userJson: User = {
     username,
-    discordUsername,
+    email,
   };
   const userJsonContent = JSON.stringify(userJson, null, 2);
   const commitMessage = `feat: Register new user - ${username}`;
@@ -56,6 +93,13 @@ export async function registerUserAction(
   } catch (error) {
     console.error("Error creating user file:", error);
     const errorMessage = error instanceof Error ? error.message : "Error desconocido al registrar el usuario.";
+     // Check if the error is because the file already exists (code 422 from GitHub)
+    if (errorMessage.includes('422') || (error && typeof error === 'object' && 'status' in error && error.status === 422)) {
+      return {
+        message: `Error al registrar: El nombre de usuario '${username}' ya existe. Elige otro.`,
+        success: false,
+      };
+    }
     return { message: `Error al registrar usuario: ${errorMessage}`, success: false };
   }
 }
@@ -95,6 +139,7 @@ export async function loginUserAction(
     }
   } catch (error) {
     console.error("Error during login:", error);
+    // If fetchFileContent returns null for 404, it might not throw. This catch is for other errors.
     const errorMessage = error instanceof Error ? error.message : "Error desconocido durante el inicio de sesión.";
     return { message: `Error al iniciar sesión: ${errorMessage}`, success: false };
   }
