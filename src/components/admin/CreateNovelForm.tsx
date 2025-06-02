@@ -91,6 +91,8 @@ export default function CreateNovelForm() {
     return <div className="flex justify-center items-center h-64"><p>Debes iniciar sesión para crear una novela.</p></div>;
   }
 
+  const EMPTY_STATUS_VALUE = "__EMPTY_STATUS__";
+
   return (
     <div className="max-w-2xl mx-auto">
        <Button variant="outline" asChild className="mb-6">
@@ -213,14 +215,20 @@ export default function CreateNovelForm() {
                 <Label htmlFor="status">Estado de la Novela (Opcional)</Label>
                 <Select
                   name="statusSelect"
-                  onValueChange={(value) => setSelectedStatus(value as NovelStatus)}
-                  value={selectedStatus}
+                  onValueChange={(value) => {
+                    if (value === EMPTY_STATUS_VALUE) {
+                      setSelectedStatus('');
+                    } else {
+                      setSelectedStatus(value as NovelStatus);
+                    }
+                  }}
+                  value={selectedStatus} 
                 >
                   <SelectTrigger className="w-full">
                     <SelectValue placeholder="Selecciona un estado" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="">(Sin especificar)</SelectItem>
+                    <SelectItem value={EMPTY_STATUS_VALUE}>(Sin especificar)</SelectItem>
                     {STATUS_VALUES.map(statusVal => (
                       <SelectItem key={statusVal} value={statusVal}>
                         {novelStatusLabels[statusVal]}
@@ -277,3 +285,4 @@ export default function CreateNovelForm() {
     </div>
   );
 }
+
