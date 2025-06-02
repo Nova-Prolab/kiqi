@@ -4,51 +4,52 @@
 import { useReaderSettings } from '@/contexts/ReaderSettingsContext';
 import type { ReaderTheme, ReaderFontSize, ReaderFontFamily, ReaderLineHeight } from '@/lib/types';
 import { Button } from '@/components/ui/button';
-import { 
-  DropdownMenu, 
-  DropdownMenuContent, 
-  DropdownMenuItem, 
-  DropdownMenuLabel, 
-  DropdownMenuSeparator, 
-  DropdownMenuTrigger, 
-  DropdownMenuRadioGroup, 
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+  DropdownMenuRadioGroup,
   DropdownMenuRadioItem
 } from '@/components/ui/dropdown-menu';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { 
-  Settings2, 
-  TextQuote, 
-  Minimize, 
-  Maximize, 
-  Sun, 
-  Moon, 
-  Coffee, 
-  Languages, 
-  BookText, 
-  Palette, 
-  FileTextIcon, 
-  Trees, 
-  MoonStar, 
-  Paintbrush, 
+import {
+  Settings2,
+  TextQuote,
+  Minimize,
+  Maximize,
+  Sun,
+  Moon,
+  Coffee,
+  Languages,
+  BookText,
+  Palette,
+  FileTextIcon,
+  Trees,
+  MoonStar,
+  Paintbrush,
   BookOpen,
   CaseSensitive,
   AlignJustify,
   ALargeSmall,
-  Loader2 // Added Loader2 for Suspense fallback
+  Loader2
 } from 'lucide-react';
-import React, { useState, useEffect, ChangeEvent, Suspense } from 'react'; // Added Suspense
-import dynamic from 'next/dynamic'; // For lazy loading
+import React, { useState, useEffect, ChangeEvent, Suspense } from 'react';
+import dynamic from 'next/dynamic';
 import Link from 'next/link';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 
-// Lazy load dialogs
 const DynamicChapterSummaryDialog = dynamic(() => import('./ChapterSummaryDialog'), {
   suspense: true,
+  loading: () => <div className="w-8 h-8 flex items-center justify-center"><Loader2 className="animate-spin h-5 w-5" /></div>,
 });
 const DynamicTranslationDialog = dynamic(() => import('./TranslationDialog'), {
   suspense: true,
+  loading: () => <div className="w-8 h-8 flex items-center justify-center"><Loader2 className="animate-spin h-5 w-5" /></div>,
 });
 
 
@@ -59,6 +60,7 @@ interface ReaderControlsProps {
   novelId: string;
   isVisibleInImmersiveMode: boolean;
   onHoverStateChange: (isHovering: boolean) => void;
+  onAppearanceMenuToggle: (isOpen: boolean) => void; // Nueva prop
 }
 
 const FONT_SIZES: { label: string, value: ReaderFontSize }[] = [
@@ -106,29 +108,30 @@ const FONT_FAMILIES: { label: string, value: ReaderFontFamily, style?: React.CSS
 
 const isValidHexColor = (color: string) => /^#[0-9A-F]{6}$/i.test(color);
 
-function ReaderControls({ 
-  chapterHtmlContent, 
-  onToggleImmersive, 
-  isImmersive, 
+function ReaderControls({
+  chapterHtmlContent,
+  onToggleImmersive,
+  isImmersive,
   novelId,
   isVisibleInImmersiveMode,
-  onHoverStateChange
+  onHoverStateChange,
+  onAppearanceMenuToggle, // Usar la nueva prop
 }: ReaderControlsProps) {
-  const { 
-    theme, 
-    fontSize, 
+  const {
+    theme,
+    fontSize,
     fontFamily,
     lineHeight,
     customFontFamily,
-    setTheme, 
+    setTheme,
     setFontSize,
-    setLineHeight, 
-    setCustomBackground, 
+    setLineHeight,
+    setCustomBackground,
     setCustomForeground,
     setFontFamily,
     setCustomFontFamily: setCtxCustomFontFamily,
-    customBackground, 
-    customForeground 
+    customBackground,
+    customForeground
   } = useReaderSettings();
 
   const [isSummaryDialogOpen, setIsSummaryDialogOpen] = useState(false);
@@ -159,7 +162,7 @@ function ReaderControls({
       setCustomBackground(newColor);
     }
   };
-  
+
   const handleCustomBgInputChange = (e: ChangeEvent<HTMLInputElement>) => {
     const newColor = e.target.value;
     setBgColorInput(newColor);
@@ -189,7 +192,7 @@ function ReaderControls({
       setCtxCustomFontFamily(tempCustomFont.trim());
     }
   };
-  
+
   const baseClasses = "reader-controls p-2 bg-card/90 backdrop-blur-sm shadow-md border-b transition-transform duration-300 ease-in-out";
   let immersiveSpecificClasses = "";
   if (isImmersive) {
@@ -199,13 +202,13 @@ function ReaderControls({
   }
 
   return (
-    <div 
+    <div
       className={`${baseClasses} ${immersiveSpecificClasses}`}
       onMouseEnter={() => isImmersive && onHoverStateChange(true)}
       onMouseLeave={() => isImmersive && onHoverStateChange(false)}
     >
       <div className="mx-auto flex items-center justify-between gap-1 max-w-4xl px-2 sm:px-0">
-        
+
         <div className="flex items-center gap-0.5 min-w-[40px]">
            {isImmersive && (
             <TooltipProvider delayDuration={100}>
@@ -224,7 +227,7 @@ function ReaderControls({
         </div>
 
         <div className="flex items-center gap-0.5 flex-grow justify-center">
-          <DropdownMenu>
+          <DropdownMenu onOpenChange={onAppearanceMenuToggle}> {/* Usar la prop aquí */}
             <TooltipProvider delayDuration={100}>
               <Tooltip>
                 <TooltipTrigger asChild>
@@ -237,136 +240,143 @@ function ReaderControls({
                 <TooltipContent><p>Ajustes de Apariencia</p></TooltipContent>
               </Tooltip>
             </TooltipProvider>
-            <DropdownMenuContent 
-              align="center" 
-              className="w-80 sm:w-96"
+            <DropdownMenuContent
+              align="center"
+              className="w-80 sm:w-96 !p-0" // Quitar padding, ScrollArea lo manejará
               onCloseAutoFocus={(e) => e.preventDefault()}
             >
-              <DropdownMenuLabel className="flex items-center"><Palette className="mr-2 h-4 w-4" />Apariencia</DropdownMenuLabel>
-              <DropdownMenuSeparator />
-              <ScrollArea className="max-h-[calc(100vh-250px)] sm:max-h-[400px] pr-3"> 
-                <DropdownMenuLabel className="text-xs text-muted-foreground">Tamaño de Fuente</DropdownMenuLabel>
-                <DropdownMenuRadioGroup value={fontSize} onValueChange={(value) => setFontSize(value as ReaderFontSize)}>
-                  {FONT_SIZES.map(fs => (
-                    <DropdownMenuRadioItem key={fs.value} value={fs.value}>
-                      <ALargeSmall className="mr-2 h-4 w-4" /> {fs.label}
-                    </DropdownMenuRadioItem>
-                  ))}
-                </DropdownMenuRadioGroup>
-                <DropdownMenuSeparator />
-                
-                <DropdownMenuLabel className="text-xs text-muted-foreground">Interlineado</DropdownMenuLabel>
-                <DropdownMenuRadioGroup value={lineHeight} onValueChange={(value) => setLineHeight(value as ReaderLineHeight)}>
-                  {LINE_HEIGHTS.map(lh => (
-                    <DropdownMenuRadioItem key={lh.value} value={lh.value}>
-                      <AlignJustify className="mr-2 h-4 w-4" /> {lh.label}
-                    </DropdownMenuRadioItem>
-                  ))}
-                </DropdownMenuRadioGroup>
-                <DropdownMenuSeparator />
+              <ScrollArea
+                className="max-h-[calc(100vh-150px)] sm:max-h-[75vh] md:max-h-[450px]" // Ajustar max-h
+              >
+                <div className="p-1"> {/* Añadir padding dentro de ScrollArea */}
+                  <DropdownMenuLabel className="flex items-center px-2"><Palette className="mr-2 h-4 w-4" />Apariencia</DropdownMenuLabel>
+                  <DropdownMenuSeparator />
+                  <div className="px-2"> {/* Padding para grupos de radio y items */}
+                    <DropdownMenuLabel className="text-xs text-muted-foreground">Tamaño de Fuente</DropdownMenuLabel>
+                    <DropdownMenuRadioGroup value={fontSize} onValueChange={(value) => setFontSize(value as ReaderFontSize)}>
+                      {FONT_SIZES.map(fs => (
+                        <DropdownMenuRadioItem key={fs.value} value={fs.value}>
+                          <ALargeSmall className="mr-2 h-4 w-4" /> {fs.label}
+                        </DropdownMenuRadioItem>
+                      ))}
+                    </DropdownMenuRadioGroup>
+                    <DropdownMenuSeparator />
 
-                <DropdownMenuLabel className="text-xs text-muted-foreground">Fuente</DropdownMenuLabel>
-                <DropdownMenuRadioGroup value={fontFamily} onValueChange={(value) => setFontFamily(value as ReaderFontFamily)}>
-                  {FONT_FAMILIES.map(ff => (
-                    <DropdownMenuRadioItem key={ff.value} value={ff.value} style={ff.style}>
-                      {ff.label}
-                    </DropdownMenuRadioItem>
-                  ))}
-                </DropdownMenuRadioGroup>
-                {fontFamily === 'custom' && (
-                  <DropdownMenuItem onSelect={(e) => e.preventDefault()} className="focus:bg-transparent mt-1">
-                    <div className="w-full space-y-1.5 py-1 pl-6">
-                      <Label htmlFor="custom-font-input" className="text-xs text-muted-foreground flex items-center">
-                        <CaseSensitive className="mr-1.5 h-3.5 w-3.5" /> Nombre de la fuente:
-                      </Label>
-                      <div className="flex items-center gap-2">
-                        <Input
-                          id="custom-font-input"
-                          type="text"
-                          placeholder="Ej: Arial, Times New Roman"
-                          value={tempCustomFont}
-                          onChange={(e) => setTempCustomFont(e.target.value)}
-                          className="h-8 text-sm flex-grow"
-                          onClick={(e) => e.stopPropagation()}
-                        />
-                         <Button size="sm" variant="outline" onClick={handleCustomFontApply} className="h-8 px-2.5 text-xs">Aplicar</Button>
-                      </div>
-                       <p className="text-xs text-muted-foreground leading-tight pt-0.5">
-                        La fuente debe estar instalada en tu sistema.
-                      </p>
-                    </div>
-                  </DropdownMenuItem>
-                )}
-                <DropdownMenuSeparator />
+                    <DropdownMenuLabel className="text-xs text-muted-foreground">Interlineado</DropdownMenuLabel>
+                    <DropdownMenuRadioGroup value={lineHeight} onValueChange={(value) => setLineHeight(value as ReaderLineHeight)}>
+                      {LINE_HEIGHTS.map(lh => (
+                        <DropdownMenuRadioItem key={lh.value} value={lh.value}>
+                          <AlignJustify className="mr-2 h-4 w-4" /> {lh.label}
+                        </DropdownMenuRadioItem>
+                      ))}
+                    </DropdownMenuRadioGroup>
+                    <DropdownMenuSeparator />
 
-                <DropdownMenuLabel className="text-xs text-muted-foreground">Tema</DropdownMenuLabel>
-                 <DropdownMenuRadioGroup value={theme} onValueChange={(value) => setTheme(value as ReaderTheme)}>
-                  {THEMES.map(th => (
-                    <DropdownMenuRadioItem key={th.value} value={th.value}>
-                      <th.icon className="mr-2 h-4 w-4" />
-                      {th.label}
-                    </DropdownMenuRadioItem>
-                  ))}
-                </DropdownMenuRadioGroup>
-                {theme === 'custom' && (
-                  <DropdownMenuItem onSelect={(e) => e.preventDefault()} className="focus:bg-transparent mt-1">
-                    <div className="w-full space-y-3 py-1 pl-6">
+                    <DropdownMenuLabel className="text-xs text-muted-foreground">Fuente</DropdownMenuLabel>
+                    <DropdownMenuRadioGroup value={fontFamily} onValueChange={(value) => setFontFamily(value as ReaderFontFamily)}>
+                      {FONT_FAMILIES.map(ff => (
+                        <DropdownMenuRadioItem key={ff.value} value={ff.value} style={ff.style}>
+                          {ff.label}
+                        </DropdownMenuRadioItem>
+                      ))}
+                    </DropdownMenuRadioGroup>
+                  </div>
+                  {fontFamily === 'custom' && (
+                    <DropdownMenuItem onSelect={(e) => e.preventDefault()} className="focus:bg-transparent mt-1">
+                      <div className="w-full space-y-1.5 py-1 pl-8 pr-2"> {/* Ajustar padding para item custom */}
+                        <Label htmlFor="custom-font-input" className="text-xs text-muted-foreground flex items-center">
+                          <CaseSensitive className="mr-1.5 h-3.5 w-3.5" /> Nombre de la fuente:
+                        </Label>
                         <div className="flex items-center gap-2">
-                          <Label htmlFor="custom-bg-color" className="text-xs text-popover-foreground shrink-0 w-14">Fondo:</Label>
-                          <input
-                            id="custom-bg-color"
-                            type="color"
-                            value={customBackground || '#FFFFFF'}
-                            onChange={handleCustomBgChange}
-                            className="h-7 w-7 p-0 border rounded cursor-pointer"
-                            onClick={(e) => e.stopPropagation()}
-                          />
                           <Input
+                            id="custom-font-input"
                             type="text"
-                            value={bgColorInput}
-                            onChange={handleCustomBgInputChange}
-                            placeholder="#FFFFFF"
+                            placeholder="Ej: Arial, Times New Roman"
+                            value={tempCustomFont}
+                            onChange={(e) => setTempCustomFont(e.target.value)}
                             className="h-8 text-sm flex-grow"
-                            maxLength={7}
                             onClick={(e) => e.stopPropagation()}
                           />
+                           <Button size="sm" variant="outline" onClick={handleCustomFontApply} className="h-8 px-2.5 text-xs">Aplicar</Button>
                         </div>
-                        <div className="flex items-center gap-2">
-                          <Label htmlFor="custom-fg-color" className="text-xs text-popover-foreground shrink-0 w-14">Texto:</Label>
-                          <input
-                            id="custom-fg-color"
-                            type="color"
-                            value={customForeground || '#000000'}
-                            onChange={handleCustomFgChange}
-                            className="h-7 w-7 p-0 border rounded cursor-pointer"
-                             onClick={(e) => e.stopPropagation()}
-                          />
-                          <Input
-                            type="text"
-                            value={fgColorInput}
-                            onChange={handleCustomFgInputChange}
-                            placeholder="#000000"
-                            className="h-8 text-sm flex-grow"
-                            maxLength={7}
-                            onClick={(e) => e.stopPropagation()}
-                          />
-                        </div>
+                         <p className="text-xs text-muted-foreground leading-tight pt-0.5">
+                          La fuente debe estar instalada en tu sistema.
+                        </p>
                       </div>
-                  </DropdownMenuItem>
-                )}
-              </ScrollArea> 
+                    </DropdownMenuItem>
+                  )}
+                  <DropdownMenuSeparator />
+                  <div className="px-2"> {/* Padding para grupos de radio y items */}
+                    <DropdownMenuLabel className="text-xs text-muted-foreground">Tema</DropdownMenuLabel>
+                     <DropdownMenuRadioGroup value={theme} onValueChange={(value) => setTheme(value as ReaderTheme)}>
+                      {THEMES.map(th => (
+                        <DropdownMenuRadioItem key={th.value} value={th.value}>
+                          <th.icon className="mr-2 h-4 w-4" />
+                          {th.label}
+                        </DropdownMenuRadioItem>
+                      ))}
+                    </DropdownMenuRadioGroup>
+                  </div>
+                  {theme === 'custom' && (
+                    <DropdownMenuItem onSelect={(e) => e.preventDefault()} className="focus:bg-transparent mt-1">
+                      <div className="w-full space-y-3 py-1 pl-8 pr-2"> {/* Ajustar padding para item custom */}
+                          <div className="flex items-center gap-2">
+                            <Label htmlFor="custom-bg-color" className="text-xs text-popover-foreground shrink-0 w-14">Fondo:</Label>
+                            <input
+                              id="custom-bg-color"
+                              type="color"
+                              value={customBackground || '#FFFFFF'}
+                              onChange={handleCustomBgChange}
+                              className="h-7 w-7 p-0 border rounded cursor-pointer"
+                              onClick={(e) => e.stopPropagation()}
+                            />
+                            <Input
+                              type="text"
+                              value={bgColorInput}
+                              onChange={handleCustomBgInputChange}
+                              placeholder="#FFFFFF"
+                              className="h-8 text-sm flex-grow"
+                              maxLength={7}
+                              onClick={(e) => e.stopPropagation()}
+                            />
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <Label htmlFor="custom-fg-color" className="text-xs text-popover-foreground shrink-0 w-14">Texto:</Label>
+                            <input
+                              id="custom-fg-color"
+                              type="color"
+                              value={customForeground || '#000000'}
+                              onChange={handleCustomFgChange}
+                              className="h-7 w-7 p-0 border rounded cursor-pointer"
+                               onClick={(e) => e.stopPropagation()}
+                            />
+                            <Input
+                              type="text"
+                              value={fgColorInput}
+                              onChange={handleCustomFgInputChange}
+                              placeholder="#000000"
+                              className="h-8 text-sm flex-grow"
+                              maxLength={7}
+                              onClick={(e) => e.stopPropagation()}
+                            />
+                          </div>
+                        </div>
+                    </DropdownMenuItem>
+                  )}
+                </div>
+              </ScrollArea>
             </DropdownMenuContent>
           </DropdownMenu>
 
           <TooltipProvider delayDuration={100}>
             <Tooltip>
               <TooltipTrigger asChild>
-                <Button 
-                  variant="ghost" 
-                  size="icon" 
-                  onClick={() => setIsSummaryDialogOpen(true)} 
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={() => setIsSummaryDialogOpen(true)}
                   aria-label="Resumen del capítulo (Próximamente)"
-                  disabled 
+                  disabled
                 >
                   <TextQuote />
                 </Button>
@@ -375,21 +385,21 @@ function ReaderControls({
             </Tooltip>
           </TooltipProvider>
           <Suspense fallback={<div className="w-8 h-8 flex items-center justify-center"><Loader2 className="animate-spin h-5 w-5" /></div>}>
-            <DynamicChapterSummaryDialog 
-              chapterHtmlContent={chapterHtmlContent} 
-              isOpen={isSummaryDialogOpen} 
-              onOpenChange={setIsSummaryDialogOpen} 
+            <DynamicChapterSummaryDialog
+              chapterHtmlContent={chapterHtmlContent}
+              isOpen={isSummaryDialogOpen}
+              onOpenChange={setIsSummaryDialogOpen}
             />
           </Suspense>
-          
+
           <TooltipProvider delayDuration={100}>
             <Tooltip>
               <TooltipTrigger asChild>
-                <Button 
-                  variant="ghost" 
-                  size="icon" 
+                <Button
+                  variant="ghost"
+                  size="icon"
                   aria-label="Traducir Capítulo (Próximamente)"
-                  disabled 
+                  disabled
                   onClick={() => setIsTranslationDialogOpen(true)}
                 >
                   <Languages />
@@ -403,7 +413,7 @@ function ReaderControls({
                 isOpen={isTranslationDialogOpen}
                 onOpenChange={setIsTranslationDialogOpen}
                 originalHtmlContent={chapterHtmlContent}
-                targetLanguage={null} 
+                targetLanguage={null}
                 onLanguageChangeRequest={() => { setIsTranslationDialogOpen(false); }}
                 onApplyTranslation={() => { /* No-op */ }}
               />

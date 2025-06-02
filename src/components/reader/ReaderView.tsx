@@ -12,8 +12,7 @@ import { ChevronLeft, ChevronRight, Home } from 'lucide-react';
 import Link from 'next/link';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Card } from '../ui/card';
-import TranslationDialog from './TranslationDialog'; // Stays for now, but won't be triggered
-// import type { TranslateChapterInput } from '@/ai/flows/translate-chapter-flow'; // Not needed if translation is disabled
+import TranslationDialog from './TranslationDialog';
 
 interface ReaderViewProps {
   novel: Novel;
@@ -24,15 +23,15 @@ const DOUBLE_CLICK_REVEAL_TIMEOUT = 2500;
 
 export default function ReaderView({ novel, currentChapter }: ReaderViewProps) {
   const {
-    fontClass, 
-    themeClass, 
+    fontClass,
+    themeClass,
     lineHeightClass,
     isImmersive,
     setIsImmersive,
-    theme, 
+    theme,
     customBackground,
     customForeground,
-    readerFontFamilyStyle, 
+    readerFontFamilyStyle,
   } = useReaderSettings();
 
   const chapterKey = `${novel.id}_${currentChapter.id}`;
@@ -43,17 +42,11 @@ export default function ReaderView({ novel, currentChapter }: ReaderViewProps) {
   const doubleClickRevealTimerRef = useRef<NodeJS.Timeout | null>(null);
 
   const [isMounted, setIsMounted] = useState(false);
-  
-  // Translation related state removed or will not be used
   const [isTranslationDialogOpen, setIsTranslationDialogOpen] = useState(false);
-  // const [selectedTargetLanguage, setSelectedTargetLanguage] = useState<TranslateChapterInput['targetLanguage'] | null>(null); // Removed
-  // const [translationControlsOpen, setTranslationControlsOpen] = useState(false); // Removed
-
   const [effectiveChapterContent, setEffectiveChapterContent] = useState<string>(currentChapter.content);
-  // const [isTranslationApplied, setIsTranslationApplied] = useState<boolean>(false); // Removed
-
   const [isMouseOverImmersiveControls, setIsMouseOverImmersiveControls] = useState(false);
   const [forceShowImmersiveControlsByDoubleClick, setForceShowImmersiveControlsByDoubleClick] = useState(false);
+  const [isAppearanceMenuOpen, setIsAppearanceMenuOpen] = useState(false); // Estado para el menú de apariencia
 
   useEffect(() => {
     setIsMounted(true);
@@ -76,12 +69,12 @@ export default function ReaderView({ novel, currentChapter }: ReaderViewProps) {
     }
 
     setEffectiveChapterContent(currentChapter.content);
-    // setIsTranslationApplied(false); // Reset if translation was a feature
     if (scrollViewportRef.current) {
       scrollViewportRef.current.scrollTop = 0;
     }
     setIsMouseOverImmersiveControls(false);
     setForceShowImmersiveControlsByDoubleClick(false);
+    setIsAppearanceMenuOpen(false); // Resetear al cambiar de capítulo
 
     const timer = setTimeout(() => {
       if (!isMounted || !scrollViewportRef.current) return;
@@ -136,18 +129,12 @@ export default function ReaderView({ novel, currentChapter }: ReaderViewProps) {
 
   const handleToggleImmersive = () => {
     setIsImmersive(!isImmersive);
-    if (!isImmersive) { 
+    if (!isImmersive) {
       setIsMouseOverImmersiveControls(false);
       setForceShowImmersiveControlsByDoubleClick(false);
+      setIsAppearanceMenuOpen(false); // Cerrar menú de apariencia al salir de inmersivo
     }
   };
-
-  // Translation handler functions removed or simplified
-  // const handleOpenTranslationDialog = (language: TranslateChapterInput['targetLanguage']) => { ... };
-  // const handleRequestLanguageChange = () => { ... };
-  // const handleApplyTranslation = (translatedHtml: string) => { ... };
-  // const handleRevertToOriginal = () => { ... };
-
 
   const handleImmersiveTopAreaDoubleClick = () => {
     if (!isImmersive) return;
@@ -161,11 +148,11 @@ export default function ReaderView({ novel, currentChapter }: ReaderViewProps) {
   };
 
   const actualImmersiveControlsVisible = isImmersive
-    ? (isMouseOverImmersiveControls || forceShowImmersiveControlsByDoubleClick)
-    : true; 
+    ? (isMouseOverImmersiveControls || forceShowImmersiveControlsByDoubleClick || isAppearanceMenuOpen) // Añadir isAppearanceMenuOpen
+    : true;
 
   const readingAreaBaseClasses = `reading-content-area ${fontClass} ${lineHeightClass} prose prose-sm sm:prose md:prose-lg max-w-4xl mx-auto selection:bg-accent selection:text-accent-foreground p-6 md:p-10 lg:p-12`;
-  
+
   const readingAreaDynamicClasses = theme === 'custom' ? '' : themeClass;
 
   const readingAreaStyle: React.CSSProperties = { ...readerFontFamilyStyle };
@@ -175,7 +162,7 @@ export default function ReaderView({ novel, currentChapter }: ReaderViewProps) {
   if (theme === 'custom' && customForeground) {
     readingAreaStyle.color = customForeground;
   }
-  
+
   if (!isMounted) {
     return (
       <div className={`flex flex-col ${isImmersive ? 'h-screen' : 'h-[calc(100vh-var(--header-height,8rem))]'}`}>
@@ -198,7 +185,6 @@ export default function ReaderView({ novel, currentChapter }: ReaderViewProps) {
             <h1 className="text-xl md:text-2xl font-bold text-primary truncate">{novel.title}</h1>
             <h2 className="text-md md:text-lg text-muted-foreground truncate">
               Capítulo {currentChapter.order}: {currentChapter.title}
-              {/* isTranslationApplied check removed */}
             </h2>
           </header>
         </Card>
@@ -213,17 +199,13 @@ export default function ReaderView({ novel, currentChapter }: ReaderViewProps) {
       )}
 
       <ReaderControls
-        chapterHtmlContent={effectiveChapterContent} // Still pass for AudioPlayer
+        chapterHtmlContent={effectiveChapterContent}
         onToggleImmersive={handleToggleImmersive}
         isImmersive={isImmersive}
         novelId={novel.id}
-        // Translation props removed
-        // onTranslateRequest={handleOpenTranslationDialog}
-        // forceTranslationMenuOpen={translationControlsOpen}
-        // isTranslationApplied={isTranslationApplied}
-        // onRevertToOriginal={handleRevertToOriginal}
         isVisibleInImmersiveMode={actualImmersiveControlsVisible}
         onHoverStateChange={setIsMouseOverImmersiveControls}
+        onAppearanceMenuToggle={setIsAppearanceMenuOpen} // Pasar la función de callback
       />
 
       <ScrollArea
@@ -263,13 +245,12 @@ export default function ReaderView({ novel, currentChapter }: ReaderViewProps) {
         </Card>
       </ScrollArea>
 
-      {/* TranslationDialog is still here but won't be actively triggered for translation */}
       <TranslationDialog
         isOpen={isTranslationDialogOpen}
         onOpenChange={setIsTranslationDialogOpen}
         originalHtmlContent={currentChapter.content}
-        targetLanguage={null} // Pass null as no language selected
-        onLanguageChangeRequest={() => { /* No-op or open a dummy menu */ setIsTranslationDialogOpen(false); }}
+        targetLanguage={null}
+        onLanguageChangeRequest={() => { setIsTranslationDialogOpen(false); }}
         onApplyTranslation={() => { /* No-op */ }}
       />
     </div>
