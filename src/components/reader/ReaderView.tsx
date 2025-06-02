@@ -7,12 +7,13 @@ import { useReadingPosition } from '@/hooks/useReadingPosition';
 import { useRecentlyRead } from '@/hooks/useRecentlyRead';
 import React, { useEffect, useRef, useState, useCallback } from 'react';
 import ReaderControls from './ReaderControls';
+import ReaderSettingsSheet from './ReaderSettingsSheet'; // Import the new sheet
 import { Button } from '@/components/ui/button';
 import { ChevronLeft, ChevronRight, Home } from 'lucide-react';
 import Link from 'next/link';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Card } from '../ui/card';
-import TranslationDialog from './TranslationDialog';
+import TranslationDialog from './TranslationDialog'; // Still used for AI feature (disabled)
 import { cn } from '@/lib/utils';
 
 interface ReaderViewProps {
@@ -24,15 +25,15 @@ const DOUBLE_CLICK_REVEAL_TIMEOUT = 2500;
 
 export default function ReaderView({ novel, currentChapter }: ReaderViewProps) {
   const {
-    themeClass, // For pre-defined themes like light, dark, sepia
+    themeClass, 
     isImmersive,
     setIsImmersive,
-    theme, // Current theme ('light', 'dark', 'custom', etc.)
+    theme, 
     customBackground,
     customForeground,
-    readerFontFamilyStyle, // CSSProperties object for font-family
-    combinedReaderClasses, // string of Tailwind classes for font size, line height, letter spacing, text align, paragraph spacing
-    textWidthClass, // Tailwind class for max-width (max-w-2xl, max-w-4xl, etc.)
+    readerFontFamilyStyle, 
+    combinedReaderClasses, 
+    textWidthClass, 
   } = useReaderSettings();
 
   const chapterKey = `${novel.id}_${currentChapter.id}`;
@@ -43,11 +44,12 @@ export default function ReaderView({ novel, currentChapter }: ReaderViewProps) {
   const doubleClickRevealTimerRef = useRef<NodeJS.Timeout | null>(null);
 
   const [isMounted, setIsMounted] = useState(false);
-  const [isTranslationDialogOpen, setIsTranslationDialogOpen] = useState(false);
+  const [isTranslationDialogOpen, setIsTranslationDialogOpen] = useState(false); // Still here for the disabled AI feature
   const [effectiveChapterContent, setEffectiveChapterContent] = useState<string>(currentChapter.content);
+  
   const [isMouseOverImmersiveControls, setIsMouseOverImmersiveControls] = useState(false);
   const [forceShowImmersiveControlsByDoubleClick, setForceShowImmersiveControlsByDoubleClick] = useState(false);
-  const [isAppearanceMenuOpen, setIsAppearanceMenuOpen] = useState(false);
+  const [isSettingsSheetOpen, setIsSettingsSheetOpen] = useState(false); // For the new settings sheet
 
   useEffect(() => {
     setIsMounted(true);
@@ -75,7 +77,7 @@ export default function ReaderView({ novel, currentChapter }: ReaderViewProps) {
     }
     setIsMouseOverImmersiveControls(false);
     setForceShowImmersiveControlsByDoubleClick(false);
-    setIsAppearanceMenuOpen(false);
+    setIsSettingsSheetOpen(false); // Close sheet on chapter change
 
     const timer = setTimeout(() => {
       if (!isMounted || !scrollViewportRef.current) return;
@@ -130,11 +132,15 @@ export default function ReaderView({ novel, currentChapter }: ReaderViewProps) {
 
   const handleToggleImmersive = () => {
     setIsImmersive(!isImmersive);
-    if (!isImmersive) {
+    if (!isImmersive) { // When turning immersive ON
       setIsMouseOverImmersiveControls(false);
       setForceShowImmersiveControlsByDoubleClick(false);
-      setIsAppearanceMenuOpen(false);
+      setIsSettingsSheetOpen(false); // Close sheet if it was open
     }
+  };
+
+  const handleToggleSettingsSheet = () => {
+    setIsSettingsSheetOpen(prev => !prev);
   };
 
   const handleImmersiveTopAreaDoubleClick = () => {
@@ -149,7 +155,7 @@ export default function ReaderView({ novel, currentChapter }: ReaderViewProps) {
   };
 
   const actualImmersiveControlsVisible = isImmersive
-    ? (isMouseOverImmersiveControls || forceShowImmersiveControlsByDoubleClick || isAppearanceMenuOpen)
+    ? (isMouseOverImmersiveControls || forceShowImmersiveControlsByDoubleClick || isSettingsSheetOpen)
     : true;
 
   const readingAreaBaseClasses = `reading-content-area prose prose-sm sm:prose md:prose-lg mx-auto selection:bg-accent selection:text-accent-foreground p-6 md:p-10 lg:p-12`;
@@ -205,8 +211,15 @@ export default function ReaderView({ novel, currentChapter }: ReaderViewProps) {
         novelId={novel.id}
         isVisibleInImmersiveMode={actualImmersiveControlsVisible}
         onHoverStateChange={setIsMouseOverImmersiveControls}
-        onAppearanceMenuToggle={setIsAppearanceMenuOpen}
+        onToggleSettingsSheet={handleToggleSettingsSheet} // New prop
+        isSettingsSheetOpen={isSettingsSheetOpen} // Pass state
       />
+      
+      <ReaderSettingsSheet 
+        isOpen={isSettingsSheetOpen}
+        onOpenChange={setIsSettingsSheetOpen}
+      />
+
 
       <ScrollArea
         className={`flex-grow ${isImmersive ? 'h-full' : 'm-2 mt-0 rounded-t-none shadow'}`}
@@ -245,6 +258,7 @@ export default function ReaderView({ novel, currentChapter }: ReaderViewProps) {
         </Card>
       </ScrollArea>
 
+      {/* TranslationDialog is kept for the (currently disabled) AI feature trigger, does not affect main settings sheet */}
       <TranslationDialog
         isOpen={isTranslationDialogOpen}
         onOpenChange={setIsTranslationDialogOpen}

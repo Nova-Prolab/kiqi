@@ -66,7 +66,7 @@ export type ReaderFontFamily =
   | 'open-sans'
   | 'lato'
   | 'roboto'
-  | 'source-sans-3'
+  | 'source-sans-3' // Corrected name from source-sans-pro
   | 'inter'
   | 'arimo'
   | 'tinos'
