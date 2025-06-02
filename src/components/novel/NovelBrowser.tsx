@@ -7,7 +7,7 @@ import type { Novel, AgeRating, NovelStatus } from '@/lib/types';
 import { AGE_RATING_VALUES, STATUS_VALUES } from '@/lib/types';
 import NovelCard from '@/components/novel/NovelCard';
 import { Input } from '@/components/ui/input';
-import { Search, BookX, Tags, LayoutGrid, Star, FilterX, ChevronLeft, ChevronRight, Loader2, Shield, ClockIcon, Library, User, Tag as TagIcon, FileSearch } from 'lucide-react';
+import { Search, BookX, Tags, LayoutGrid, Star, FilterX, ChevronLeft, ChevronRight, Loader2, Shield, ClockIcon, Library, User, Tag as TagIcon, FileSearch, Users } from 'lucide-react'; // Added Users
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
