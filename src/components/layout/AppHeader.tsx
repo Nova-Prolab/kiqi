@@ -5,7 +5,7 @@ import Link from 'next/link';
 import Image from 'next/image';
 import { Settings, LogIn, UserPlus, LogOut, LayoutDashboard } from 'lucide-react';
 import { ModeToggle } from '@/components/layout/ModeToggle';
-import { Button } from '@/components/ui/button';
+import { Button, buttonVariants } from '@/components/ui/button'; // Import buttonVariants
 import { useAuth } from '@/hooks/useAuth';
 import {
   DropdownMenu,
@@ -15,6 +15,16 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import React, { useState, useEffect, useRef } from 'react';
 
@@ -42,6 +52,7 @@ export default function AppHeader() {
   const [logoClickCount, setLogoClickCount] = useState(0);
   const [easterEggActive, setEasterEggActive] = useState(false);
   const easterEggTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const [showDiscordConfirmDialog, setShowDiscordConfirmDialog] = useState(false);
 
   const getInitials = (name: string | undefined) => {
     if (!name) return 'U';
@@ -83,14 +94,16 @@ export default function AppHeader() {
       if (easterEggTimeoutRef.current) {
         clearTimeout(easterEggTimeoutRef.current);
       }
-      // If unmounting while easter egg was active (based on the state when effect was set up)
-      // ensure class is removed. This is important for navigation.
       if (easterEggActive && document.documentElement.classList.contains('easter-egg-mode')) {
          document.documentElement.classList.remove('easter-egg-mode');
       }
     };
   }, [easterEggActive]);
 
+  const handleDiscordButtonClick = (e: React.MouseEvent) => {
+    e.preventDefault(); // Prevent default link behavior if it was an <a>
+    setShowDiscordConfirmDialog(true);
+  };
 
   return (
     <header className="sticky top-0 z-50 w-full border-b border-border/40 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
@@ -106,11 +119,9 @@ export default function AppHeader() {
               priority
             />
           </Link>
-          <Button asChild variant="outline" className="ml-4 hidden sm:flex">
-            <a href="https://discord.gg/zQzV4ekTVV" target="_blank" rel="noopener noreferrer">
-              <DiscordIcon className="mr-2 h-5 w-5" />
-              Unirse a Discord
-            </a>
+          <Button variant="outline" className="ml-4 hidden sm:flex" onClick={handleDiscordButtonClick}>
+            <DiscordIcon className="mr-2 h-5 w-5" />
+            Unirse a Discord
           </Button>
         </div>
 
@@ -119,10 +130,8 @@ export default function AppHeader() {
         </nav>
 
         <div className="flex items-center space-x-2 ml-4">
-           <Button asChild variant="ghost" size="icon" className="sm:hidden">
-            <a href="https://discord.gg/zQzV4ekTVV" target="_blank" rel="noopener noreferrer" aria-label="Unirse a Discord">
+           <Button variant="ghost" size="icon" className="sm:hidden" onClick={handleDiscordButtonClick} aria-label="Unirse a Discord">
               <DiscordIcon className="h-5 w-5" />
-            </a>
           </Button>
           <ModeToggle />
           {isLoading ? (
@@ -178,6 +187,40 @@ export default function AppHeader() {
           )}
         </div>
       </div>
+
+      <AlertDialog open={showDiscordConfirmDialog} onOpenChange={setShowDiscordConfirmDialog}>
+        <AlertDialogContent className="sm:max-w-md rounded-lg shadow-xl border-primary/30">
+          <AlertDialogHeader>
+            <AlertDialogTitle className="flex items-center text-lg font-semibold text-primary">
+              <DiscordIcon className="mr-3 h-6 w-6 text-[#5865F2]" />
+              Confirmar Redirección a Discord
+            </AlertDialogTitle>
+            <AlertDialogDescription className="text-sm text-muted-foreground pt-2">
+              Estás a punto de ser redirigido a nuestro servidor comunitario de Discord.
+              Allí podrás charlar con otros lectores, autores, y recibir las últimas noticias.
+              <br/><br/>
+              ¿Deseas continuar?
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter className="mt-4 flex flex-col-reverse sm:flex-row sm:justify-end sm:space-x-3 gap-2">
+            <AlertDialogCancel asChild>
+              <Button variant="outline" className="w-full sm:w-auto">Cancelar</Button>
+            </AlertDialogCancel>
+            <AlertDialogAction asChild>
+              <a 
+                href="https://discord.gg/zQzV4ekTVV" 
+                target="_blank" 
+                rel="noopener noreferrer" 
+                className={buttonVariants({ variant: "default", className: "w-full sm:w-auto bg-[#5865F2] hover:bg-[#4752C4] text-white" })}
+                onClick={() => setShowDiscordConfirmDialog(false)} // Close dialog on click
+              >
+                Sí, ¡Llévame a Discord!
+              </a>
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
     </header>
   );
 }
