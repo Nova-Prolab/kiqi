@@ -68,10 +68,16 @@ export type ReaderFontFamily =
   | 'roboto'
   | 'source-sans-3'
   | 'inter'
-  | 'arimo'   // Nueva
-  | 'tinos'   // Nueva
-  | 'cousine' // Nueva
+  | 'arimo'
+  | 'tinos'
+  | 'cousine'
   | 'custom';
+
+export type ReaderLetterSpacing = 'normal' | 'wide' | 'wider';
+export type ReaderTextAlign = 'left' | 'justify';
+export type ReaderTextWidth = 'narrow' | 'medium' | 'wide';
+export type ReaderParagraphSpacing = 'default' | 'medium' | 'large';
+
 
 export interface ReaderSettings {
   theme: ReaderTheme;
@@ -82,6 +88,11 @@ export interface ReaderSettings {
   customFontFamily?: string;
   customBackground?: string;
   customForeground?: string;
+  // New settings
+  letterSpacing: ReaderLetterSpacing;
+  textAlign: ReaderTextAlign;
+  textWidth: ReaderTextWidth;
+  paragraphSpacing: ReaderParagraphSpacing;
 }
 
 // For Recently Read Chapters
@@ -137,4 +148,3 @@ export interface ChapterUploadState {
   uploadedFiles?: { name: string; status: 'success' | 'error'; reason?: string }[];
   failedFiles?: { name: string; status: 'error'; reason?: string }[];
 }
-

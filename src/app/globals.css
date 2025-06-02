@@ -60,7 +60,7 @@
     --font-mono: var(--font-geist-mono);
     
     /* Default Reader Font (can be overridden by ReaderSettingsContext) */
-    --reader-font-family: var(--font-lora), serif;
+    --reader-font-family: var(--font-geist-sans), sans-serif; /* Default to sans-serif */
   }
 
   .dark {
@@ -109,8 +109,8 @@
     --chart-5: 340 75% 55%;
 
     /* Default reading pane variables for dark mode (matching dark theme) */
-    --reading-pane-background: 0 0% 13%;
-    --reading-pane-foreground: 0 0% 80%;
+    --reading-pane-background: 0 0% 13%; /* Dark theme for reader */
+    --reading-pane-foreground: 0 0% 80%; /* Light gray text for reader */
   }
 }
 
@@ -159,6 +159,17 @@
   .reading-content-area.theme-forest {
     --reading-pane-background: 150 18% 20%; /* Approx #2A3D32 */
     --reading-pane-foreground: 50 50% 90%; /* Approx #F0EACF */
+  }
+
+  /* Paragraph spacing utility classes */
+  .paragraph-spacing-default .prose p {
+    @apply my-4; /* Default Tailwind prose spacing */
+  }
+  .paragraph-spacing-medium .prose p {
+    @apply my-6; /* Medium spacing */
+  }
+  .paragraph-spacing-large .prose p {
+    @apply my-8; /* Large spacing */
   }
 }
 
@@ -270,4 +281,3 @@ html.easter-egg-mode .ring-ring {
 html.easter-egg-mode ::placeholder {
   color: #a0a0a0 !important;
 }
-    

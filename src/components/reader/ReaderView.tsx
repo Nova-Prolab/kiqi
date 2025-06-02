@@ -13,6 +13,7 @@ import Link from 'next/link';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Card } from '../ui/card';
 import TranslationDialog from './TranslationDialog';
+import { cn } from '@/lib/utils';
 
 interface ReaderViewProps {
   novel: Novel;
@@ -23,15 +24,15 @@ const DOUBLE_CLICK_REVEAL_TIMEOUT = 2500;
 
 export default function ReaderView({ novel, currentChapter }: ReaderViewProps) {
   const {
-    fontClass,
-    themeClass,
-    lineHeightClass,
+    themeClass, // For pre-defined themes like light, dark, sepia
     isImmersive,
     setIsImmersive,
-    theme,
+    theme, // Current theme ('light', 'dark', 'custom', etc.)
     customBackground,
     customForeground,
-    readerFontFamilyStyle,
+    readerFontFamilyStyle, // CSSProperties object for font-family
+    combinedReaderClasses, // string of Tailwind classes for font size, line height, letter spacing, text align, paragraph spacing
+    textWidthClass, // Tailwind class for max-width (max-w-2xl, max-w-4xl, etc.)
   } = useReaderSettings();
 
   const chapterKey = `${novel.id}_${currentChapter.id}`;
@@ -46,7 +47,7 @@ export default function ReaderView({ novel, currentChapter }: ReaderViewProps) {
   const [effectiveChapterContent, setEffectiveChapterContent] = useState<string>(currentChapter.content);
   const [isMouseOverImmersiveControls, setIsMouseOverImmersiveControls] = useState(false);
   const [forceShowImmersiveControlsByDoubleClick, setForceShowImmersiveControlsByDoubleClick] = useState(false);
-  const [isAppearanceMenuOpen, setIsAppearanceMenuOpen] = useState(false); // Estado para el menú de apariencia
+  const [isAppearanceMenuOpen, setIsAppearanceMenuOpen] = useState(false);
 
   useEffect(() => {
     setIsMounted(true);
@@ -74,7 +75,7 @@ export default function ReaderView({ novel, currentChapter }: ReaderViewProps) {
     }
     setIsMouseOverImmersiveControls(false);
     setForceShowImmersiveControlsByDoubleClick(false);
-    setIsAppearanceMenuOpen(false); // Resetear al cambiar de capítulo
+    setIsAppearanceMenuOpen(false);
 
     const timer = setTimeout(() => {
       if (!isMounted || !scrollViewportRef.current) return;
@@ -132,7 +133,7 @@ export default function ReaderView({ novel, currentChapter }: ReaderViewProps) {
     if (!isImmersive) {
       setIsMouseOverImmersiveControls(false);
       setForceShowImmersiveControlsByDoubleClick(false);
-      setIsAppearanceMenuOpen(false); // Cerrar menú de apariencia al salir de inmersivo
+      setIsAppearanceMenuOpen(false);
     }
   };
 
@@ -148,12 +149,11 @@ export default function ReaderView({ novel, currentChapter }: ReaderViewProps) {
   };
 
   const actualImmersiveControlsVisible = isImmersive
-    ? (isMouseOverImmersiveControls || forceShowImmersiveControlsByDoubleClick || isAppearanceMenuOpen) // Añadir isAppearanceMenuOpen
+    ? (isMouseOverImmersiveControls || forceShowImmersiveControlsByDoubleClick || isAppearanceMenuOpen)
     : true;
 
-  const readingAreaBaseClasses = `reading-content-area ${fontClass} ${lineHeightClass} prose prose-sm sm:prose md:prose-lg max-w-4xl mx-auto selection:bg-accent selection:text-accent-foreground p-6 md:p-10 lg:p-12`;
-
-  const readingAreaDynamicClasses = theme === 'custom' ? '' : themeClass;
+  const readingAreaBaseClasses = `reading-content-area prose prose-sm sm:prose md:prose-lg mx-auto selection:bg-accent selection:text-accent-foreground p-6 md:p-10 lg:p-12`;
+  const readingAreaDynamicThemeClass = theme === 'custom' ? '' : themeClass;
 
   const readingAreaStyle: React.CSSProperties = { ...readerFontFamilyStyle };
   if (theme === 'custom' && customBackground) {
@@ -205,7 +205,7 @@ export default function ReaderView({ novel, currentChapter }: ReaderViewProps) {
         novelId={novel.id}
         isVisibleInImmersiveMode={actualImmersiveControlsVisible}
         onHoverStateChange={setIsMouseOverImmersiveControls}
-        onAppearanceMenuToggle={setIsAppearanceMenuOpen} // Pasar la función de callback
+        onAppearanceMenuToggle={setIsAppearanceMenuOpen}
       />
 
       <ScrollArea
@@ -213,12 +213,12 @@ export default function ReaderView({ novel, currentChapter }: ReaderViewProps) {
         viewportRef={scrollViewportRef}
       >
         <div
-          className={`${readingAreaBaseClasses} ${readingAreaDynamicClasses}`}
+          className={cn(readingAreaBaseClasses, readingAreaDynamicThemeClass, combinedReaderClasses, textWidthClass)}
           style={readingAreaStyle}
           dangerouslySetInnerHTML={chapterContentToDisplay}
         />
 
-        <Card className={`mx-auto max-w-4xl my-6 ${isImmersive ? 'bg-transparent border-none shadow-none text-muted-foreground/80' : 'shadow rounded-lg border'}`}>
+        <Card className={`mx-auto my-6 ${textWidthClass} ${isImmersive ? 'bg-transparent border-none shadow-none text-muted-foreground/80' : 'shadow rounded-lg border'}`}>
           <nav className="p-4 flex justify-between items-center">
             {prevChapter ? (
               <Button variant="outline" asChild>
