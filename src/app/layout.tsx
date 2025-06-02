@@ -15,9 +15,9 @@ import {
   Source_Sans_3,
   Inter,
   Bitter,
-  Arimo,  // Nueva fuente
-  Tinos,   // Nueva fuente
-  Cousine  // Nueva fuente
+  Arimo,
+  Tinos,
+  Cousine
 } from 'next/font/google'; // Google Fonts
 import './globals.css';
 import { ThemeProvider } from '@/components/providers/theme-provider';
@@ -37,7 +37,7 @@ const bitter = Bitter({ subsets: ['latin'], variable: '--font-bitter', display: 
 const openSans = Open_Sans({ subsets: ['latin'], variable: '--font-open-sans', display: 'swap', weight: ['400', '700'] });
 const lato = Lato({ subsets: ['latin'], variable: '--font-lato', display: 'swap', weight: ['400', '700'] });
 const roboto = Roboto({ subsets: ['latin'], variable: '--font-roboto', display: 'swap', weight: ['400', '500', '700'] });
-const sourceSans3 = Source_Sans_3({ subsets: ['latin'], variable: '--font-source-sans-pro', display: 'swap', weight: ['400', '700'] });
+const sourceSans3 = Source_Sans_3({ subsets: ['latin'], variable: '--font-source-sans-3', display: 'swap', weight: ['400', '700'] });
 const inter = Inter({ subsets: ['latin'], variable: '--font-inter', display: 'swap', weight: ['400', '500', '700'] });
 
 const arimo = Arimo({ subsets: ['latin'], variable: '--font-arimo', display: 'swap', weight: ['400', '700'] });
@@ -48,6 +48,11 @@ const cousine = Cousine({ subsets: ['latin'], variable: '--font-cousine', displa
 export const metadata: Metadata = {
   title: 'Kiqi!',
   description: 'Your portal to a universe of stories at Kiqi!.',
+  icons: {
+    icon: '/icons/favicon.ico', // Ruta al favicon estándar dentro de public/icons/
+    apple: '/icons/apple-touch-icon.png', // Ruta al Apple touch icon dentro de public/icons/
+    shortcut: '/icons/favicon.ico', // Puede ser el mismo o diferente
+  },
 };
 
 export default function RootLayout({
