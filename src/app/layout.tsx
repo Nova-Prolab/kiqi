@@ -33,6 +33,9 @@ const ptSerif = PT_Serif({ subsets: ['latin'], variable: '--font-pt-serif', disp
 const ebGaramond = EB_Garamond({ subsets: ['latin'], variable: '--font-eb-garamond', display: 'swap', weight: ['400', '500', '700'] });
 const vollkorn = Vollkorn({ subsets: ['latin'], variable: '--font-vollkorn', display: 'swap', weight: ['400', '700'] });
 const bitter = Bitter({ subsets: ['latin'], variable: '--font-bitter', display: 'swap', weight: ['400', '700'] });
+const arimo = Arimo({ subsets: ['latin'], variable: '--font-arimo', display: 'swap', weight: ['400', '700'] });
+const tinos = Tinos({ subsets: ['latin'], variable: '--font-tinos', display: 'swap', weight: ['400', '700'] });
+const cousine = Cousine({ subsets: ['latin'], variable: '--font-cousine', display: 'swap', weight: ['400', '700'] });
 
 const openSans = Open_Sans({ subsets: ['latin'], variable: '--font-open-sans', display: 'swap', weight: ['400', '700'] });
 const lato = Lato({ subsets: ['latin'], variable: '--font-lato', display: 'swap', weight: ['400', '700'] });
@@ -40,18 +43,14 @@ const roboto = Roboto({ subsets: ['latin'], variable: '--font-roboto', display: 
 const sourceSans3 = Source_Sans_3({ subsets: ['latin'], variable: '--font-source-sans-3', display: 'swap', weight: ['400', '700'] });
 const inter = Inter({ subsets: ['latin'], variable: '--font-inter', display: 'swap', weight: ['400', '500', '700'] });
 
-const arimo = Arimo({ subsets: ['latin'], variable: '--font-arimo', display: 'swap', weight: ['400', '700'] });
-const tinos = Tinos({ subsets: ['latin'], variable: '--font-tinos', display: 'swap', weight: ['400', '700'] });
-const cousine = Cousine({ subsets: ['latin'], variable: '--font-cousine', display: 'swap', weight: ['400', '700'] });
-
 
 export const metadata: Metadata = {
   title: 'Kiqi!',
   description: 'Your portal to a universe of stories at Kiqi!.',
   icons: {
-    icon: '/icons/favicon.ico', // Ruta al favicon estándar dentro de public/icons/
-    apple: '/icons/apple-touch-icon.png', // Ruta al Apple touch icon dentro de public/icons/
-    shortcut: '/icons/favicon.ico', // Puede ser el mismo o diferente
+    icon: '/favicon.ico', // Assumes favicon.ico is in app/favicon.ico
+    apple: '/apple-touch-icon.png', // Assumes apple-touch-icon.png is in app/apple-touch-icon.png
+    shortcut: '/favicon.ico', // Assumes favicon.ico is in app/favicon.ico
   },
 };
 
@@ -73,14 +72,14 @@ export default function RootLayout({
           ${ebGaramond.variable}
           ${vollkorn.variable}
           ${bitter.variable}
+          ${arimo.variable}
+          ${tinos.variable}
+          ${cousine.variable}
           ${openSans.variable}
           ${lato.variable}
           ${roboto.variable}
           ${sourceSans3.variable} 
           ${inter.variable}
-          ${arimo.variable}
-          ${tinos.variable}
-          ${cousine.variable}
           antialiased flex flex-col min-h-screen
         `}
       >
