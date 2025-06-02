@@ -20,6 +20,7 @@ import { Separator } from '@/components/ui/separator';
 import { Badge } from '@/components/ui/badge';
 import React, { useState, useEffect, useMemo } from 'react';
 import AgeRatingBadge from '@/components/ui/AgeRatingBadge';
+import { cn } from "@/lib/utils";
 
 interface NovelDetailClientProps {
   novel: Novel;
@@ -46,7 +47,7 @@ function FullScreenChapterLoader() {
   );
 }
 
-export default function NovelDetailClient({ novel }: NovelDetailClientProps) {
+const NovelDetailClient = ({ novel }: NovelDetailClientProps) => {
   const sortedChapters = useMemo(() => novel.chapters?.sort((a,b) => a.order - b.order) || [], [novel.chapters]);
   const firstChapter = sortedChapters.length > 0 ? sortedChapters[0] : null;
 
@@ -68,7 +69,7 @@ export default function NovelDetailClient({ novel }: NovelDetailClientProps) {
         setAllNovels(fetchedNovels);
       } catch (error) {
         console.error("Error fetching all novels for similar novels section:", error);
-        setAllNovels([]); // Set to empty array on error
+        setAllNovels([]); 
       } finally {
         setIsLoadingAllNovels(false);
       }
@@ -125,20 +126,18 @@ export default function NovelDetailClient({ novel }: NovelDetailClientProps) {
     const currentNovelTags = new Set(novel.etiquetas?.map(t => t.toLowerCase()) || []);
     
     return allNovels
-      .filter(n => n.id !== novel.id) // Exclude current novel
+      .filter(n => n.id !== novel.id) 
       .map(n => {
         let score = 0;
-        // Score by category match
         if (novel.categoria && n.categoria && novel.categoria.toLowerCase() === n.categoria.toLowerCase()) {
-          score += 5; // Higher score for same category
+          score += 5; 
         }
-        // Score by common tags
         const commonTags = n.etiquetas?.filter(tag => currentNovelTags.has(tag.toLowerCase())).length || 0;
         score += commonTags;
         return { ...n, score };
       })
-      .filter(n => n.score > 0) // Only include novels with some similarity
-      .sort((a, b) => b.score - a.score) // Sort by score descending
+      .filter(n => n.score > 0) 
+      .sort((a, b) => b.score - a.score) 
       .slice(0, MAX_SIMILAR_NOVELS_TO_DISPLAY);
   }, [novel, allNovels, isLoadingAllNovels]);
 
@@ -206,7 +205,7 @@ export default function NovelDetailClient({ novel }: NovelDetailClientProps) {
               <h1 className="text-3xl sm:text-4xl font-bold tracking-tight text-primary">{novel.title}</h1>
               <p className="text-lg sm:text-xl text-muted-foreground mt-1">
                 por{' '}
-                <Link href={`/?q=Autor:${encodeURIComponent(novel.author)}`} className="text-primary hover:underline font-medium">
+                <Link href={`/?st=author&q=${encodeURIComponent(novel.author)}`} className="text-primary hover:underline font-medium">
                   {novel.author}
                 </Link>
               </p>
@@ -261,16 +260,16 @@ export default function NovelDetailClient({ novel }: NovelDetailClientProps) {
                       <div className="flex items-center">
                           <List className="mr-2.5 h-4 w-4 text-muted-foreground flex-shrink-0" />
                           <strong className="w-32 sm:w-40 flex-shrink-0">Categoría:</strong>
-                          <Link href={`/?q=Categoría:${encodeURIComponent(novel.categoria)}`} className="ml-2">
+                          <Link href={`/?st=category_search&q=${encodeURIComponent(novel.categoria)}`} className="ml-2">
                               <Badge variant="outline" className="cursor-pointer hover:bg-accent/80 hover:text-accent-foreground">{novel.categoria}</Badge>
                           </Link>
                       </div>
                   )}
                   {novel.traductor && (
                       <div className="flex items-center">
-                          <UserCircle className="mr-2.5 h-4 w-4 text-muted-foreground flex-shrink-0" />
+                          <Users className="mr-2.5 h-4 w-4 text-muted-foreground flex-shrink-0" />
                           <strong className="w-32 sm:w-40 flex-shrink-0">Traductor:</strong>
-                          <Link href={`/?q=Traductor:${encodeURIComponent(novel.traductor)}`} className="ml-2 text-primary hover:underline">
+                          <Link href={`/?st=translator&q=${encodeURIComponent(novel.traductor)}`} className="ml-2 text-primary hover:underline">
                               {novel.traductor}
                           </Link>
                       </div>
@@ -295,7 +294,7 @@ export default function NovelDetailClient({ novel }: NovelDetailClientProps) {
                           <strong className="w-32 sm:w-40 flex-shrink-0 mt-0.5">Etiquetas:</strong>
                           <div className="ml-2 flex flex-wrap gap-1">
                               {novel.etiquetas.map(tag => (
-                                  <Link key={tag} href={`/?q=Etiqueta:${encodeURIComponent(tag)}`} legacyBehavior>
+                                  <Link key={tag} href={`/?st=tag_search&q=${encodeURIComponent(tag)}`} legacyBehavior>
                                       <Badge variant="secondary" className="cursor-pointer hover:bg-accent/80 hover:text-accent-foreground">{tag}</Badge>
                                   </Link>
                               ))}
@@ -434,3 +433,6 @@ export default function NovelDetailClient({ novel }: NovelDetailClientProps) {
     </>
   );
 }
+export default React.memo(NovelDetailClient);
+
+    
