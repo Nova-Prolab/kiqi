@@ -14,7 +14,7 @@ import {
   DropdownMenuRadioGroup, 
   DropdownMenuRadioItem
 } from '@/components/ui/dropdown-menu';
-import { ScrollArea } from '@/components/ui/scroll-area'; // Added ScrollArea
+import { ScrollArea } from '@/components/ui/scroll-area';
 import { 
   Settings2, 
   TextQuote, 
@@ -33,15 +33,23 @@ import {
   BookOpen,
   CaseSensitive,
   AlignJustify,
-  ALargeSmall
+  ALargeSmall,
+  Loader2 // Added Loader2 for Suspense fallback
 } from 'lucide-react';
-import React, { useState, useEffect, ChangeEvent } from 'react';
-import ChapterSummaryDialog from './ChapterSummaryDialog';
-// AudioPlayer import removed
+import React, { useState, useEffect, ChangeEvent, Suspense } from 'react'; // Added Suspense
+import dynamic from 'next/dynamic'; // For lazy loading
 import Link from 'next/link';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+
+// Lazy load dialogs
+const DynamicChapterSummaryDialog = dynamic(() => import('./ChapterSummaryDialog'), {
+  suspense: true,
+});
+const DynamicTranslationDialog = dynamic(() => import('./TranslationDialog'), {
+  suspense: true,
+});
 
 
 interface ReaderControlsProps {
@@ -79,8 +87,8 @@ const THEMES: { label: string, value: ReaderTheme, icon: React.ElementType }[] =
 ];
 
 const FONT_FAMILIES: { label: string, value: ReaderFontFamily, style?: React.CSSProperties }[] = [
-  { label: 'Serif (Sistema)', value: 'system-serif', style: { fontFamily: 'serif'} },
   { label: 'Sans-serif (Sistema)', value: 'system-sans', style: { fontFamily: 'sans-serif'} },
+  { label: 'Serif (Sistema)', value: 'system-serif', style: { fontFamily: 'serif'} },
   { label: 'Lora', value: 'lora', style: { fontFamily: 'var(--font-lora)'} },
   { label: 'Merriweather', value: 'merriweather', style: { fontFamily: 'var(--font-merriweather)'} },
   { label: 'Noto Serif', value: 'noto-serif', style: { fontFamily: 'var(--font-noto-serif)'} },
@@ -98,7 +106,7 @@ const FONT_FAMILIES: { label: string, value: ReaderFontFamily, style?: React.CSS
 
 const isValidHexColor = (color: string) => /^#[0-9A-F]{6}$/i.test(color);
 
-export default function ReaderControls({ 
+function ReaderControls({ 
   chapterHtmlContent, 
   onToggleImmersive, 
   isImmersive, 
@@ -124,6 +132,8 @@ export default function ReaderControls({
   } = useReaderSettings();
 
   const [isSummaryDialogOpen, setIsSummaryDialogOpen] = useState(false);
+  const [isTranslationDialogOpen, setIsTranslationDialogOpen] = useState(false);
+
 
   const [tempCustomFont, setTempCustomFont] = useState(customFontFamily || '');
   const [bgColorInput, setBgColorInput] = useState(customBackground || '#FFFFFF');
@@ -229,12 +239,12 @@ export default function ReaderControls({
             </TooltipProvider>
             <DropdownMenuContent 
               align="center" 
-              className="w-80 sm:w-96" // Keep width fixed, height will be constrained by ScrollArea
+              className="w-80 sm:w-96"
               onCloseAutoFocus={(e) => e.preventDefault()}
             >
               <DropdownMenuLabel className="flex items-center"><Palette className="mr-2 h-4 w-4" />Apariencia</DropdownMenuLabel>
               <DropdownMenuSeparator />
-              <ScrollArea className="max-h-[calc(100vh-250px)] sm:max-h-[400px] pr-3"> {/* ScrollArea added */}
+              <ScrollArea className="max-h-[calc(100vh-250px)] sm:max-h-[400px] pr-3"> 
                 <DropdownMenuLabel className="text-xs text-muted-foreground">Tamaño de Fuente</DropdownMenuLabel>
                 <DropdownMenuRadioGroup value={fontSize} onValueChange={(value) => setFontSize(value as ReaderFontSize)}>
                   {FONT_SIZES.map(fs => (
@@ -344,7 +354,7 @@ export default function ReaderControls({
                       </div>
                   </DropdownMenuItem>
                 )}
-              </ScrollArea> {/* ScrollArea ends */}
+              </ScrollArea> 
             </DropdownMenuContent>
           </DropdownMenu>
 
@@ -356,7 +366,7 @@ export default function ReaderControls({
                   size="icon" 
                   onClick={() => setIsSummaryDialogOpen(true)} 
                   aria-label="Resumen del capítulo (Próximamente)"
-                  disabled // Disabled as per request
+                  disabled 
                 >
                   <TextQuote />
                 </Button>
@@ -364,11 +374,13 @@ export default function ReaderControls({
               <TooltipContent><p>Resumen del Capítulo (Próximamente)</p></TooltipContent>
             </Tooltip>
           </TooltipProvider>
-          <ChapterSummaryDialog 
-            chapterHtmlContent={chapterHtmlContent} 
-            isOpen={isSummaryDialogOpen} 
-            onOpenChange={setIsSummaryDialogOpen} 
-          />
+          <Suspense fallback={<div className="w-8 h-8 flex items-center justify-center"><Loader2 className="animate-spin h-5 w-5" /></div>}>
+            <DynamicChapterSummaryDialog 
+              chapterHtmlContent={chapterHtmlContent} 
+              isOpen={isSummaryDialogOpen} 
+              onOpenChange={setIsSummaryDialogOpen} 
+            />
+          </Suspense>
           
           <TooltipProvider delayDuration={100}>
             <Tooltip>
@@ -377,7 +389,8 @@ export default function ReaderControls({
                   variant="ghost" 
                   size="icon" 
                   aria-label="Traducir Capítulo (Próximamente)"
-                  disabled // Translation feature disabled
+                  disabled 
+                  onClick={() => setIsTranslationDialogOpen(true)}
                 >
                   <Languages />
                 </Button>
@@ -385,7 +398,16 @@ export default function ReaderControls({
               <TooltipContent><p>Traducir Capítulo (Próximamente)</p></TooltipContent>
             </Tooltip>
           </TooltipProvider>
-          {/* AudioPlayer component removed */}
+           <Suspense fallback={<div className="w-8 h-8 flex items-center justify-center"><Loader2 className="animate-spin h-5 w-5" /></div>}>
+            <DynamicTranslationDialog
+                isOpen={isTranslationDialogOpen}
+                onOpenChange={setIsTranslationDialogOpen}
+                originalHtmlContent={chapterHtmlContent}
+                targetLanguage={null} 
+                onLanguageChangeRequest={() => { setIsTranslationDialogOpen(false); }}
+                onApplyTranslation={() => { /* No-op */ }}
+              />
+          </Suspense>
         </div>
 
         <div className="flex items-center gap-0.5 min-w-[40px]">
@@ -404,3 +426,5 @@ export default function ReaderControls({
     </div>
   );
 }
+
+export default React.memo(ReaderControls);

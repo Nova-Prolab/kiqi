@@ -61,16 +61,17 @@ const FONT_FAMILY_CSS_MAP: Record<Exclude<ReaderFontFamily, 'custom' | 'system-s
 };
 
 
-const DEFAULT_CUSTOM_BACKGROUND = '#FFFFFF';
-const DEFAULT_CUSTOM_FOREGROUND = '#000000';
-const DEFAULT_FONT_FAMILY: ReaderFontFamily = 'lora';
-const DEFAULT_CUSTOM_FONT_FAMILY = 'Georgia, serif';
+const DEFAULT_CUSTOM_BACKGROUND = '#212121'; // Darker default for custom if user switches to it
+const DEFAULT_CUSTOM_FOREGROUND = '#E0E0E0'; // Lighter default for custom
+const DEFAULT_FONT_FAMILY: ReaderFontFamily = 'system-sans'; // Changed
+const DEFAULT_CUSTOM_FONT_FAMILY = 'Arial, sans-serif'; // Changed for sans-serif example
 const DEFAULT_LINE_HEIGHT: ReaderLineHeight = 'normal';
+const DEFAULT_THEME: ReaderTheme = 'dark'; // Changed
 
 
 export const ReaderSettingsProvider = ({ children }: { children: ReactNode }) => {
   const [isMounted, setIsMounted] = useState(false);
-  const [theme, setThemeState] = useState<ReaderTheme>('light');
+  const [theme, setThemeState] = useState<ReaderTheme>(DEFAULT_THEME);
   const [fontSize, setFontSizeState] = useState<ReaderFontSize>('base');
   const [lineHeight, setLineHeightState] = useState<ReaderLineHeight>(DEFAULT_LINE_HEIGHT);
   const [isImmersive, setIsImmersiveState] = useState<boolean>(false);
@@ -93,16 +94,33 @@ export const ReaderSettingsProvider = ({ children }: { children: ReactNode }) =>
       const storedCustomFont = localStorage.getItem('customReaderFont');
 
       if (storedTheme && (THEME_CLASS_MAP[storedTheme as Exclude<ReaderTheme, 'custom'>] || storedTheme === 'custom')) setThemeState(storedTheme);
+      else setThemeState(DEFAULT_THEME);
+
       if (storedFontSize && FONT_SIZE_MAP[storedFontSize]) setFontSizeState(storedFontSize);
       if (storedLineHeight && LINE_HEIGHT_MAP[storedLineHeight]) setLineHeightState(storedLineHeight);
       if (storedImmersive) setIsImmersiveState(JSON.parse(storedImmersive) as boolean);
+      
       if (storedCustomBg) setCustomBackgroundState(storedCustomBg);
+      else setCustomBackgroundState(DEFAULT_CUSTOM_BACKGROUND);
+
       if (storedCustomFg) setCustomForegroundState(storedCustomFg);
+      else setCustomForegroundState(DEFAULT_CUSTOM_FOREGROUND);
+
       if (storedFontFamily) setFontFamilyState(storedFontFamily);
+      else setFontFamilyState(DEFAULT_FONT_FAMILY);
+      
       if (storedCustomFont) setCustomFontFamilyState(storedCustomFont);
+      else setCustomFontFamilyState(DEFAULT_CUSTOM_FONT_FAMILY);
+
 
     } catch (error) {
       console.warn("Could not access localStorage for reader settings:", error);
+      // Set defaults if localStorage fails
+      setThemeState(DEFAULT_THEME);
+      setFontFamilyState(DEFAULT_FONT_FAMILY);
+      setCustomBackgroundState(DEFAULT_CUSTOM_BACKGROUND);
+      setCustomForegroundState(DEFAULT_CUSTOM_FOREGROUND);
+      setCustomFontFamilyState(DEFAULT_CUSTOM_FONT_FAMILY);
     }
   }, []);
 
@@ -148,7 +166,7 @@ export const ReaderSettingsProvider = ({ children }: { children: ReactNode }) =>
 
 
   const fontClass = FONT_SIZE_MAP[fontSize] || FONT_SIZE_MAP['base'];
-  const themeClass = theme === 'custom' ? '' : (THEME_CLASS_MAP[theme as Exclude<ReaderTheme, 'custom'>] || THEME_CLASS_MAP['light']);
+  const themeClass = theme === 'custom' ? '' : (THEME_CLASS_MAP[theme as Exclude<ReaderTheme, 'custom'>] || THEME_CLASS_MAP[DEFAULT_THEME as Exclude<ReaderTheme, 'custom'>]);
   const lineHeightClass = LINE_HEIGHT_MAP[lineHeight] || LINE_HEIGHT_MAP['normal'];
   
   let currentReaderFontFamily: string;
@@ -159,7 +177,7 @@ export const ReaderSettingsProvider = ({ children }: { children: ReactNode }) =>
   } else if (fontFamily === 'system-sans') {
     currentReaderFontFamily = 'sans-serif';
   } else {
-    currentReaderFontFamily = FONT_FAMILY_CSS_MAP[fontFamily as Exclude<ReaderFontFamily, 'custom' | 'system-serif' | 'system-sans'>] || FONT_FAMILY_CSS_MAP['lora'];
+    currentReaderFontFamily = FONT_FAMILY_CSS_MAP[fontFamily as Exclude<ReaderFontFamily, 'custom' | 'system-serif' | 'system-sans'>] || FONT_FAMILY_CSS_MAP[DEFAULT_FONT_FAMILY as Exclude<ReaderFontFamily, 'custom' | 'system-serif' | 'system-sans'>] || 'sans-serif';
   }
   const readerFontFamilyStyle: React.CSSProperties = { fontFamily: currentReaderFontFamily };
 
@@ -189,9 +207,9 @@ export const ReaderSettingsProvider = ({ children }: { children: ReactNode }) =>
   
   // Fallback for SSR or when not mounted yet
   if (!isMounted && typeof window !== 'undefined') {
-     const initialFontFamilyStyle: React.CSSProperties = { fontFamily: FONT_FAMILY_CSS_MAP[DEFAULT_FONT_FAMILY] || 'serif' };
+     const initialFontFamilyStyle: React.CSSProperties = { fontFamily: (FONT_FAMILY_CSS_MAP[DEFAULT_FONT_FAMILY as Exclude<ReaderFontFamily, 'custom' | 'system-serif' | 'system-sans'>] || (DEFAULT_FONT_FAMILY === 'system-sans' ? 'sans-serif' : 'serif')) };
      const initialContextValue = {
-        theme: 'light' as ReaderTheme,
+        theme: DEFAULT_THEME,
         fontSize: 'base' as ReaderFontSize,
         lineHeight: DEFAULT_LINE_HEIGHT,
         isImmersive: false,
@@ -208,7 +226,7 @@ export const ReaderSettingsProvider = ({ children }: { children: ReactNode }) =>
         setFontFamily: () => {},
         setCustomFontFamily: () => {},
         fontClass: FONT_SIZE_MAP['base'],
-        themeClass: THEME_CLASS_MAP['light'],
+        themeClass: THEME_CLASS_MAP[DEFAULT_THEME as Exclude<ReaderTheme, 'custom'>],
         lineHeightClass: LINE_HEIGHT_MAP[DEFAULT_LINE_HEIGHT],
         readerFontFamilyStyle: initialFontFamilyStyle,
      }
