@@ -13,6 +13,11 @@ import type {
   ReaderTextWidth,
   ReaderParagraphSpacing
 } from '@/lib/types';
+import { 
+  Type, Columns, Palette, Sun, Moon, Coffee, MoonStar, FileTextIcon as PaperIcon, Trees, Paintbrush, 
+  CaseSensitive, Text, AlignLeft, AlignJustify, ALargeSmall, Pilcrow, ArrowLeftRight, Baseline 
+} from 'lucide-react';
+
 
 interface ReaderSettingsContextType extends ReaderSettings {
   setTheme: (theme: ReaderTheme) => void;
@@ -27,17 +32,17 @@ interface ReaderSettingsContextType extends ReaderSettings {
   setTextAlign: (align: ReaderTextAlign) => void;
   setTextWidth: (width: ReaderTextWidth) => void;
   setParagraphSpacing: (spacing: ReaderParagraphSpacing) => void;
-  resetSettings: () => void; // New reset function
+  resetSettings: () => void;
 
-  fontClass: string; // For font size
-  themeClass: string; // For pre-defined themes
-  lineHeightClass: string; // For line height
+  fontClass: string;
+  themeClass: string;
+  lineHeightClass: string;
   letterSpacingClass: string;
   textAlignClass: string;
   textWidthClass: string;
   paragraphSpacingClass: string;
-  readerFontFamilyStyle: React.CSSProperties; // For applying font family
-  combinedReaderClasses: string; // All typography and layout classes combined
+  readerFontFamilyStyle: React.CSSProperties;
+  combinedReaderClasses: string;
 }
 
 const ReaderSettingsContext = createContext<ReaderSettingsContextType | undefined>(undefined);
@@ -49,27 +54,73 @@ export const THEME_CLASS_MAP: Record<Exclude<ReaderTheme, 'custom'>, string> = {
 export const FONT_FAMILY_CSS_MAP: Record<Exclude<ReaderFontFamily, 'custom' | 'system-serif' | 'system-sans'>, string> = { 'lora': 'var(--font-lora)', 'merriweather': 'var(--font-merriweather)', 'noto-serif': 'var(--font-noto-serif)', 'pt-serif': 'var(--font-pt-serif)', 'eb-garamond': 'var(--font-eb-garamond)', 'vollkorn': 'var(--font-vollkorn)', 'bitter': 'var(--font-bitter)', 'open-sans': 'var(--font-open-sans)', 'lato': 'var(--font-lato)', 'roboto': 'var(--font-roboto)', 'source-sans-3': 'var(--font-source-sans-3)', 'inter': 'var(--font-inter)', 'arimo': 'var(--font-arimo)', 'tinos': 'var(--font-tinos)', 'cousine': 'var(--font-cousine)' };
 export const LETTER_SPACING_MAP: Record<ReaderLetterSpacing, string> = { 'normal': 'tracking-normal', 'wide': 'tracking-wide', 'wider': 'tracking-wider' };
 export const TEXT_ALIGN_MAP: Record<ReaderTextAlign, string> = { 'left': 'text-left', 'justify': 'text-justify' };
-export const TEXT_WIDTH_MAP: Record<ReaderTextWidth, string> = { 'narrow': 'max-w-2xl', 'medium': 'max-w-4xl', 'wide': 'max-w-6xl' }; // Tailwind max-w classes
+export const TEXT_WIDTH_MAP: Record<ReaderTextWidth, string> = { 'narrow': 'max-w-2xl', 'medium': 'max-w-4xl', 'wide': 'max-w-6xl' };
 export const PARAGRAPH_SPACING_MAP: Record<ReaderParagraphSpacing, string> = { 'default': 'paragraph-spacing-default', 'medium': 'paragraph-spacing-medium', 'large': 'paragraph-spacing-large' };
 
-// --- DEFAULTS (Exported for reset functionality) ---
+// --- DEFAULTS (Exported for reset functionality and UI) ---
 export const DEFAULT_THEME: ReaderTheme = 'dark';
 export const DEFAULT_FONT_SIZE: ReaderFontSize = 'base';
 export const DEFAULT_LINE_HEIGHT: ReaderLineHeight = 'normal';
 export const DEFAULT_FONT_FAMILY: ReaderFontFamily = 'system-sans';
-export const DEFAULT_CUSTOM_FONT_FAMILY = 'Arial, sans-serif'; // Default if 'custom' is chosen
-export const DEFAULT_CUSTOM_BACKGROUND = '#18181B'; // Dark grey, good for default dark theme
-export const DEFAULT_CUSTOM_FOREGROUND = '#E4E4E7'; // Light grey text, good for default dark theme
+export const DEFAULT_CUSTOM_FONT_FAMILY = 'Arial, sans-serif';
+export const DEFAULT_CUSTOM_BACKGROUND = '#121212'; // Darker for "dark" theme base
+export const DEFAULT_CUSTOM_FOREGROUND = '#E0E0E0'; // Lighter grey for "dark" theme base
 export const DEFAULT_LETTER_SPACING: ReaderLetterSpacing = 'normal';
 export const DEFAULT_TEXT_ALIGN: ReaderTextAlign = 'left';
 export const DEFAULT_TEXT_WIDTH: ReaderTextWidth = 'medium';
 export const DEFAULT_PARAGRAPH_SPACING: ReaderParagraphSpacing = 'default';
 
+// --- OPTIONS FOR UI (Exported for ReaderSettingsSheet) ---
+export const FONT_SIZES_OPTIONS: { label: string, value: ReaderFontSize, icon: React.ElementType }[] = [
+  { label: 'Pequeño', value: 'sm', icon: ALargeSmall }, { label: 'Normal', value: 'base', icon: ALargeSmall }, { label: 'Grande', value: 'lg', icon: ALargeSmall },
+  { label: 'Muy Grande', value: 'xl', icon: ALargeSmall }, { label: 'Extra Grande', value: '2xl', icon: ALargeSmall },
+];
+export const LINE_HEIGHTS_OPTIONS: { label: string, value: ReaderLineHeight, icon: React.ElementType }[] = [
+  { label: 'Estrecho', value: 'tight', icon: Baseline }, { label: 'Normal', value: 'normal', icon: Baseline },
+  { label: 'Relajado', value: 'relaxed', icon: Baseline }, { label: 'Amplio', value: 'loose', icon: Baseline },
+];
+export const THEMES_OPTIONS: { label: string, value: ReaderTheme, icon: React.ElementType }[] = [
+  { label: 'Claro', value: 'light', icon: Sun }, { label: 'Sepia', value: 'sepia', icon: Coffee }, { label: 'Oscuro', value: 'dark', icon: Moon }, 
+  { label: 'Medianoche', value: 'midnight', icon: MoonStar }, { label: 'Papel', value: 'paper', icon: PaperIcon }, { label: 'Bosque', value: 'forest', icon: Trees },
+  { label: 'Personalizado', value: 'custom', icon: Paintbrush },
+];
+export const FONT_FAMILIES_OPTIONS: { label: string, value: ReaderFontFamily, style?: React.CSSProperties, icon: React.ElementType }[] = [
+  { label: 'Sans-serif (Sistema)', value: 'system-sans', style: { fontFamily: 'sans-serif'}, icon: Type },
+  { label: 'Serif (Sistema)', value: 'system-serif', style: { fontFamily: 'serif'}, icon: Text },
+  { label: 'Lora', value: 'lora', style: { fontFamily: 'var(--font-lora)'}, icon: Text },
+  { label: 'Merriweather', value: 'merriweather', style: { fontFamily: 'var(--font-merriweather)'}, icon: Text },
+  { label: 'Noto Serif', value: 'noto-serif', style: { fontFamily: 'var(--font-noto-serif)'}, icon: Text },
+  { label: 'PT Serif', value: 'pt-serif', style: { fontFamily: 'var(--font-pt-serif)'}, icon: Text },
+  { label: 'EB Garamond', value: 'eb-garamond', style: { fontFamily: 'var(--font-eb-garamond)'}, icon: Text },
+  { label: 'Vollkorn', value: 'vollkorn', style: { fontFamily: 'var(--font-vollkorn)'}, icon: Text },
+  { label: 'Bitter', value: 'bitter', style: { fontFamily: 'var(--font-bitter)'}, icon: Text },
+  { label: 'Open Sans', value: 'open-sans', style: { fontFamily: 'var(--font-open-sans)'}, icon: Type },
+  { label: 'Lato', value: 'lato', style: { fontFamily: 'var(--font-lato)'}, icon: Type },
+  { label: 'Roboto', value: 'roboto', style: { fontFamily: 'var(--font-roboto)'}, icon: Type },
+  { label: 'Source Sans 3', value: 'source-sans-3', style: { fontFamily: 'var(--font-source-sans-3)'}, icon: Type },
+  { label: 'Inter', value: 'inter', style: { fontFamily: 'var(--font-inter)'}, icon: Type },
+  { label: 'Arimo', value: 'arimo', style: { fontFamily: 'var(--font-arimo)'}, icon: Type },
+  { label: 'Tinos', value: 'tinos', style: { fontFamily: 'var(--font-tinos)'}, icon: Text },
+  { label: 'Cousine (Mono)', value: 'cousine', style: { fontFamily: 'var(--font-cousine)'}, icon: CaseSensitive },
+  { label: 'Personalizada', value: 'custom', icon: CaseSensitive },
+];
+export const LETTER_SPACINGS_OPTIONS: { label: string, value: ReaderLetterSpacing, icon: React.ElementType }[] = [
+  { label: 'Normal', value: 'normal', icon: ArrowLeftRight }, { label: 'Ancho', value: 'wide', icon: ArrowLeftRight }, { label: 'Más Ancho', value: 'wider', icon: ArrowLeftRight },
+];
+export const TEXT_ALIGNS_OPTIONS: { label: string, value: ReaderTextAlign, icon: React.ElementType }[] = [
+  { label: 'Izquierda', value: 'left', icon: AlignLeft }, { label: 'Justificado', value: 'justify', icon: AlignJustify },
+];
+export const TEXT_WIDTHS_OPTIONS: { label: string, value: ReaderTextWidth, icon: React.ElementType }[] = [
+  { label: 'Estrecho', value: 'narrow', icon: Columns }, { label: 'Medio', value: 'medium', icon: Columns }, { label: 'Ancho', value: 'wide', icon: Columns },
+];
+export const PARAGRAPH_SPACINGS_OPTIONS: { label: string, value: ReaderParagraphSpacing, icon: React.ElementType }[] = [
+  { label: 'Predeterminado', value: 'default', icon: Pilcrow }, { label: 'Medio', value: 'medium', icon: Pilcrow }, { label: 'Amplio', value: 'large', icon: Pilcrow },
+];
+
 
 export const ReaderSettingsProvider = ({ children }: { children: ReactNode }) => {
   const [isMounted, setIsMounted] = useState(false);
   
-  // State for each setting
   const [theme, setThemeState] = useState<ReaderTheme>(DEFAULT_THEME);
   const [fontSize, setFontSizeState] = useState<ReaderFontSize>(DEFAULT_FONT_SIZE);
   const [lineHeight, setLineHeightState] = useState<ReaderLineHeight>(DEFAULT_LINE_HEIGHT);
@@ -119,7 +170,6 @@ export const ReaderSettingsProvider = ({ children }: { children: ReactNode }) =>
 
     } catch (error) {
       console.warn("Could not access localStorage for reader settings:", error);
-      // Set defaults if localStorage fails
       setThemeState(DEFAULT_THEME);
       setFontSizeState(DEFAULT_FONT_SIZE);
       setLineHeightState(DEFAULT_LINE_HEIGHT);
@@ -182,7 +232,7 @@ export const ReaderSettingsProvider = ({ children }: { children: ReactNode }) =>
   const lineHeightClass = LINE_HEIGHT_MAP[lineHeight] || LINE_HEIGHT_MAP[DEFAULT_LINE_HEIGHT];
   const letterSpacingClass = LETTER_SPACING_MAP[letterSpacing] || LETTER_SPACING_MAP[DEFAULT_LETTER_SPACING];
   const textAlignClass = TEXT_ALIGN_MAP[textAlign] || TEXT_ALIGN_MAP[DEFAULT_TEXT_ALIGN];
-  const textWidthClass = TEXT_WIDTH_MAP[textWidth] || TEXT_WIDTH_MAP[DEFAULT_TEXT_WIDTH]; // Used by ReaderView
+  const textWidthClass = TEXT_WIDTH_MAP[textWidth] || TEXT_WIDTH_MAP[DEFAULT_TEXT_WIDTH];
   const paragraphSpacingClass = PARAGRAPH_SPACING_MAP[paragraphSpacing] || PARAGRAPH_SPACING_MAP[DEFAULT_PARAGRAPH_SPACING];
   
   let currentReaderFontFamily: string;
@@ -204,7 +254,7 @@ export const ReaderSettingsProvider = ({ children }: { children: ReactNode }) =>
     letterSpacing, textAlign, textWidth, paragraphSpacing,
     setTheme, setFontSize, setLineHeight, setFontFamily, setCustomFontFamily, setIsImmersive, setCustomBackground, setCustomForeground,
     setLetterSpacing, setTextAlign, setTextWidth, setParagraphSpacing,
-    resetSettings, // Added reset function to context
+    resetSettings,
     fontClass, themeClass, lineHeightClass, letterSpacingClass, textAlignClass, textWidthClass, paragraphSpacingClass,
     readerFontFamilyStyle, combinedReaderClasses
   };
@@ -226,7 +276,7 @@ export const ReaderSettingsProvider = ({ children }: { children: ReactNode }) =>
         paragraphSpacing: DEFAULT_PARAGRAPH_SPACING,
         setTheme: () => {}, setFontSize: () => {}, setLineHeight: () => {}, setFontFamily: () => {}, setCustomFontFamily: () => {}, setIsImmersive: () => {}, setCustomBackground: () => {}, setCustomForeground: () => {},
         setLetterSpacing: () => {}, setTextAlign: () => {}, setTextWidth: () => {}, setParagraphSpacing: () => {},
-        resetSettings: () => {}, // Placeholder reset function
+        resetSettings: () => {},
         fontClass: FONT_SIZE_MAP[DEFAULT_FONT_SIZE],
         themeClass: THEME_CLASS_MAP[DEFAULT_THEME as Exclude<ReaderTheme, 'custom'>],
         lineHeightClass: LINE_HEIGHT_MAP[DEFAULT_LINE_HEIGHT],
@@ -254,3 +304,4 @@ export const useReaderSettings = () => {
   }
   return context;
 };
+
