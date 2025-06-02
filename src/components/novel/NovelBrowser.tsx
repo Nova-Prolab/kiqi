@@ -7,7 +7,7 @@ import type { Novel, AgeRating, NovelStatus } from '@/lib/types';
 import { AGE_RATING_VALUES, STATUS_VALUES } from '@/lib/types';
 import NovelCard from '@/components/novel/NovelCard';
 import { Input } from '@/components/ui/input';
-import { Search, BookX, Tags, LayoutGrid, Star, FilterX, ChevronLeft, ChevronRight, Loader2, Shield, ClockIcon, Library, User, Tag as TagIcon, FileSearch, Users } from 'lucide-react'; // Added Users
+import { Search, BookX, Tags, LayoutGrid, Star, FilterX, ChevronLeft, ChevronRight, Loader2, Shield, ClockIcon, Library, User, Tag as TagIcon, FileSearch, Users } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
@@ -68,12 +68,12 @@ export default function NovelBrowser({ initialNovels }: NovelBrowserProps) {
   const searchParams = useSearchParams();
   const router = useRouter();
 
-  const [currentInputText, setCurrentInputText] = useState(''); // For the live input
-  const [searchTerm, setSearchTerm] = useState(''); // For the actual executed search
+  const [currentInputText, setCurrentInputText] = useState('');
+  const [searchTerm, setSearchTerm] = useState('');
   const [searchType, setSearchType] = useState<SearchType>('title');
 
-  const [selectedCategory, setSelectedCategory] = useState<string | null>(null); // For badge filter
-  const [selectedTag, setSelectedTag] = useState<string | null>(null); // For badge filter
+  const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
+  const [selectedTag, setSelectedTag] = useState<string | null>(null);
   const [selectedAgeRating, setSelectedAgeRating] = useState<AgeRating | null>(null);
   const [selectedStatus, setSelectedStatus] = useState<NovelStatus | null>(null);
   const [mounted, setMounted] = useState(false);
@@ -82,9 +82,8 @@ export default function NovelBrowser({ initialNovels }: NovelBrowserProps) {
   const updateURLParams = useCallback(() => {
     const params = new URLSearchParams();
     if (searchTerm) params.set('q', searchTerm);
-    if (searchType !== 'title') params.set('st', searchType); // Only add if not default
+    if (searchType !== 'title') params.set('st', searchType);
     
-    // Badge filters
     if (selectedCategory) params.set('category', selectedCategory);
     if (selectedTag) params.set('tag', selectedTag);
     if (selectedAgeRating) params.set('ageRating', selectedAgeRating);
@@ -104,7 +103,7 @@ export default function NovelBrowser({ initialNovels }: NovelBrowserProps) {
     const statusQuery = searchParams.get('status') as NovelStatus | null;
 
     setCurrentInputText(queryParam);
-    setSearchTerm(queryParam); // Execute search based on URL params on load
+    setSearchTerm(queryParam);
     if (searchTypeParam && searchTypeOptions.some(opt => opt.value === searchTypeParam)) {
         setSearchType(searchTypeParam);
     } else {
@@ -121,19 +120,16 @@ export default function NovelBrowser({ initialNovels }: NovelBrowserProps) {
 
 
   const handleSearchExecute = useCallback(() => {
-    setSearchTerm(currentInputText); // Set the actual search term
+    setSearchTerm(currentInputText);
     setCurrentPage(1);
-    // Clear badge filters if a text search is performed with specific types
     if (currentInputText.trim() && (searchType === 'category_search' || searchType === 'tag_search')) {
       setSelectedCategory(null);
       setSelectedTag(null);
     }
-    // Defer URL update to allow state to settle, or update it directly here.
-    // For simplicity, let's call updateURLParams in a useEffect that depends on searchTerm and searchType.
   }, [currentInputText, searchType]);
 
   useEffect(() => {
-    if(mounted) { // Only update URL after initial mount and if search terms change
+    if(mounted) {
         updateURLParams();
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -225,14 +221,13 @@ export default function NovelBrowser({ initialNovels }: NovelBrowserProps) {
 
   const filteredNovels = useMemo(() => {
     let novelsToFilter = [...initialNovels];
-    const lowerSearchTerm = searchTerm.toLowerCase().trim();
+    const normalizedSearchTerm = searchTerm.toLowerCase().trim();
 
-    // Apply badge filters first
     if (selectedCategory) {
-      novelsToFilter = novelsToFilter.filter(novel => novel.categoria?.toLowerCase() === selectedCategory.toLowerCase());
+      novelsToFilter = novelsToFilter.filter(novel => novel.categoria?.trim().toLowerCase() === selectedCategory.toLowerCase());
     }
     if (selectedTag) {
-      novelsToFilter = novelsToFilter.filter(novel => novel.etiquetas?.map(t => t.toLowerCase()).includes(selectedTag.toLowerCase()));
+      novelsToFilter = novelsToFilter.filter(novel => novel.etiquetas?.map(t => t.trim().toLowerCase()).includes(selectedTag.toLowerCase()));
     }
     if (selectedAgeRating) {
       novelsToFilter = novelsToFilter.filter(novel => novel.ageRating === selectedAgeRating);
@@ -241,20 +236,19 @@ export default function NovelBrowser({ initialNovels }: NovelBrowserProps) {
       novelsToFilter = novelsToFilter.filter(novel => novel.status === selectedStatus);
     }
 
-    // Apply text search based on searchType
-    if (lowerSearchTerm) {
+    if (normalizedSearchTerm) {
       novelsToFilter = novelsToFilter.filter(novel => {
         switch (searchType) {
           case 'title':
-            return novel.title.toLowerCase().includes(lowerSearchTerm);
+            return novel.title.trim().toLowerCase().includes(normalizedSearchTerm);
           case 'author':
-            return novel.author.toLowerCase().includes(lowerSearchTerm);
+            return novel.author.trim().toLowerCase().includes(normalizedSearchTerm);
           case 'category_search':
-            return novel.categoria?.toLowerCase().includes(lowerSearchTerm);
+            return novel.categoria?.trim().toLowerCase().includes(normalizedSearchTerm);
           case 'tag_search':
-            return novel.etiquetas?.some(tag => tag.toLowerCase().includes(lowerSearchTerm));
+            return novel.etiquetas?.some(tag => tag.trim().toLowerCase().includes(normalizedSearchTerm));
           case 'translator':
-            return novel.traductor?.toLowerCase().includes(lowerSearchTerm);
+            return novel.traductor?.trim().toLowerCase().includes(normalizedSearchTerm);
           default:
             return true;
         }
@@ -283,12 +277,11 @@ export default function NovelBrowser({ initialNovels }: NovelBrowserProps) {
 
   const handleBadgeCategorySelect = (category: string | null) => {
     setSelectedCategory(category);
-    if (category) { // If a category badge is clicked, clear text search and other badge types
+    if (category) {
       setCurrentInputText(''); setSearchTerm(''); setSearchType('title');
       setSelectedTag(null); setSelectedAgeRating(null); setSelectedStatus(null);
     }
     setCurrentPage(1);
-    // URL update will be handled by useEffect watching selectedCategory
   };
 
   const handleBadgeTagSelect = (tag: string | null) => {
