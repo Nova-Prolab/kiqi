@@ -14,16 +14,16 @@ import {
   Roboto,
   Source_Sans_3,
   Inter,
-  Bitter
+  Bitter,
+  Arimo,  // Nueva fuente
+  Tinos,   // Nueva fuente
+  Cousine  // Nueva fuente
 } from 'next/font/google'; // Google Fonts
 import './globals.css';
 import { ThemeProvider } from '@/components/providers/theme-provider';
 import { ReaderSettingsProvider } from '@/contexts/ReaderSettingsContext';
 import { Toaster } from '@/components/ui/toaster';
 import AppHeader from '@/components/layout/AppHeader';
-
-// Geist fonts are used directly from their import, no need to call them as functions.
-// Their .variable property will provide the CSS variable string.
 
 // Reader Font Options (from Google Fonts)
 const lora = Lora({ subsets: ['latin'], variable: '--font-lora', display: 'swap', weight: ['400', '700'] });
@@ -39,6 +39,10 @@ const lato = Lato({ subsets: ['latin'], variable: '--font-lato', display: 'swap'
 const roboto = Roboto({ subsets: ['latin'], variable: '--font-roboto', display: 'swap', weight: ['400', '500', '700'] });
 const sourceSans3 = Source_Sans_3({ subsets: ['latin'], variable: '--font-source-sans-pro', display: 'swap', weight: ['400', '700'] });
 const inter = Inter({ subsets: ['latin'], variable: '--font-inter', display: 'swap', weight: ['400', '500', '700'] });
+
+const arimo = Arimo({ subsets: ['latin'], variable: '--font-arimo', display: 'swap', weight: ['400', '700'] });
+const tinos = Tinos({ subsets: ['latin'], variable: '--font-tinos', display: 'swap', weight: ['400', '700'] });
+const cousine = Cousine({ subsets: ['latin'], variable: '--font-cousine', display: 'swap', weight: ['400', '700'] });
 
 
 export const metadata: Metadata = {
@@ -69,6 +73,9 @@ export default function RootLayout({
           ${roboto.variable}
           ${sourceSans3.variable} 
           ${inter.variable}
+          ${arimo.variable}
+          ${tinos.variable}
+          ${cousine.variable}
           antialiased flex flex-col min-h-screen
         `}
       >

@@ -34,7 +34,9 @@ import {
   CaseSensitive,
   AlignJustify,
   ALargeSmall,
-  Loader2
+  Loader2,
+  Type, // Icon for general font
+  Sparkles, // Icon for Cousine (monospace)
 } from 'lucide-react';
 import React, { useState, useEffect, ChangeEvent, Suspense } from 'react';
 import dynamic from 'next/dynamic';
@@ -60,7 +62,7 @@ interface ReaderControlsProps {
   novelId: string;
   isVisibleInImmersiveMode: boolean;
   onHoverStateChange: (isHovering: boolean) => void;
-  onAppearanceMenuToggle: (isOpen: boolean) => void; // Nueva prop
+  onAppearanceMenuToggle: (isOpen: boolean) => void;
 }
 
 const FONT_SIZES: { label: string, value: ReaderFontSize }[] = [
@@ -88,22 +90,25 @@ const THEMES: { label: string, value: ReaderTheme, icon: React.ElementType }[] =
   { label: 'Personalizado', value: 'custom', icon: Paintbrush },
 ];
 
-const FONT_FAMILIES: { label: string, value: ReaderFontFamily, style?: React.CSSProperties }[] = [
-  { label: 'Sans-serif (Sistema)', value: 'system-sans', style: { fontFamily: 'sans-serif'} },
-  { label: 'Serif (Sistema)', value: 'system-serif', style: { fontFamily: 'serif'} },
-  { label: 'Lora', value: 'lora', style: { fontFamily: 'var(--font-lora)'} },
-  { label: 'Merriweather', value: 'merriweather', style: { fontFamily: 'var(--font-merriweather)'} },
-  { label: 'Noto Serif', value: 'noto-serif', style: { fontFamily: 'var(--font-noto-serif)'} },
-  { label: 'PT Serif', value: 'pt-serif', style: { fontFamily: 'var(--font-pt-serif)'} },
-  { label: 'EB Garamond', value: 'eb-garamond', style: { fontFamily: 'var(--font-eb-garamond)'} },
-  { label: 'Vollkorn', value: 'vollkorn', style: { fontFamily: 'var(--font-vollkorn)'} },
-  { label: 'Bitter', value: 'bitter', style: { fontFamily: 'var(--font-bitter)'} },
-  { label: 'Open Sans', value: 'open-sans', style: { fontFamily: 'var(--font-open-sans)'} },
-  { label: 'Lato', value: 'lato', style: { fontFamily: 'var(--font-lato)'} },
-  { label: 'Roboto', value: 'roboto', style: { fontFamily: 'var(--font-roboto)'} },
-  { label: 'Source Sans Pro', value: 'source-sans-pro', style: { fontFamily: 'var(--font-source-sans-pro)'} },
-  { label: 'Inter', value: 'inter', style: { fontFamily: 'var(--font-inter)'} },
-  { label: 'Personalizada', value: 'custom' },
+const FONT_FAMILIES: { label: string, value: ReaderFontFamily, style?: React.CSSProperties, icon?: React.ElementType }[] = [
+  { label: 'Sans-serif (Sistema)', value: 'system-sans', style: { fontFamily: 'sans-serif'}, icon: Type },
+  { label: 'Serif (Sistema)', value: 'system-serif', style: { fontFamily: 'serif'}, icon: Type },
+  { label: 'Lora', value: 'lora', style: { fontFamily: 'var(--font-lora)'}, icon: Type },
+  { label: 'Merriweather', value: 'merriweather', style: { fontFamily: 'var(--font-merriweather)'}, icon: Type },
+  { label: 'Noto Serif', value: 'noto-serif', style: { fontFamily: 'var(--font-noto-serif)'}, icon: Type },
+  { label: 'PT Serif', value: 'pt-serif', style: { fontFamily: 'var(--font-pt-serif)'}, icon: Type },
+  { label: 'EB Garamond', value: 'eb-garamond', style: { fontFamily: 'var(--font-eb-garamond)'}, icon: Type },
+  { label: 'Vollkorn', value: 'vollkorn', style: { fontFamily: 'var(--font-vollkorn)'}, icon: Type },
+  { label: 'Bitter', value: 'bitter', style: { fontFamily: 'var(--font-bitter)'}, icon: Type },
+  { label: 'Open Sans', value: 'open-sans', style: { fontFamily: 'var(--font-open-sans)'}, icon: Type },
+  { label: 'Lato', value: 'lato', style: { fontFamily: 'var(--font-lato)'}, icon: Type },
+  { label: 'Roboto', value: 'roboto', style: { fontFamily: 'var(--font-roboto)'}, icon: Type },
+  { label: 'Source Sans Pro', value: 'source-sans-pro', style: { fontFamily: 'var(--font-source-sans-pro)'}, icon: Type },
+  { label: 'Inter', value: 'inter', style: { fontFamily: 'var(--font-inter)'}, icon: Type },
+  { label: 'Arimo', value: 'arimo', style: { fontFamily: 'var(--font-arimo)'}, icon: Type },
+  { label: 'Tinos', value: 'tinos', style: { fontFamily: 'var(--font-tinos)'}, icon: Type },
+  { label: 'Cousine (Mono)', value: 'cousine', style: { fontFamily: 'var(--font-cousine)'}, icon: Sparkles },
+  { label: 'Personalizada', value: 'custom', icon: CaseSensitive },
 ];
 
 const isValidHexColor = (color: string) => /^#[0-9A-F]{6}$/i.test(color);
@@ -115,7 +120,7 @@ function ReaderControls({
   novelId,
   isVisibleInImmersiveMode,
   onHoverStateChange,
-  onAppearanceMenuToggle, // Usar la nueva prop
+  onAppearanceMenuToggle,
 }: ReaderControlsProps) {
   const {
     theme,
@@ -205,7 +210,14 @@ function ReaderControls({
     <div
       className={`${baseClasses} ${immersiveSpecificClasses}`}
       onMouseEnter={() => isImmersive && onHoverStateChange(true)}
-      onMouseLeave={() => isImmersive && onHoverStateChange(false)}
+      onMouseLeave={() => {
+        // No desactivar hover si el menú de apariencia está abierto
+        // La lógica de visibilidad en ReaderView se encarga de mantenerlo visible
+        // si isAppearanceMenuOpen es true.
+        if (isImmersive) {
+           onHoverStateChange(false);
+        }
+      }}
     >
       <div className="mx-auto flex items-center justify-between gap-1 max-w-4xl px-2 sm:px-0">
 
@@ -227,7 +239,14 @@ function ReaderControls({
         </div>
 
         <div className="flex items-center gap-0.5 flex-grow justify-center">
-          <DropdownMenu onOpenChange={onAppearanceMenuToggle}> {/* Usar la prop aquí */}
+          <DropdownMenu onOpenChange={(isOpen) => {
+            onAppearanceMenuToggle(isOpen);
+            if (isOpen && isImmersive) {
+              // Informa a ReaderView que mantenga los controles visibles
+              // mientras el menú está abierto, incluso si el mouse se mueve al portal del menú.
+              onHoverStateChange(true); 
+            }
+          }}>
             <TooltipProvider delayDuration={100}>
               <Tooltip>
                 <TooltipTrigger asChild>
@@ -242,16 +261,16 @@ function ReaderControls({
             </TooltipProvider>
             <DropdownMenuContent
               align="center"
-              className="w-80 sm:w-96 !p-0" // Quitar padding, ScrollArea lo manejará
+              className="w-80 sm:w-96 !p-0"
               onCloseAutoFocus={(e) => e.preventDefault()}
             >
               <ScrollArea
-                className="max-h-[calc(100vh-150px)] sm:max-h-[75vh] md:max-h-[450px]" // Ajustar max-h
+                className="max-h-[60vh] sm:max-h-[70vh] md:max-h-[450px] lg:max-h-[500px]"
               >
-                <div className="p-1"> {/* Añadir padding dentro de ScrollArea */}
+                <div className="p-1">
                   <DropdownMenuLabel className="flex items-center px-2"><Palette className="mr-2 h-4 w-4" />Apariencia</DropdownMenuLabel>
                   <DropdownMenuSeparator />
-                  <div className="px-2"> {/* Padding para grupos de radio y items */}
+                  <div className="px-2"> 
                     <DropdownMenuLabel className="text-xs text-muted-foreground">Tamaño de Fuente</DropdownMenuLabel>
                     <DropdownMenuRadioGroup value={fontSize} onValueChange={(value) => setFontSize(value as ReaderFontSize)}>
                       {FONT_SIZES.map(fs => (
@@ -276,6 +295,7 @@ function ReaderControls({
                     <DropdownMenuRadioGroup value={fontFamily} onValueChange={(value) => setFontFamily(value as ReaderFontFamily)}>
                       {FONT_FAMILIES.map(ff => (
                         <DropdownMenuRadioItem key={ff.value} value={ff.value} style={ff.style}>
+                          {ff.icon && <ff.icon className="mr-2 h-4 w-4" />}
                           {ff.label}
                         </DropdownMenuRadioItem>
                       ))}
@@ -283,7 +303,7 @@ function ReaderControls({
                   </div>
                   {fontFamily === 'custom' && (
                     <DropdownMenuItem onSelect={(e) => e.preventDefault()} className="focus:bg-transparent mt-1">
-                      <div className="w-full space-y-1.5 py-1 pl-8 pr-2"> {/* Ajustar padding para item custom */}
+                      <div className="w-full space-y-1.5 py-1 pl-8 pr-2"> 
                         <Label htmlFor="custom-font-input" className="text-xs text-muted-foreground flex items-center">
                           <CaseSensitive className="mr-1.5 h-3.5 w-3.5" /> Nombre de la fuente:
                         </Label>
@@ -306,7 +326,7 @@ function ReaderControls({
                     </DropdownMenuItem>
                   )}
                   <DropdownMenuSeparator />
-                  <div className="px-2"> {/* Padding para grupos de radio y items */}
+                  <div className="px-2">
                     <DropdownMenuLabel className="text-xs text-muted-foreground">Tema</DropdownMenuLabel>
                      <DropdownMenuRadioGroup value={theme} onValueChange={(value) => setTheme(value as ReaderTheme)}>
                       {THEMES.map(th => (
@@ -319,7 +339,7 @@ function ReaderControls({
                   </div>
                   {theme === 'custom' && (
                     <DropdownMenuItem onSelect={(e) => e.preventDefault()} className="focus:bg-transparent mt-1">
-                      <div className="w-full space-y-3 py-1 pl-8 pr-2"> {/* Ajustar padding para item custom */}
+                      <div className="w-full space-y-3 py-1 pl-8 pr-2">
                           <div className="flex items-center gap-2">
                             <Label htmlFor="custom-bg-color" className="text-xs text-popover-foreground shrink-0 w-14">Fondo:</Label>
                             <input
@@ -438,3 +458,4 @@ function ReaderControls({
 }
 
 export default React.memo(ReaderControls);
+

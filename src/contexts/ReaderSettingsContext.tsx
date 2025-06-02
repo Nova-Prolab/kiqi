@@ -58,15 +58,18 @@ const FONT_FAMILY_CSS_MAP: Record<Exclude<ReaderFontFamily, 'custom' | 'system-s
   'roboto': 'var(--font-roboto)',
   'source-sans-pro': 'var(--font-source-sans-pro)',
   'inter': 'var(--font-inter)',
+  'arimo': 'var(--font-arimo)',
+  'tinos': 'var(--font-tinos)',
+  'cousine': 'var(--font-cousine)',
 };
 
 
-const DEFAULT_CUSTOM_BACKGROUND = '#212121'; // Darker default for custom if user switches to it
-const DEFAULT_CUSTOM_FOREGROUND = '#E0E0E0'; // Lighter default for custom
-const DEFAULT_FONT_FAMILY: ReaderFontFamily = 'system-sans'; // Changed
-const DEFAULT_CUSTOM_FONT_FAMILY = 'Arial, sans-serif'; // Changed for sans-serif example
+const DEFAULT_CUSTOM_BACKGROUND = '#121212'; 
+const DEFAULT_CUSTOM_FOREGROUND = '#E0E0E0'; 
+const DEFAULT_FONT_FAMILY: ReaderFontFamily = 'system-sans';
+const DEFAULT_CUSTOM_FONT_FAMILY = 'Arial, sans-serif';
 const DEFAULT_LINE_HEIGHT: ReaderLineHeight = 'normal';
-const DEFAULT_THEME: ReaderTheme = 'dark'; // Changed
+const DEFAULT_THEME: ReaderTheme = 'dark';
 
 
 export const ReaderSettingsProvider = ({ children }: { children: ReactNode }) => {
@@ -115,7 +118,6 @@ export const ReaderSettingsProvider = ({ children }: { children: ReactNode }) =>
 
     } catch (error) {
       console.warn("Could not access localStorage for reader settings:", error);
-      // Set defaults if localStorage fails
       setThemeState(DEFAULT_THEME);
       setFontFamilyState(DEFAULT_FONT_FAMILY);
       setCustomBackgroundState(DEFAULT_CUSTOM_BACKGROUND);
@@ -205,7 +207,6 @@ export const ReaderSettingsProvider = ({ children }: { children: ReactNode }) =>
     readerFontFamilyStyle,
   };
   
-  // Fallback for SSR or when not mounted yet
   if (!isMounted && typeof window !== 'undefined') {
      const initialFontFamilyStyle: React.CSSProperties = { fontFamily: (FONT_FAMILY_CSS_MAP[DEFAULT_FONT_FAMILY as Exclude<ReaderFontFamily, 'custom' | 'system-serif' | 'system-sans'>] || (DEFAULT_FONT_FAMILY === 'system-sans' ? 'sans-serif' : 'serif')) };
      const initialContextValue = {

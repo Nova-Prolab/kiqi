@@ -68,6 +68,9 @@ export type ReaderFontFamily =
   | 'roboto'
   | 'source-sans-3'
   | 'inter'
+  | 'arimo'   // Nueva
+  | 'tinos'   // Nueva
+  | 'cousine' // Nueva
   | 'custom';
 
 export interface ReaderSettings {
@@ -134,3 +137,4 @@ export interface ChapterUploadState {
   uploadedFiles?: { name: string; status: 'success' | 'error'; reason?: string }[];
   failedFiles?: { name: string; status: 'error'; reason?: string }[];
 }
+
