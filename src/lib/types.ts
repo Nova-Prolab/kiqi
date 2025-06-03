@@ -148,5 +148,15 @@ export interface ChapterUploadState {
 }
 
 // For AI Translation Flow
-export type TargetLanguage = typeof import('@/ai/flows/translate-chapter-flow').TARGET_LANGUAGES[number];
+export const TARGET_LANGUAGES = [
+  "English",
+  "Portuguese",
+  "French",
+  "Italian",
+  "German",
+  "Japanese",
+  "Korean",
+  "Chinese (Simplified)"
+] as const;
 
+export type TargetLanguage = typeof TARGET_LANGUAGES[number];

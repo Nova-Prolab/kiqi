@@ -3,7 +3,7 @@
 
 import { useState, useEffect, useMemo } from 'react';
 import { translateChapterAction } from '@/actions/translationActions';
-import { TARGET_LANGUAGES, type TargetLanguage } from '@/ai/flows/translate-chapter-flow';
+import { TARGET_LANGUAGES, type TargetLanguage } from '@/lib/types';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -196,4 +196,3 @@ export default function TranslationDialog({
     </Dialog>
   );
 }
-
