@@ -15,7 +15,7 @@ import React, { Suspense } from 'react';
 import dynamic from 'next/dynamic';
 import Link from 'next/link';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
-import { BookOpen } from 'lucide-react';
+import { BookOpen, RotateCcw } from 'lucide-react';
 
 const DynamicChapterSummaryDialog = dynamic(() => import('./ChapterSummaryDialog'), {
   suspense: true,
@@ -34,14 +34,18 @@ interface ReaderControlsProps {
   novelId: string;
   isVisibleInImmersiveMode: boolean;
   onHoverStateChange: (isHovering: boolean) => void;
-  onToggleSettingsSheet: () => void; // Changed from onAppearanceMenuToggle
-  isSettingsSheetOpen: boolean; // To manage hover state correctly
+  onToggleSettingsSheet: () => void; 
+  isSettingsSheetOpen: boolean; 
+  onApplyTranslation: (translatedHtml: string) => void;
+  onRevertToOriginal: () => void;
+  isCurrentlyTranslated: boolean;
 }
 
 
 function ReaderControls({
   chapterHtmlContent, onToggleImmersive, isImmersive, novelId,
-  isVisibleInImmersiveMode, onHoverStateChange, onToggleSettingsSheet, isSettingsSheetOpen
+  isVisibleInImmersiveMode, onHoverStateChange, onToggleSettingsSheet, isSettingsSheetOpen,
+  onApplyTranslation, onRevertToOriginal, isCurrentlyTranslated
 }: ReaderControlsProps) {
   const [isSummaryDialogOpen, setIsSummaryDialogOpen] = React.useState(false);
   const [isTranslationDialogOpen, setIsTranslationDialogOpen] = React.useState(false);
@@ -56,8 +60,8 @@ function ReaderControls({
 
   const handleSettingsButtonClick = () => {
     onToggleSettingsSheet();
-    if (isImmersive && !isSettingsSheetOpen) { // If opening the sheet in immersive mode
-      onHoverStateChange(true); // Ensure controls stay visible
+    if (isImmersive && !isSettingsSheetOpen) { 
+      onHoverStateChange(true); 
     }
   };
 
@@ -66,7 +70,7 @@ function ReaderControls({
       className={`${baseClasses} ${immersiveSpecificClasses}`}
       onMouseEnter={() => isImmersive && onHoverStateChange(true)}
       onMouseLeave={() => { 
-        if (isImmersive && !isSettingsSheetOpen) { // Only hide if sheet isn't open
+        if (isImmersive && !isSettingsSheetOpen && !isSummaryDialogOpen && !isTranslationDialogOpen) { 
           onHoverStateChange(false); 
         }
       }}
@@ -104,11 +108,11 @@ function ReaderControls({
           <TooltipProvider delayDuration={100}>
             <Tooltip>
               <TooltipTrigger asChild>
-                <Button variant="ghost" size="icon" onClick={() => setIsSummaryDialogOpen(true)} aria-label="Resumen del capítulo (Próximamente)" disabled>
+                <Button variant="ghost" size="icon" onClick={() => setIsSummaryDialogOpen(true)} aria-label="Resumen del capítulo (IA)" >
                   <TextQuote />
                 </Button>
               </TooltipTrigger>
-              <TooltipContent><p>Resumen del Capítulo (Próximamente)</p></TooltipContent>
+              <TooltipContent><p>Resumen del Capítulo (IA)</p></TooltipContent>
             </Tooltip>
           </TooltipProvider>
           <Suspense fallback={<div className="w-8 h-8 flex items-center justify-center"><Loader2 className="animate-spin h-5 w-5" /></div>}>
@@ -118,16 +122,35 @@ function ReaderControls({
           <TooltipProvider delayDuration={100}>
             <Tooltip>
               <TooltipTrigger asChild>
-                <Button variant="ghost" size="icon" aria-label="Traducir Capítulo (Próximamente)" disabled onClick={() => setIsTranslationDialogOpen(true)}>
+                <Button variant="ghost" size="icon" aria-label="Traducir Capítulo (IA)" onClick={() => setIsTranslationDialogOpen(true)}>
                   <Languages />
                 </Button>
               </TooltipTrigger>
-              <TooltipContent><p>Traducir Capítulo (Próximamente)</p></TooltipContent>
+              <TooltipContent><p>Traducir Capítulo (IA)</p></TooltipContent>
             </Tooltip>
           </TooltipProvider>
            <Suspense fallback={<div className="w-8 h-8 flex items-center justify-center"><Loader2 className="animate-spin h-5 w-5" /></div>}>
-            <DynamicTranslationDialog isOpen={isTranslationDialogOpen} onOpenChange={setIsTranslationDialogOpen} originalHtmlContent={chapterHtmlContent} targetLanguage={null} onLanguageChangeRequest={() => { setIsTranslationDialogOpen(false); }} onApplyTranslation={() => { /* No-op */ }} />
+            <DynamicTranslationDialog 
+              isOpen={isTranslationDialogOpen} 
+              onOpenChange={setIsTranslationDialogOpen} 
+              originalHtmlContent={chapterHtmlContent} 
+              onApplyTranslation={onApplyTranslation}
+              onRevertToOriginal={onRevertToOriginal}
+              isCurrentlyTranslated={isCurrentlyTranslated}
+            />
           </Suspense>
+          {isCurrentlyTranslated && (
+            <TooltipProvider delayDuration={100}>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button variant="ghost" size="icon" className="text-destructive hover:text-destructive/80" onClick={onRevertToOriginal} aria-label="Volver al Original">
+                    <RotateCcw />
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent><p>Volver al Contenido Original</p></TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
+          )}
         </div>
 
         <div className="flex items-center gap-0.5 min-w-[40px]">
@@ -148,3 +171,4 @@ function ReaderControls({
 }
 
 export default React.memo(ReaderControls);
+

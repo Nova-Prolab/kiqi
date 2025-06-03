@@ -11,7 +11,17 @@
 import {ai} from '@/ai/genkit';
 import {z} from 'genkit';
 
-const TARGET_LANGUAGES = ["English", "Portuguese", "French", "Italian"] as const;
+export const TARGET_LANGUAGES = [
+  "English", 
+  "Portuguese", 
+  "French", 
+  "Italian",
+  "German",
+  "Japanese",
+  "Korean",
+  "Chinese (Simplified)"
+] as const;
+export type TargetLanguage = typeof TARGET_LANGUAGES[number];
 
 const TranslateChapterInputSchema = z.object({
   chapterHtmlContent: z
@@ -62,6 +72,11 @@ const translateChapterFlow = ai.defineFlow(
     //   ],
     // },
     const {output} = await prompt(input);
-    return output!;
+    if (!output || typeof output.translatedHtmlContent === 'undefined') {
+        console.error('AI translation failed. Input:', input, 'Raw AI Output:', output);
+        throw new Error('La IA no pudo generar una traducción o la respuesta fue inválida.');
+    }
+    return output;
   }
 );
+

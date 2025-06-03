@@ -1,23 +1,18 @@
 
 'use server';
 
-// import { translateChapter } from '@/ai/flows/translate-chapter-flow'; // Commented out
+import { translateChapter } from '@/ai/flows/translate-chapter-flow';
 import type { TranslateChapterInput, TranslateChapterOutput } from '@/ai/flows/translate-chapter-flow';
 
 export async function translateChapterAction(
   chapterHtmlContent: string,
   targetLanguage: TranslateChapterInput['targetLanguage']
 ): Promise<{ translatedContent?: string; error?: string }> {
-  // Immediately return a "coming soon" message
-  return { error: 'Función de IA (Traducción de Capítulo) no disponible. ¡Próximamente!' };
-
-  // Original logic commented out:
-  /*
   if (!chapterHtmlContent || chapterHtmlContent.trim().length === 0) {
-    return { error: 'Chapter content cannot be empty.' };
+    return { error: 'El contenido del capítulo no puede estar vacío.' };
   }
   if (!targetLanguage) {
-    return { error: 'Target language must be specified.' };
+    return { error: 'Se debe especificar el idioma de destino.' };
   }
 
   try {
@@ -29,9 +24,9 @@ export async function translateChapterAction(
   } catch (error) {
     console.error('Error translating chapter:', error);
     if (error instanceof Error) {
-      return { error: `Failed to translate chapter: ${error.message}` };
+      return { error: `Falló la traducción del capítulo: ${error.message}` };
     }
-    return { error: 'An unexpected error occurred while translating the chapter.' };
+    return { error: 'Ocurrió un error inesperado durante la traducción del capítulo.' };
   }
-  */
 }
+

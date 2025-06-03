@@ -66,7 +66,7 @@ export type ReaderFontFamily =
   | 'open-sans'
   | 'lato'
   | 'roboto'
-  | 'source-sans-3' // Corrected name from source-sans-pro
+  | 'source-sans-3' 
   | 'inter'
   | 'arimo'
   | 'tinos'
@@ -88,7 +88,6 @@ export interface ReaderSettings {
   customFontFamily?: string;
   customBackground?: string;
   customForeground?: string;
-  // New settings
   letterSpacing: ReaderLetterSpacing;
   textAlign: ReaderTextAlign;
   textWidth: ReaderTextWidth;
@@ -139,7 +138,6 @@ export interface SaveChapterInput {
     chapterNumber: number;
     chapterTitle?: string;
     chapterContent: string;
-    // creatorId: string; // For server-side auth (future)
 }
 
 export interface ChapterUploadState {
@@ -148,3 +146,7 @@ export interface ChapterUploadState {
   uploadedFiles?: { name: string; status: 'success' | 'error'; reason?: string }[];
   failedFiles?: { name: string; status: 'error'; reason?: string }[];
 }
+
+// For AI Translation Flow
+export type TargetLanguage = typeof import('@/ai/flows/translate-chapter-flow').TARGET_LANGUAGES[number];
+

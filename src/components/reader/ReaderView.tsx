@@ -7,14 +7,14 @@ import { useReadingPosition } from '@/hooks/useReadingPosition';
 import { useRecentlyRead } from '@/hooks/useRecentlyRead';
 import React, { useEffect, useRef, useState, useCallback } from 'react';
 import ReaderControls from './ReaderControls';
-import ReaderSettingsSheet from './ReaderSettingsSheet'; // Import the new sheet
+import ReaderSettingsSheet from './ReaderSettingsSheet'; 
 import { Button } from '@/components/ui/button';
-import { ChevronLeft, ChevronRight, Home } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Home, Loader2 } from 'lucide-react';
 import Link from 'next/link';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Card } from '../ui/card';
-import TranslationDialog from './TranslationDialog'; // Still used for AI feature (disabled)
 import { cn } from '@/lib/utils';
+import { useToast } from '@/hooks/use-toast';
 
 interface ReaderViewProps {
   novel: Novel;
@@ -36,6 +36,7 @@ export default function ReaderView({ novel, currentChapter }: ReaderViewProps) {
     textWidthClass, 
   } = useReaderSettings();
 
+  const { toast } = useToast();
   const chapterKey = `${novel.id}_${currentChapter.id}`;
   const { savePosition, loadPosition } = useReadingPosition(chapterKey);
   const { addRecentlyReadChapter } = useRecentlyRead();
@@ -44,12 +45,15 @@ export default function ReaderView({ novel, currentChapter }: ReaderViewProps) {
   const doubleClickRevealTimerRef = useRef<NodeJS.Timeout | null>(null);
 
   const [isMounted, setIsMounted] = useState(false);
-  const [isTranslationDialogOpen, setIsTranslationDialogOpen] = useState(false); // Still here for the disabled AI feature
-  const [effectiveChapterContent, setEffectiveChapterContent] = useState<string>(currentChapter.content);
+  const [translatedContentForDisplay, setTranslatedContentForDisplay] = useState<string | null>(null);
   
   const [isMouseOverImmersiveControls, setIsMouseOverImmersiveControls] = useState(false);
   const [forceShowImmersiveControlsByDoubleClick, setForceShowImmersiveControlsByDoubleClick] = useState(false);
-  const [isSettingsSheetOpen, setIsSettingsSheetOpen] = useState(false); // For the new settings sheet
+  const [isSettingsSheetOpen, setIsSettingsSheetOpen] = useState(false); 
+  const [isNavigatingToChapter, setIsNavigatingToChapter] = useState(false);
+
+  const contentToRender = translatedContentForDisplay ?? currentChapter.content;
+  const isCurrentlyTranslated = translatedContentForDisplay !== null;
 
   useEffect(() => {
     setIsMounted(true);
@@ -71,19 +75,21 @@ export default function ReaderView({ novel, currentChapter }: ReaderViewProps) {
       });
     }
 
-    setEffectiveChapterContent(currentChapter.content);
+    // Reset translation when chapter changes
+    setTranslatedContentForDisplay(null); 
+
     if (scrollViewportRef.current) {
       scrollViewportRef.current.scrollTop = 0;
     }
     setIsMouseOverImmersiveControls(false);
     setForceShowImmersiveControlsByDoubleClick(false);
-    setIsSettingsSheetOpen(false); // Close sheet on chapter change
+    setIsSettingsSheetOpen(false); 
 
     const timer = setTimeout(() => {
       if (!isMounted || !scrollViewportRef.current) return;
       const scrollableElement = scrollViewportRef.current;
       const position = loadPosition();
-      if (position !== null) {
+      if (position !== null && !translatedContentForDisplay) { // Only load if not showing translation
         scrollableElement.scrollTop = position;
       }
     }, 50);
@@ -98,9 +104,12 @@ export default function ReaderView({ novel, currentChapter }: ReaderViewProps) {
       clearTimeout(debounceTimeoutRef.current);
     }
     debounceTimeoutRef.current = setTimeout(() => {
-      savePosition(scrollTop);
+      // Only save position if we are viewing original content
+      if (!translatedContentForDisplay) {
+        savePosition(scrollTop);
+      }
     }, 500);
-  }, [savePosition]);
+  }, [savePosition, translatedContentForDisplay]);
 
 
   useEffect(() => {
@@ -128,14 +137,14 @@ export default function ReaderView({ novel, currentChapter }: ReaderViewProps) {
   const prevChapter = currentIndex > 0 ? sortedChapters[currentIndex - 1] : null;
   const nextChapter = currentIndex < sortedChapters.length - 1 ? sortedChapters[currentIndex + 1] : null;
 
-  const chapterContentToDisplay = { __html: effectiveChapterContent };
+  const chapterContentToDisplay = { __html: contentToRender };
 
   const handleToggleImmersive = () => {
     setIsImmersive(!isImmersive);
-    if (!isImmersive) { // When turning immersive ON
+    if (!isImmersive) { 
       setIsMouseOverImmersiveControls(false);
       setForceShowImmersiveControlsByDoubleClick(false);
-      setIsSettingsSheetOpen(false); // Close sheet if it was open
+      setIsSettingsSheetOpen(false); 
     }
   };
 
@@ -153,6 +162,30 @@ export default function ReaderView({ novel, currentChapter }: ReaderViewProps) {
       setForceShowImmersiveControlsByDoubleClick(false);
     }, DOUBLE_CLICK_REVEAL_TIMEOUT);
   };
+
+  const handleApplyTranslation = (translatedHtml: string) => {
+    setTranslatedContentForDisplay(translatedHtml);
+    if (scrollViewportRef.current) {
+      scrollViewportRef.current.scrollTop = 0; // Scroll to top when applying translation
+    }
+    toast({ title: "Traducción Aplicada", description: "Mostrando el capítulo traducido."});
+  };
+
+  const handleRevertToOriginal = () => {
+    setTranslatedContentForDisplay(null);
+    // Scroll to saved position or top if no saved position
+    const savedPosition = loadPosition();
+    if (scrollViewportRef.current) {
+        scrollViewportRef.current.scrollTop = savedPosition ?? 0;
+    }
+    toast({ title: "Contenido Original Restaurado"});
+  };
+
+  const handleChapterLinkClick = () => {
+    setIsNavigatingToChapter(true);
+    // Actual navigation is handled by Link component
+  };
+
 
   const actualImmersiveControlsVisible = isImmersive
     ? (isMouseOverImmersiveControls || forceShowImmersiveControlsByDoubleClick || isSettingsSheetOpen)
@@ -182,6 +215,15 @@ export default function ReaderView({ novel, currentChapter }: ReaderViewProps) {
       </div>
     );
   }
+  
+  if (isNavigatingToChapter) {
+    return (
+      <div className="fixed inset-0 z-[200] flex flex-col items-center justify-center bg-background/80 backdrop-blur-sm">
+        <Loader2 className="h-16 w-16 text-primary animate-spin" />
+        <p className="mt-4 text-lg font-semibold text-primary">Cargando capítulo...</p>
+      </div>
+    );
+  }
 
   return (
     <div className={`reader-container flex flex-col bg-background transition-default ${isImmersive ? 'immersive fixed inset-0 z-[100]' : 'relative h-[calc(100vh-var(--header-height,8rem))]'}`}>
@@ -205,21 +247,23 @@ export default function ReaderView({ novel, currentChapter }: ReaderViewProps) {
       )}
 
       <ReaderControls
-        chapterHtmlContent={effectiveChapterContent}
+        chapterHtmlContent={currentChapter.content} // Always pass original for new translations
         onToggleImmersive={handleToggleImmersive}
         isImmersive={isImmersive}
         novelId={novel.id}
         isVisibleInImmersiveMode={actualImmersiveControlsVisible}
         onHoverStateChange={setIsMouseOverImmersiveControls}
-        onToggleSettingsSheet={handleToggleSettingsSheet} // New prop
-        isSettingsSheetOpen={isSettingsSheetOpen} // Pass state
+        onToggleSettingsSheet={handleToggleSettingsSheet} 
+        isSettingsSheetOpen={isSettingsSheetOpen} 
+        onApplyTranslation={handleApplyTranslation}
+        onRevertToOriginal={handleRevertToOriginal}
+        isCurrentlyTranslated={isCurrentlyTranslated}
       />
       
       <ReaderSettingsSheet 
         isOpen={isSettingsSheetOpen}
         onOpenChange={setIsSettingsSheetOpen}
       />
-
 
       <ScrollArea
         className={`flex-grow ${isImmersive ? 'h-full' : 'm-2 mt-0 rounded-t-none shadow'}`}
@@ -234,21 +278,21 @@ export default function ReaderView({ novel, currentChapter }: ReaderViewProps) {
         <Card className={`mx-auto my-6 ${textWidthClass} ${isImmersive ? 'bg-transparent border-none shadow-none text-muted-foreground/80' : 'shadow rounded-lg border'}`}>
           <nav className="p-4 flex justify-between items-center">
             {prevChapter ? (
-              <Button variant="outline" asChild>
+              <Button variant="outline" asChild onClick={handleChapterLinkClick}>
                 <Link href={`/novels/${novel.id}/chapters/${prevChapter.id}`}>
                   <ChevronLeft className="mr-2 h-4 w-4" /> Anterior
                 </Link>
               </Button>
             ) : <Button variant="outline" disabled><ChevronLeft className="mr-2 h-4 w-4" /> Anterior</Button>}
 
-            <Button variant="ghost" asChild title="Volver a Detalles de la Novela">
+            <Button variant="ghost" asChild title="Volver a Detalles de la Novela" onClick={handleChapterLinkClick}>
               <Link href={`/novels/${novel.id}`}>
                 <Home className="h-5 w-5" />
               </Link>
             </Button>
 
             {nextChapter ? (
-              <Button variant="outline" asChild>
+              <Button variant="outline" asChild onClick={handleChapterLinkClick}>
                 <Link href={`/novels/${novel.id}/chapters/${nextChapter.id}`}>
                   Siguiente <ChevronRight className="ml-2 h-4 w-4" />
                 </Link>
@@ -257,16 +301,7 @@ export default function ReaderView({ novel, currentChapter }: ReaderViewProps) {
           </nav>
         </Card>
       </ScrollArea>
-
-      {/* TranslationDialog is kept for the (currently disabled) AI feature trigger, does not affect main settings sheet */}
-      <TranslationDialog
-        isOpen={isTranslationDialogOpen}
-        onOpenChange={setIsTranslationDialogOpen}
-        originalHtmlContent={currentChapter.content}
-        targetLanguage={null}
-        onLanguageChangeRequest={() => { setIsTranslationDialogOpen(false); }}
-        onApplyTranslation={() => { /* No-op */ }}
-      />
     </div>
   );
 }
+
