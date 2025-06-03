@@ -37,6 +37,8 @@ export async function fetchFromGitHub<T>(
   const owner = process.env.GITHUB_REPO_OWNER;
   const repo = process.env.GITHUB_REPO_NAME;
 
+  console.log(`[GitHub Lib - fetchFromGitHub] Initializing. Owner: '${owner}', Repo: '${repo}', PAT Present: ${!!pat}, Path: '${path}', Method: '${method}'`);
+
   const missingEnvVars: string[] = [];
   if (!owner) missingEnvVars.push("GITHUB_REPO_OWNER");
   if (!repo) missingEnvVars.push("GITHUB_REPO_NAME");
@@ -44,14 +46,17 @@ export async function fetchFromGitHub<T>(
   if ((method === 'PUT' || method === 'DELETE') && !pat) {
       missingEnvVars.push("GITHUB_PAT (requerido para operaciones de escritura/eliminación)");
   }
-  // Para GET a 'contents/', si el repo es privado, el PAT es esencial.
-  // La API fallará con 404 si el repo es privado y no hay PAT o es inválido.
-
-
+  
   if (missingEnvVars.length > 0) {
-    const errorMsg = `[GitHub Lib - fetchFromGitHub] Required GitHub environment variable(s) not set: ${missingEnvVars.join(', ')}. Please check your .env file or Netlify environment variables. Path: ${path}`;
+    const errorMsg = `[GitHub Lib - fetchFromGitHub] CRITICAL: Required GitHub environment variable(s) not set: ${missingEnvVars.join(', ')}. Please verify your Netlify environment variables. Path: ${path}`;
     console.error(errorMsg);
+    // If owner or repo are missing, or PAT is missing for write operations, this is a hard stop.
     throw new Error(errorMsg);
+  }
+  
+  // Warning if PAT is missing for GET requests, as it's crucial for private repos.
+  if (method === 'GET' && !pat) {
+    console.warn(`[GitHub Lib - fetchFromGitHub] WARNING: GITHUB_PAT is not set. If the repository '${owner}/${repo}' is private, this GET request to '${path}' will likely fail or return a 404. This PAT is highly recommended even for public repositories to avoid rate limiting.`);
   }
 
   const url = `${GITHUB_API_BASE}/repos/${owner}/${repo}/${path}`;
@@ -63,7 +68,6 @@ export async function fetchFromGitHub<T>(
   if (pat) {
     headers['Authorization'] = `token ${pat}`;
   }
-
 
   if ((method === 'PUT' || method === 'DELETE') && body) {
     headers['Content-Type'] = 'application/json';
@@ -79,7 +83,9 @@ export async function fetchFromGitHub<T>(
     options.body = JSON.stringify(body);
   }
   
+  console.log(`[GitHub Lib - fetchFromGitHub] Attempting ${method} request to URL: ${url}`);
   const response = await fetch(url, options);
+  console.log(`[GitHub Lib - fetchFromGitHub] Response status for ${method} ${url}: ${response.status} ${response.statusText}`);
 
   if (!response.ok) {
     let errorData;
@@ -91,27 +97,31 @@ export async function fetchFromGitHub<T>(
     
     let detailedErrorMessage = `[GitHub Lib - fetchFromGitHub] GitHub API error for ${method} ${url}: ${response.status} - ${errorData.message || response.statusText}`;
     if (response.status === 404 && path.startsWith('contents/')) {
-        detailedErrorMessage += `\n  Possible causes for 404 on 'contents/':
-    1. Repository '${owner}/${repo}' or path '${path}' does not exist.
-    2. If the repository is private, the GITHUB_PAT may be missing, invalid, or lack 'repo' scope permissions.
-    Please verify GITHUB_REPO_OWNER, GITHUB_REPO_NAME, GITHUB_PAT (if repo is private), and that the repository structure is correct.`;
+        detailedErrorMessage += `\n  For 404 on 'contents/':
+    1. Verify GITHUB_REPO_OWNER ('${owner}') and GITHUB_REPO_NAME ('${repo}'). Case-sensitive!
+    2. If repository is private, confirm GITHUB_PAT is valid, not expired, and has 'repo' scope.
+    3. Ensure the base path '${path}' actually exists in the repository.
+    The constructed URL was: ${url}`;
     } else if (response.status === 401 || response.status === 403) {
-        detailedErrorMessage += `\n  This suggests an authentication or authorization issue with GitHub.
-    1. Ensure GITHUB_PAT is correct and has necessary permissions (e.g., 'repo' scope for private repos).
-    2. The PAT might have expired or been revoked.`;
+        detailedErrorMessage += `\n  Authentication/Authorization error (401/403):
+    1. GITHUB_PAT may be incorrect, expired, revoked, or lack necessary permissions (e.g., 'repo' scope for private repos).
+    The constructed URL was: ${url}`;
+    } else {
+        detailedErrorMessage += `\n  The constructed URL was: ${url}`;
     }
-    console.error(detailedErrorMessage, 'Full error response:', errorData);
+    console.error(detailedErrorMessage, 'Full error response object:', errorData);
 
     if (method === 'GET' && response.status === 404) {
-      return null as T;
+      return null as T; // Critical for fetchNovels to handle gracefully
     }
-    throw new Error(`Failed to ${method === 'GET' ? 'fetch from' : method === 'PUT' ? 'write to' : 'delete from'} GitHub: ${errorData.message || response.statusText}. Status: ${response.status}`);
+    // For other errors, or 404s not on GET, throw.
+    throw new Error(`Failed to ${method === 'GET' ? 'fetch from' : method === 'PUT' ? 'write to' : 'delete from'} GitHub: ${errorData.message || response.statusText}. Status: ${response.status}. URL: ${url}`);
   }
 
-  if (isDelete && response.status === 200) {
-     return { commit: { sha: 'deleted' } } as T;
+  if (isDelete && response.status === 200) { // GitHub DELETE can return 200 with commit info or 204
+     return { commit: { sha: 'deleted' } } as T; // Simulate a response if needed by caller
   }
-  if (response.status === 204 || response.status === 205 ) {
+  if (response.status === 204 ) { // No Content, common for successful DELETE without content, or some PUTs
     return null as T;
   }
 
@@ -148,10 +158,11 @@ export async function getFileSha(filePath: string): Promise<string | null> {
     const fileData = await fetchFromGitHub<GitHubFile | null>(`contents/${normalizedFilePath}?ref=${DEFAULT_BRANCH}`, 'GET', undefined, false, { cache: 'no-store' }); // Use no-store for SHA to get latest
     return fileData?.sha || null;
   } catch (error: any) {
-    if (error.message && error.message.includes('404')) {
+    // Error should be logged by fetchFromGitHub already
+    if (error.message && error.message.includes('404')) { // Check if message contains 404
       return null; // File doesn't exist
     }
-    console.error(`[GitHub Lib - getFileSha] Error fetching SHA for '${filePath}':`, error.message);
+    console.error(`[GitHub Lib - getFileSha] Error explicitly caught while fetching SHA for '${filePath}':`, error.message);
     return null;
   }
 }
@@ -162,7 +173,7 @@ export async function fetchFileContent(filePath: string): Promise<{ content: str
     const fileData = await fetchFromGitHub<GitHubFile | null>(`contents/${normalizedFilePath}?ref=${DEFAULT_BRANCH}`, 'GET', undefined, false, { next: { revalidate: 60 } });
 
     if (!fileData || fileData.type !== 'file' || typeof fileData.content === 'undefined' || fileData.encoding !== 'base64') {
-      console.warn(`[GitHub Lib - fetchFileContent] File '${filePath}' not found, is not a file, or has no content/wrong encoding.`);
+      console.warn(`[GitHub Lib - fetchFileContent] File '${filePath}' not found, is not a file, or has no content/wrong encoding. FileData received:`, fileData);
       return null;
     }
     return {
@@ -170,10 +181,12 @@ export async function fetchFileContent(filePath: string): Promise<{ content: str
       sha: fileData.sha,
     };
   } catch (error: any) {
-    console.error(`[GitHub Lib - fetchFileContent] Error fetching file content for '${filePath}':`, error.message);
+    // Error should be logged by fetchFromGitHub already
      if (error.message && (error.message.includes('404') || error.message.includes('Not Found'))) {
+        console.warn(`[GitHub Lib - fetchFileContent] Explicitly caught 404 for '${filePath}'.`);
         return null;
     }
+    console.error(`[GitHub Lib - fetchFileContent] Unexpected error explicitly caught for '${filePath}':`, error.message);
     return null;
   }
 }
@@ -183,48 +196,55 @@ export async function fetchNovels(): Promise<Novel[]> {
   const owner = process.env.GITHUB_REPO_OWNER;
   const repoName = process.env.GITHUB_REPO_NAME;
 
-  // Las comprobaciones de variables de entorno GITHUB_REPO_OWNER y GITHUB_REPO_NAME
-  // ya ocurren en fetchFromGitHub y lanzarán un error si faltan.
+  console.log(`[GitHub Lib - fetchNovels] Starting to fetch novels. Using Owner: '${owner}', Repo: '${repoName}'`);
 
-  let rootContents: GitHubFile[];
+  let rootContents: GitHubFile[] | null; // Allow null here
   try {
-    rootContents = await fetchFromGitHub<GitHubFile[]>('contents/', 'GET', undefined, false, { next: { revalidate: 300 } });
-    if (!rootContents) {
-        console.error(`[GitHub Lib - fetchNovels] Failed to fetch root contents from GitHub for repository '${owner}/${repoName}' (API returned null). 
-This often means the 'contents/' path was not found (404 error).
+    // Changed cache to no-store for this critical fetch during debugging
+    rootContents = await fetchFromGitHub<GitHubFile[] | null>('contents/', 'GET', undefined, false, { cache: 'no-store' }); 
+    
+    if (rootContents === null) { // Explicitly check for null, which fetchFromGitHub returns on 404 for GET
+        console.error(`[GitHub Lib - fetchNovels] CRITICAL: Failed to fetch root contents from GitHub for repository '${owner}/${repoName}' (API returned null, likely a 404 error). 
+This means the 'contents/' path for your repository could not be accessed.
 Possible reasons:
-  1. Incorrect GITHUB_REPO_OWNER ('${owner}') or GITHUB_REPO_NAME ('${repoName}').
-  2. The repository is private and GITHUB_PAT is missing, invalid, or lacks permissions.
-  3. The repository is empty or does not have a 'contents/' directory at its root (though 'contents/' refers to the root content listing).
-Please verify your Netlify environment variables and repository settings.`);
-        return [];
+  1. Incorrect GITHUB_REPO_OWNER ('${owner}') or GITHUB_REPO_NAME ('${repoName}') in Netlify. Double-check for typos and case-sensitivity.
+  2. If the repository is private: GITHUB_PAT in Netlify is missing, invalid, expired, or lacks sufficient 'repo' scope permissions.
+  3. The repository '${owner}/${repoName}' does not exist or you've lost access.
+Please verify your Netlify environment variables and repository settings. NO NOVELS WILL BE LOADED.`);
+        return []; // Stop processing if root contents can't be fetched
     }
     if (rootContents.length === 0) {
-        console.warn(`[GitHub Lib - fetchNovels] Fetched root contents for '${owner}/${repoName}', but it's an empty array. This means the root of your repository appears to have no directories or files that represent novels. Ensure your novel folders are at the root of the repository.`);
-        // No es necesariamente un error si el repositorio está intencionalmente vacío de novelas.
+        console.warn(`[GitHub Lib - fetchNovels] Fetched root contents for '${owner}/${repoName}', but it's an empty array. This means the root of your repository has no files or directories. If you have novels, ensure their folders are at the root of the repository.`);
+        // It's not necessarily an error if the repo is intentionally empty of novel folders.
     }
   } catch (error: any) {
-    // El error ya debería haber sido logueado con detalles por fetchFromGitHub.
-    // Solo añadimos un contexto específico de fetchNovels.
-    console.error(`[GitHub Lib - fetchNovels] An exception occurred while trying to fetch root contents for repository '${owner}/${repoName}'. The operation cannot proceed. Details should be in preceding logs from fetchFromGitHub.`);
+    console.error(`[GitHub Lib - fetchNovels] An unhandled exception occurred while trying to fetch root contents for repository '${owner}/${repoName}'. Operation cannot proceed. Details: ${error.message}`, error);
     return [];
   }
 
   const novelDirs = rootContents.filter(item => item.type === 'dir' && !item.name.startsWith('.') && item.name !== 'users');
   if (novelDirs.length === 0 && rootContents.length > 0) {
-    console.warn(`[GitHub Lib - fetchNovels] No directories that look like novel folders were found at the root of '${owner}/${repoName}'. Novel folders should not start with '.' or be named 'users'. Current non-hidden directories: ${rootContents.filter(i => i.type ==='dir' && !i.name.startsWith('.')).map(d => d.name).join(', ') || 'None'}`);
+    const allDirs = rootContents.filter(i => i.type === 'dir').map(d => d.name).join(', ') || 'None';
+    console.warn(`[GitHub Lib - fetchNovels] No directories that appear to be novel folders were found at the root of '${owner}/${repoName}'. 
+Novel folders should not start with '.' (e.g., '.git', '.vscode') and should not be named 'users'. 
+Found directories: ${allDirs}. If these are your novel folders, check their naming. If no novel-like folders are listed, ensure they are in the root of the repository.`);
+  } else if (novelDirs.length === 0 && rootContents.length === 0) {
+    // This case is covered by the "empty array" log above.
   }
   
   const novels: Novel[] = [];
+  console.log(`[GitHub Lib - fetchNovels] Found ${novelDirs.length} potential novel director(ies): ${novelDirs.map(d => d.name).join(', ')}`);
 
   for (const dir of novelDirs) {
     try {
       const novelId = dir.name;
       const novelPath = dir.path;
+      console.log(`[GitHub Lib - fetchNovels] Processing directory: '${novelId}'`);
       const infoJsonFile = { path: `${novelPath}/info.json`, name: 'info.json' };
       const fileData = await fetchFileContent(infoJsonFile.path);
 
       if (!fileData) {
+        console.warn(`[GitHub Lib - fetchNovels] Novel '${novelId}': info.json not found or unreadable at path '${infoJsonFile.path}'. Skipping this novel.`);
         continue;
       }
       const { content: infoJsonContent, sha: infoJsonSha } = fileData;
@@ -233,7 +253,7 @@ Please verify your Netlify environment variables and repository settings.`);
       try {
         info = JSON.parse(infoJsonContent);
       } catch (parseError: any) {
-        console.error(`[GitHub Lib - fetchNovels] Error parsing info.json for novel ${novelId} (path: ${infoJsonFile.path}): ${parseError.message}. Skipping this novel.`);
+        console.error(`[GitHub Lib - fetchNovels] Error parsing info.json for novel ${novelId} (path: ${infoJsonFile.path}): ${parseError.message}. Content was: "${infoJsonContent.substring(0,100)}...". Skipping this novel.`);
         continue;
       }
 
@@ -244,17 +264,19 @@ Please verify your Netlify environment variables and repository settings.`);
         coverImage = `https://placehold.co/300x450.png?text=No+Cover`;
       }
 
-      let novelContents: GitHubFile[];
+      let novelDirContents: GitHubFile[] | null;
       try {
-        novelContents = await fetchFromGitHub<GitHubFile[]>(`contents/${novelPath}?ref=${DEFAULT_BRANCH}`, 'GET', undefined, false, { next: { revalidate: 120 } });
-         if (!novelContents) {
-          novelContents = [];
+        novelDirContents = await fetchFromGitHub<GitHubFile[] | null>(`contents/${novelPath}?ref=${DEFAULT_BRANCH}`, 'GET', undefined, false, { next: { revalidate: 120 } });
+         if (!novelDirContents) { // If 404 for this specific novel folder
+          console.warn(`[GitHub Lib - fetchNovels] Could not fetch contents for novel directory '${novelPath}'. Skipping chapter processing for this novel.`);
+          novelDirContents = []; // Treat as empty to proceed without chapters
         }
       } catch (e: any) {
-        novelContents = [];
+        console.error(`[GitHub Lib - fetchNovels] Error fetching contents for novel directory '${novelPath}': ${e.message}. Skipping chapter processing for this novel.`);
+        novelDirContents = [];
       }
 
-      const chapterFiles = novelContents
+      const chapterFiles = novelDirContents
         .filter(f => f.type === 'file' && f.name.startsWith('chapter-') && f.name.endsWith('.html'))
         .sort((a, b) => {
           const orderA = parseInt(a.name.match(/chapter-(\d+)\.html$/)?.[1] || '0');
@@ -267,11 +289,12 @@ Please verify your Netlify environment variables and repository settings.`);
         const order = orderMatch ? parseInt(orderMatch[1]) : 0;
         return {
           id: file.name.replace('.html', ''),
-          title: `Capítulo ${order}`,
+          title: `Capítulo ${order}`, // Default title, will be overridden if h1 found in content
           order: order,
         };
       });
-
+      
+      console.log(`[GitHub Lib - fetchNovels] Successfully processed info.json for novel '${novelId}'. Found ${chaptersMetadata.length} chapter files.`);
       novels.push({
         id: novelId,
         title: info.titulo,
@@ -284,36 +307,36 @@ Please verify your Netlify environment variables and repository settings.`);
         etiquetas: info.etiquetas,
         categoria: info.categoria,
         traductor: info.traductor,
-        lastUpdateDate: info.fecha_lanzamiento,
+        lastUpdateDate: info.fecha_lanzamiento, // Assuming this is the primary date for now
         infoJsonSha: infoJsonSha,
         creatorId: info.creatorId,
         status: info.status,
         rating_platform: info.rating_platform,
       });
-    } catch (error) {
-      console.error(`[GitHub Lib - fetchNovels] Error processing novel directory '${dir.name}':`, error);
+    } catch (error: any) {
+      console.error(`[GitHub Lib - fetchNovels] Unhandled error processing potential novel directory '${dir.name}': ${error.message}`, error);
     }
   }
+
   if (novels.length === 0 && novelDirs.length > 0) {
-    console.warn(`[GitHub Lib - fetchNovels] Processed ${novelDirs.length} potential novel director(ies), but ended up with 0 valid novels. Check for parsing errors or missing info.json files in the logs above.`);
+    console.warn(`[GitHub Lib - fetchNovels] Processed ${novelDirs.length} potential novel director(ies), but resulted in 0 valid novels being added to the list. Check logs above for parsing errors or missing info.json files.`);
   }
+  console.log(`[GitHub Lib - fetchNovels] Finished. Returning ${novels.length} novel(s).`);
   return novels;
 }
 
 export async function fetchNovelById(id: string): Promise<Novel | undefined> {
   const owner = process.env.GITHUB_REPO_OWNER;
   const repoName = process.env.GITHUB_REPO_NAME;
-
-  // Las comprobaciones de GITHUB_REPO_OWNER y GITHUB_REPO_NAME ya ocurren en fetchFromGitHub
-  // y lanzarán un error si faltan, que será capturado abajo.
+  console.log(`[GitHub Lib - fetchNovelById] Fetching novel by ID: '${id}'. Using Owner: '${owner}', Repo: '${repoName}'`);
 
   try {
-    const novelFolderPath = id;
+    const novelFolderPath = id; // Assuming id is the folder name
     const infoJsonFilePath = `${novelFolderPath}/info.json`;
 
     const fileData = await fetchFileContent(infoJsonFilePath);
     if (!fileData) {
-      console.warn(`[GitHub Lib - fetchNovelById] Novel '${id}': info.json not found or unreadable. This could be due to incorrect novel ID, or the info.json file is missing in the folder '${novelFolderPath}' of the repository '${owner}/${repoName}'.`);
+      console.warn(`[GitHub Lib - fetchNovelById] Novel '${id}': info.json not found or unreadable at path '${infoJsonFilePath}'. This could be due to an incorrect novel ID, or the info.json file is missing in the folder '${novelFolderPath}' of the repository '${owner}/${repoName}'.`);
       return undefined;
     }
     const { content: infoJsonContent, sha: infoJsonSha } = fileData;
@@ -322,7 +345,7 @@ export async function fetchNovelById(id: string): Promise<Novel | undefined> {
     try {
       info = JSON.parse(infoJsonContent);
     } catch (parseError: any) {
-      console.error(`[GitHub Lib - fetchNovelById] Error parsing info.json for novel '${id}' (path: '${infoJsonFilePath}'): ${parseError.message}`);
+      console.error(`[GitHub Lib - fetchNovelById] Error parsing info.json for novel '${id}' (path: '${infoJsonFilePath}'): ${parseError.message}. Content was: "${infoJsonContent.substring(0,100)}..."`);
       return undefined;
     }
 
@@ -333,21 +356,19 @@ export async function fetchNovelById(id: string): Promise<Novel | undefined> {
       coverImage = 'https://placehold.co/300x450.png?text=No+Cover';
     }
 
-    let novelContents: GitHubFile[];
+    let novelDirContents: GitHubFile[] | null;
     try {
-        novelContents = await fetchFromGitHub<GitHubFile[]>(`contents/${novelFolderPath}?ref=${DEFAULT_BRANCH}`, 'GET', undefined, false, { next: { revalidate: 120 } });
-         if (!novelContents) {
-            novelContents = [];
+        novelDirContents = await fetchFromGitHub<GitHubFile[] | null>(`contents/${novelFolderPath}?ref=${DEFAULT_BRANCH}`, 'GET', undefined, false, { next: { revalidate: 120 } });
+         if (!novelDirContents) {
+            console.warn(`[GitHub Lib - fetchNovelById] Could not fetch contents for novel directory '${novelFolderPath}' for novel '${id}'. Assuming no chapters.`);
+            novelDirContents = [];
         }
     } catch (error: any) {
-        if (error.message && (error.message.includes('404') || error.message.includes('Not Found'))) {
-            novelContents = [];
-        } else {
-          novelContents = [];
-        }
+        console.error(`[GitHub Lib - fetchNovelById] Error fetching contents for novel directory '${novelFolderPath}' for novel '${id}': ${error.message}. Assuming no chapters.`);
+        novelDirContents = [];
     }
 
-    const chapterFiles = novelContents
+    const chapterFiles = novelDirContents
       .filter(f => f.type === 'file' && f.name.startsWith('chapter-') && f.name.endsWith('.html'))
       .sort((a, b) => {
         const orderA = parseInt(a.name.match(/chapter-(\d+)\.html$/)?.[1] || '0');
@@ -364,7 +385,8 @@ export async function fetchNovelById(id: string): Promise<Novel | undefined> {
         order: order,
       };
     });
-
+    
+    console.log(`[GitHub Lib - fetchNovelById] Successfully processed novel '${id}'. Found ${chaptersMetadata.length} chapter files.`);
     return {
       id: id,
       title: info.titulo,
@@ -391,6 +413,7 @@ export async function fetchNovelById(id: string): Promise<Novel | undefined> {
 }
 
 export async function fetchChapter(novelId: string, chapterId: string): Promise<{ novel: Novel; chapter: Chapter } | null> {
+  console.log(`[GitHub Lib - fetchChapter] Fetching chapter '${chapterId}' for novel '${novelId}'`);
   const novel = await fetchNovelById(novelId);
   if (!novel) {
     console.warn(`[GitHub Lib - fetchChapter] Novel with id '${novelId}' not found when trying to fetch chapter '${chapterId}'.`);
@@ -399,7 +422,7 @@ export async function fetchChapter(novelId: string, chapterId: string): Promise<
 
   const chapterMetadata = novel.chapters.find(ch => ch.id === chapterId);
   if (!chapterMetadata) {
-    console.warn(`[GitHub Lib - fetchChapter] Chapter metadata for '${chapterId}' not found in novel '${novelId}'. The chapter might not exist or there's a mismatch in IDs.`);
+    console.warn(`[GitHub Lib - fetchChapter] Chapter metadata for '${chapterId}' not found in novel '${novelId}'. Available chapter IDs: ${novel.chapters.map(c => c.id).join(', ')}. The chapter might not exist or there's a mismatch in IDs.`);
     return null;
   }
 
@@ -411,10 +434,30 @@ export async function fetchChapter(novelId: string, chapterId: string): Promise<
     return null;
   }
 
-  let chapterTitle = chapterMetadata.title;
-  const titleMatch = fileData.content.match(/<h1[^>]*>(.*?)<\/h1>/i);
-  if (titleMatch && titleMatch[1]) {
-      chapterTitle = titleMatch[1].trim();
+  let chapterTitle = chapterMetadata.title; // Default to metadata title
+  // Attempt to extract H1 from content, more robustly
+  const tempDiv = typeof document !== 'undefined' ? document.createElement('div') : null;
+  let h1Text: string | null = null;
+
+  if (tempDiv) {
+      tempDiv.innerHTML = fileData.content;
+      const h1Element = tempDiv.querySelector('h1');
+      if (h1Element && h1Element.textContent) {
+          h1Text = h1Element.textContent.trim();
+      }
+  } else {
+      // Basic regex fallback for server-side if document is not available
+      const titleMatch = fileData.content.match(/<h1[^>]*>([\s\S]*?)<\/h1>/i);
+      if (titleMatch && titleMatch[1]) {
+          h1Text = titleMatch[1].replace(/<[^>]+>/g, '').trim(); // Strip any inner tags from H1
+      }
+  }
+  
+  if (h1Text && h1Text.length > 0) {
+    chapterTitle = h1Text;
+    console.log(`[GitHub Lib - fetchChapter] Extracted H1 title for '${chapterId}': '${chapterTitle}'`);
+  } else {
+    console.log(`[GitHub Lib - fetchChapter] No H1 title found for '${chapterId}', using metadata title: '${chapterTitle}'`);
   }
 
 
@@ -425,7 +468,10 @@ export async function fetchChapter(novelId: string, chapterId: string): Promise<
     content: fileData.content,
     path: `/novels/${novelId}/chapters/${chapterId}`,
   };
-
+  
+  console.log(`[GitHub Lib - fetchChapter] Successfully fetched chapter '${chapterId}' for novel '${novelId}'.`);
   return { novel, chapter };
 }
+    
+
     
