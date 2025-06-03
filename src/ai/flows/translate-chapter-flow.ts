@@ -1,4 +1,3 @@
-
 'use server';
 /**
  * @fileOverview A chapter translation AI agent.
@@ -10,25 +9,26 @@
 
 import {ai} from '@/ai/genkit';
 import {z} from 'genkit';
+import type { TargetLanguage } from '@/lib/types'; // Still useful for function signature type safety
 
-export const TARGET_LANGUAGES = [
-  "English", 
-  "Portuguese", 
-  "French", 
+// Define the languages locally for z.enum and describe to avoid issues with 'use server' and imported objects in schemas
+const localTargetLanguagesList = [
+  "English",
+  "Portuguese",
+  "French",
   "Italian",
   "German",
   "Japanese",
   "Korean",
   "Chinese (Simplified)"
 ] as const;
-export type TargetLanguage = typeof TARGET_LANGUAGES[number];
 
 const TranslateChapterInputSchema = z.object({
   chapterHtmlContent: z
     .string()
     .describe('The HTML content of the chapter to be translated.'),
-  targetLanguage: z.enum(TARGET_LANGUAGES)
-    .describe(`The target language for translation. Supported languages are: ${TARGET_LANGUAGES.join(', ')}.`),
+  targetLanguage: z.enum(localTargetLanguagesList) // Use the local list here
+    .describe(`The target language for translation. Supported languages are: ${localTargetLanguagesList.join(', ')}.`),
 });
 export type TranslateChapterInput = z.infer<typeof TranslateChapterInputSchema>;
 
@@ -64,7 +64,7 @@ const translateChapterFlow = ai.defineFlow(
     inputSchema: TranslateChapterInputSchema,
     outputSchema: TranslateChapterOutputSchema,
   },
-  async input => {
+  async (input) => { // Explicitly type flowInput if needed, inferred here
     // Consider adding safety settings if needed for specific content
     // config: {
     //   safetySettings: [
@@ -79,4 +79,3 @@ const translateChapterFlow = ai.defineFlow(
     return output;
   }
 );
-
