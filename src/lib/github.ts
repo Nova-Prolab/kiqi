@@ -31,7 +31,7 @@ export async function fetchFromGitHub<T>(
   method: 'GET' | 'PUT' | 'DELETE' = 'GET',
   body?: Record<string, unknown>,
   isDelete: boolean = false,
-  cacheOptions: RequestCache | { next?: { revalidate?: number | false } } = { next: { revalidate: 60 } } // Default revalidate every 60 seconds
+  cacheOptions: RequestCache | { next?: { revalidate?: number | false } } = { next: { revalidate: 60 } }
 ): Promise<T | null> { // Modified to allow T | null
   const owner = process.env.GITHUB_REPO_OWNER;
   const repo = process.env.GITHUB_REPO_NAME;
@@ -46,21 +46,23 @@ export async function fetchFromGitHub<T>(
   if (!owner) missingEnvVars.push("GITHUB_REPO_OWNER");
   if (!repo) missingEnvVars.push("GITHUB_REPO_NAME");
   
-  if ((method === 'PUT' || method === 'DELETE') && !pat) {
-      missingEnvVars.push("GITHUB_PAT (requerido para operaciones de escritura/eliminación)");
-  }
-  
-  if (missingEnvVars.includes("GITHUB_REPO_OWNER") || missingEnvVars.includes("GITHUB_REPO_NAME")) {
+  if (missingEnvVars.length > 0) {
     const errorMsg = `[GitHub Lib - fetchFromGitHub] CRITICAL CONFIGURATION ISSUE: The following essential GitHub environment variable(s) are NOT SET in your Netlify environment: ${missingEnvVars.join(', ')}. The application cannot connect to GitHub without them. Please go to your Netlify site settings, find "Environment variables", and ensure GITHUB_REPO_OWNER and GITHUB_REPO_NAME are correctly defined and have the proper values. Path that was attempted: ${path}`;
-    console.error(errorMsg); // This log will still appear
-    // Instead of throwing for missing owner/repo, resolve with null to indicate failure.
+    console.error(errorMsg);
+    // Return null to prevent a crash, allowing the app to show "no novels" gracefully.
     return null;
   }
   
-  // Warning if PAT is missing for GET requests, as it's crucial for private repos.
-  // This warning is now more prominent if pat is missing when owner and repo are set.
+  if ((method === 'PUT' || method === 'DELETE') && !pat) {
+      const errorMsg = `[GitHub Lib - fetchFromGitHub] CRITICAL CONFIGURATION ISSUE: The GITHUB_PAT environment variable is required for write/delete operations but is NOT SET in your Netlify environment. Operation was ${method} on path '${path}'.`;
+      console.error(errorMsg);
+      // For write operations, we must throw an error as they cannot proceed.
+      throw new Error(errorMsg);
+  }
+  
+  // Adjusted warning for public repositories
   if (method === 'GET' && !pat) {
-    console.warn(`[GitHub Lib - fetchFromGitHub] WARNING: GITHUB_PAT is not set. If the repository '${owner}/${repo}' is private, this GET request to '${path}' will likely fail or return a 404. This PAT is highly recommended even for public repositories to avoid rate limiting. Ensure GITHUB_PAT is set in your Netlify environment variables.`);
+    console.warn(`[GitHub Lib - fetchFromGitHub] WARNING: GITHUB_PAT is not set. For public repositories, this is okay, but you may encounter API rate limits from GitHub on a high-traffic site. Providing a PAT is recommended to avoid this.`);
   }
 
 
@@ -104,12 +106,11 @@ export async function fetchFromGitHub<T>(
     if (response.status === 404 && path.startsWith('contents/')) {
         detailedErrorMessage += `\n  For 404 on 'contents/':
     1. Verify GITHUB_REPO_OWNER ('${owner}') and GITHUB_REPO_NAME ('${repo}'). Case-sensitive!
-    2. If repository is private, confirm GITHUB_PAT is valid, not expired, and has 'repo' scope.
-    3. Ensure the base path '${path}' actually exists in the repository.
+    2. Since the repo is public, a 404 likely means the repository name is wrong or the base path '${path}' does not exist.
     The constructed URL was: ${url}`;
     } else if (response.status === 401 || response.status === 403) {
         detailedErrorMessage += `\n  Authentication/Authorization error (${response.status}):
-    1. GITHUB_PAT may be incorrect, expired, revoked, or lack necessary permissions (e.g., 'repo' scope for private repos). Check your Netlify environment variable GITHUB_PAT.
+    1. If you provided a GITHUB_PAT, it may be incorrect, expired, or revoked. Check your Netlify environment variable GITHUB_PAT.
     The PAT snippet being used by the app is: ${patSnippet} (Length: ${patLength}). Compare this with the PAT you have set in Netlify.
     The constructed URL was: ${url}`;
     } else {
