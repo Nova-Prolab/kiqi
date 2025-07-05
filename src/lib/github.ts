@@ -32,7 +32,7 @@ export async function fetchFromGitHub<T>(
   body?: Record<string, unknown>,
   isDelete: boolean = false,
   cacheOptions: RequestCache | { next?: { revalidate?: number | false } } = { next: { revalidate: 60 } }
-): Promise<T | null> { // Modified to allow T | null
+): Promise<T | null> {
   const owner = process.env.GITHUB_REPO_OWNER;
   const repo = process.env.GITHUB_REPO_NAME;
   const pat = process.env.GITHUB_PAT;
@@ -45,26 +45,24 @@ export async function fetchFromGitHub<T>(
   const missingEnvVars: string[] = [];
   if (!owner) missingEnvVars.push("GITHUB_REPO_OWNER");
   if (!repo) missingEnvVars.push("GITHUB_REPO_NAME");
-  
+
   if (missingEnvVars.length > 0) {
-    const errorMsg = `[GitHub Lib - fetchFromGitHub] CRITICAL CONFIGURATION ISSUE: The following essential GitHub environment variable(s) are NOT SET in your Netlify environment: ${missingEnvVars.join(', ')}. The application cannot connect to GitHub without them. Please go to your Netlify site settings, find "Environment variables", and ensure GITHUB_REPO_OWNER and GITHUB_REPO_NAME are correctly defined and have the proper values. Path that was attempted: ${path}`;
+    const errorMsg = `[GitHub Lib - fetchFromGitHub] CRITICAL: Required GitHub environment variable(s) not set: ${missingEnvVars.join(', ')}. Please verify your Netlify environment variables. Path: ${path}`;
     console.error(errorMsg);
     // Return null to prevent a crash, allowing the app to show "no novels" gracefully.
     return null;
   }
   
+  // PAT is only required for write/delete, not for reading a public repo
   if ((method === 'PUT' || method === 'DELETE') && !pat) {
-      const errorMsg = `[GitHub Lib - fetchFromGitHub] CRITICAL CONFIGURATION ISSUE: The GITHUB_PAT environment variable is required for write/delete operations but is NOT SET in your Netlify environment. Operation was ${method} on path '${path}'.`;
+      const errorMsg = `[GitHub Lib - fetchFromGitHub] CRITICAL: GITHUB_PAT is required for write/delete operations but is not set. Operation was ${method} on path '${path}'.`;
       console.error(errorMsg);
-      // For write operations, we must throw an error as they cannot proceed.
       throw new Error(errorMsg);
   }
   
-  // Adjusted warning for public repositories
   if (method === 'GET' && !pat) {
-    console.warn(`[GitHub Lib - fetchFromGitHub] WARNING: GITHUB_PAT is not set. For public repositories, this is okay, but you may encounter API rate limits from GitHub on a high-traffic site. Providing a PAT is recommended to avoid this.`);
+    console.warn(`[GitHub Lib - fetchFromGitHub] WARNING: GITHUB_PAT is not set. Reading from a public repo, but you may encounter API rate limits. Providing a PAT is recommended for high-traffic sites.`);
   }
-
 
   const url = `${GITHUB_API_BASE}/repos/${owner}/${repo}/${path}`;
   const headers: HeadersInit = {
@@ -106,12 +104,11 @@ export async function fetchFromGitHub<T>(
     if (response.status === 404 && path.startsWith('contents/')) {
         detailedErrorMessage += `\n  For 404 on 'contents/':
     1. Verify GITHUB_REPO_OWNER ('${owner}') and GITHUB_REPO_NAME ('${repo}'). Case-sensitive!
-    2. Since the repo is public, a 404 likely means the repository name is wrong or the base path '${path}' does not exist.
+    2. Check that the repository is public, or if private, that the GITHUB_PAT has 'repo' scope access.
     The constructed URL was: ${url}`;
     } else if (response.status === 401 || response.status === 403) {
         detailedErrorMessage += `\n  Authentication/Authorization error (${response.status}):
-    1. If you provided a GITHUB_PAT, it may be incorrect, expired, or revoked. Check your Netlify environment variable GITHUB_PAT.
-    The PAT snippet being used by the app is: ${patSnippet} (Length: ${patLength}). Compare this with the PAT you have set in Netlify.
+    1. GITHUB_PAT may be incorrect, expired, revoked, or lack necessary permissions (e.g., 'repo' scope for private repos).
     The constructed URL was: ${url}`;
     } else {
         detailedErrorMessage += `\n  The constructed URL was: ${url}`;
@@ -119,10 +116,8 @@ export async function fetchFromGitHub<T>(
     console.error(detailedErrorMessage, 'Full error response object:', errorData);
 
     if (method === 'GET' && response.status === 404) {
-      return null; 
+      return null as T; 
     }
-    // For other errors, throw. This includes 401, 403, 500s, etc.
-    // The missing owner/repo case is now handled above by returning null.
     throw new Error(`Failed to ${method === 'GET' ? 'fetch from' : method === 'PUT' ? 'write to' : 'delete from'} GitHub: ${errorData.message || response.statusText}. Status: ${response.status}. URL: ${url}`);
   }
 
@@ -136,43 +131,6 @@ export async function fetchFromGitHub<T>(
   return response.json() as Promise<T>;
 }
 
-export async function createFileInRepo(filePath: string, content: string, commitMessage: string, sha?: string): Promise<GitHubCommitResponse | null> {
-  const base64Content = Buffer.from(content).toString('base64');
-  const body: { message: string; content: string; branch: string; sha?: string } = {
-    message: commitMessage,
-    content: base64Content,
-    branch: DEFAULT_BRANCH,
-  };
-  if (sha) {
-    body.sha = sha;
-  }
-  const normalizedFilePath = filePath.startsWith('/') ? filePath.substring(1) : filePath;
-  return fetchFromGitHub<GitHubCommitResponse>(`contents/${normalizedFilePath}`, 'PUT', body, false, { cache: 'no-store' });
-}
-
-export async function deleteFileInRepo(filePath: string, commitMessage: string, sha: string): Promise<GitHubCommitResponse | null> {
-  const body = {
-    message: commitMessage,
-    sha: sha,
-    branch: DEFAULT_BRANCH,
-  };
-  const normalizedFilePath = filePath.startsWith('/') ? filePath.substring(1) : filePath;
-  return fetchFromGitHub<GitHubCommitResponse>(`contents/${normalizedFilePath}`, 'DELETE', body, true, { cache: 'no-store' });
-}
-
-export async function getFileSha(filePath: string): Promise<string | null> {
-  try {
-    const normalizedFilePath = filePath.startsWith('/') ? filePath.substring(1) : filePath;
-    const fileData = await fetchFromGitHub<GitHubFile | null>(`contents/${normalizedFilePath}?ref=${DEFAULT_BRANCH}`, 'GET', undefined, false, { cache: 'no-store' }); 
-    return fileData?.sha || null;
-  } catch (error: any) {
-    if (error.message && error.message.includes('404')) { 
-      return null; 
-    }
-    console.error(`[GitHub Lib - getFileSha] Error explicitly caught while fetching SHA for '${filePath}':`, error.message);
-    return null;
-  }
-}
 
 export async function fetchFileContent(filePath: string): Promise<{ content: string; sha: string } | null> {
   try {
@@ -307,7 +265,6 @@ Found directories: ${allDirs}. If these are your novel folders, check their nami
         traductor: info.traductor,
         lastUpdateDate: info.fecha_lanzamiento, 
         infoJsonSha: infoJsonSha,
-        creatorId: info.creatorId,
         status: info.status,
         rating_platform: info.rating_platform,
       });
@@ -404,7 +361,6 @@ export async function fetchNovelById(id: string): Promise<Novel | undefined> {
       traductor: info.traductor,
       lastUpdateDate: info.fecha_lanzamiento,
       infoJsonSha: infoJsonSha,
-      creatorId: info.creatorId,
       status: info.status,
       rating_platform: info.rating_platform,
     };
@@ -474,6 +430,3 @@ export async function fetchChapter(novelId: string, chapterId: string): Promise<
   console.log(`[GitHub Lib - fetchChapter] Successfully fetched chapter '${chapterId}' for novel '${novelId}'.`);
   return { novel, chapter };
 }
-    
-
-    

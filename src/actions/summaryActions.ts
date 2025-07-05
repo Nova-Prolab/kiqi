@@ -1,37 +1,27 @@
 
 'use server';
 
-// import { generateChapterSummary } from '@/ai/flows/generate-chapter-summary'; // Commented out
+import { generateChapterSummary } from '@/ai/flows/generate-chapter-summary';
 import type { GenerateChapterSummaryOutput } from '@/ai/flows/generate-chapter-summary';
 
 // Helper to strip HTML tags for summary generation
 const stripHtml = (html: string): string => {
-  if (typeof document === 'undefined') { // Guard for server-side
-    const tempDivLike = { innerText: "", textContent: "" };
-    tempDivLike.innerHTML = html; // This won't actually parse HTML on server but avoids error
-    return (tempDivLike.textContent || tempDivLike.innerText || "").replace(/<[^>]*>?/gm, '');
-  }
-  const tempDiv = document.createElement('div');
-  tempDiv.innerHTML = html;
-  return (tempDiv.textContent || tempDiv.innerText || "").replace(/<[^>]*>?/gm, '');
+  // This is a server-side only environment now, so we can't use the DOM.
+  // A simple regex is sufficient for this purpose.
+  return html.replace(/<[^>]*>?/gm, '');
 };
 
 
 export async function getChapterSummaryAction(
   chapterHtmlContent: string
 ): Promise<{ summary?: string; error?: string }> {
-  // Immediately return a "coming soon" message
-  return { error: 'Función de IA (Resumen del Capítulo) no disponible. ¡Próximamente!' };
-  
-  // Original logic commented out:
-  /*
   if (!chapterHtmlContent || chapterHtmlContent.trim().length === 0) {
-    return { error: 'Chapter content cannot be empty.' };
+    return { error: 'El contenido del capítulo no puede estar vacío.' };
   }
 
   const chapterText = stripHtml(chapterHtmlContent);
   if (!chapterText || chapterText.trim().length === 0) {
-    return { error: 'Extracted chapter text for summary cannot be empty.' };
+    return { error: 'El texto extraído para el resumen no puede estar vacío.' };
   }
 
   try {
@@ -40,9 +30,8 @@ export async function getChapterSummaryAction(
   } catch (error) {
     console.error('Error generating chapter summary:', error);
     if (error instanceof Error) {
-        return { error: `Failed to generate summary: ${error.message}` };
+        return { error: `Falló la generación del resumen: ${error.message}` };
     }
-    return { error: 'An unexpected error occurred while generating the summary.' };
+    return { error: 'Ocurrió un error inesperado al generar el resumen.' };
   }
-  */
 }

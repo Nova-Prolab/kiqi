@@ -1,18 +1,2 @@
-
-import RegisterForm from '@/components/auth/RegisterForm';
-import type { Metadata } from 'next';
-
-export const metadata: Metadata = {
-  title: 'Crear Cuenta - Kiqi!',
-  description: 'Regístrate para empezar a gestionar tus novelas.',
-};
-
-export default function RegisterPage() {
-  return (
-    <section className="py-12">
-      <div className="container mx-auto px-4">
-        <RegisterForm />
-      </div>
-    </section>
-  );
-}
+// This file is no longer in use and has been emptied.
+// Functionality related to user authentication and content creation has been removed.

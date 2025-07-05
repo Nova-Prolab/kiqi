@@ -23,7 +23,6 @@ export interface InfoJson {
   etiquetas?: string[];
   categoria?: string;
   traductor?: string;
-  creatorId?: string; // Unique ID of the user who created the novel
   rating_platform?: number; // 0-5, site's own rating
   status?: NovelStatus; // e.g., 'completed', 'ongoing'
 }
@@ -44,7 +43,6 @@ export interface Novel {
   categoria?: string;
   traductor?: string;
   lastUpdateDate?: string; // This will be populated by fecha_lanzamiento
-  creatorId?: string; // Unique ID of the user who created the novel
   rating_platform?: number;
   status?: NovelStatus;
 }
@@ -106,38 +104,6 @@ export interface RecentChapterInfo {
 
 export interface StoredRecentlyReadData {
   [novelId: string]: RecentChapterInfo[];
-}
-
-// For Create Novel Form
-export interface CreateNovelInput {
-  title: string;
-  author: string;
-  description: string;
-  coverImageUrl?: string;
-  category?: string;
-  tags?: string; // Comma-separated string
-  translator?: string;
-  releaseDate?: string;
-  creatorId: string; // User's unique ID - now mandatory
-  ageRating: AgeRating;
-  rating_platform?: number;
-  status?: NovelStatus;
-}
-
-// For User "Accounts"
-export interface User {
-  id: string; // Unique user ID
-  username: string;
-  email: string;
-  password?: string; // Storing password in plain text - UNSAFE FOR PRODUCTION
-}
-
-// For Chapter Management
-export interface SaveChapterInput {
-    novelId: string;
-    chapterNumber: number;
-    chapterTitle?: string;
-    chapterContent: string;
 }
 
 export interface ChapterUploadState {

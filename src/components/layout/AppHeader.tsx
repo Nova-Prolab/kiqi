@@ -3,18 +3,8 @@
 
 import Link from 'next/link';
 import Image from 'next/image';
-import { Settings, LogIn, UserPlus, LogOut, LayoutDashboard } from 'lucide-react';
 import { ModeToggle } from '@/components/layout/ModeToggle';
-import { Button, buttonVariants } from '@/components/ui/button'; // Import buttonVariants
-import { useAuth } from '@/hooks/useAuth';
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
+import { Button, buttonVariants } from '@/components/ui/button';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -25,7 +15,6 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import React, { useState, useEffect, useRef } from 'react';
 
 // Inline SVG for Discord Icon
@@ -48,16 +37,10 @@ const EASTER_EGG_TRIGGER_COUNT = 20;
 const EASTER_EGG_DURATION = 15000; // 15 seconds
 
 export default function AppHeader() {
-  const { currentUser, logout, isLoading } = useAuth();
   const [logoClickCount, setLogoClickCount] = useState(0);
   const [easterEggActive, setEasterEggActive] = useState(false);
   const easterEggTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const [showDiscordConfirmDialog, setShowDiscordConfirmDialog] = useState(false);
-
-  const getInitials = (name: string | undefined) => {
-    if (!name) return 'U';
-    return name.substring(0, 2).toUpperCase();
-  };
 
   const handleLogoClick = () => {
     if (easterEggActive) return;
@@ -134,57 +117,6 @@ export default function AppHeader() {
               <DiscordIcon className="h-5 w-5" />
           </Button>
           <ModeToggle />
-          {isLoading ? (
-            <div className="w-24 h-9 bg-muted rounded-md animate-pulse"></div>
-          ) : currentUser ? (
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button variant="ghost" className="relative h-9 w-9 rounded-full">
-                  <Avatar className="h-9 w-9">
-                    <AvatarFallback>{getInitials(currentUser.username)}</AvatarFallback>
-                  </Avatar>
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent className="w-56" align="end" forceMount>
-                <DropdownMenuLabel className="font-normal">
-                  <div className="flex flex-col space-y-1">
-                    <p className="text-sm font-medium leading-none">Hola, {currentUser.username}</p>
-                  </div>
-                </DropdownMenuLabel>
-                <DropdownMenuSeparator />
-                <DropdownMenuItem asChild>
-                  <Link href="/admin/dashboard">
-                    <LayoutDashboard className="mr-2 h-4 w-4" />
-                    <span>Panel de Administración</span>
-                  </Link>
-                </DropdownMenuItem>
-                <DropdownMenuItem asChild>
-                    <Link href="/admin/create-novel">
-                        <Settings className="mr-2 h-4 w-4" />
-                        <span>Crear Novela</span>
-                    </Link>
-                </DropdownMenuItem>
-                <DropdownMenuSeparator />
-                <DropdownMenuItem onClick={logout}>
-                  <LogOut className="mr-2 h-4 w-4" />
-                  <span>Cerrar Sesión</span>
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
-          ) : (
-            <>
-              <Button variant="outline" size="sm" asChild>
-                <Link href="/auth/login">
-                  <LogIn className="mr-1.5 h-4 w-4" /> Iniciar Sesión
-                </Link>
-              </Button>
-              <Button variant="default" size="sm" asChild className="hidden sm:flex">
-                <Link href="/auth/register">
-                  <UserPlus className="mr-1.5 h-4 w-4" /> Registrarse
-                </Link>
-              </Button>
-            </>
-          )}
         </div>
       </div>
 
