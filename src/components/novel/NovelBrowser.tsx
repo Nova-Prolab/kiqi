@@ -7,7 +7,7 @@ import type { Novel, AgeRating, NovelStatus } from '@/lib/types';
 import { AGE_RATING_VALUES, STATUS_VALUES } from '@/lib/types';
 import NovelCard from '@/components/novel/NovelCard';
 import { Input } from '@/components/ui/input';
-import { Search, BookX, Tags, LayoutGrid, Star, FilterX, ChevronLeft, ChevronRight, Loader2, Shield, ClockIcon, Library, User, Tag as TagIcon, FileSearch, Users } from 'lucide-react';
+import { Search, BookX, Tags, LayoutGrid, Star, FilterX, ChevronLeft, ChevronRight, Loader2, Shield, ClockIcon, Library, User, Tag as TagIcon, FileSearch, Users, HelpCircle } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
@@ -78,6 +78,8 @@ export default function NovelBrowser({ initialNovels }: NovelBrowserProps) {
   const [selectedStatus, setSelectedStatus] = useState<NovelStatus | null>(null);
   const [mounted, setMounted] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
+  const [suggestion, setSuggestion] = useState<{ text: string; suggestionText: string; newSearchType: SearchType; newSearchTerm: string; } | null>(null);
+
 
   const updateURLParams = useCallback(() => {
     const params = new URLSearchParams();
@@ -256,6 +258,62 @@ export default function NovelBrowser({ initialNovels }: NovelBrowserProps) {
     }
     return novelsToFilter;
   }, [initialNovels, searchTerm, searchType, selectedCategory, selectedTag, selectedAgeRating, selectedStatus]);
+
+  useEffect(() => {
+    setSuggestion(null);
+
+    if (filteredNovels.length > 0 || !searchTerm.trim()) {
+      return;
+    }
+
+    const normalizedSearchTerm = searchTerm.toLowerCase().trim();
+    const currentSearchTypeLabel = searchTypeOptions.find(opt => opt.value === searchType)?.label.toLowerCase() || 'títulos';
+    
+    // Check for matches in other categories
+    for (const otherType of searchTypeOptions) {
+      if (otherType.value === searchType) continue;
+
+      const foundInOtherType = initialNovels.some(novel => {
+        const title = novel.title?.toLowerCase() || '';
+        const author = novel.author?.toLowerCase() || '';
+        const category = novel.categoria?.toLowerCase() || '';
+        const translator = novel.traductor?.toLowerCase() || '';
+        const tags = novel.etiquetas?.map(t => t.toLowerCase()) || [];
+
+        switch (otherType.value) {
+          case 'title':
+            return title.includes(normalizedSearchTerm);
+          case 'author':
+            return author.includes(normalizedSearchTerm);
+          case 'category_search':
+            return category.includes(normalizedSearchTerm);
+          case 'tag_search':
+            return tags.some(tag => tag.includes(normalizedSearchTerm));
+          case 'translator':
+            return translator.includes(normalizedSearchTerm);
+          default:
+            return false;
+        }
+      });
+
+      if (foundInOtherType) {
+        setSuggestion({
+          text: `No se encontraron resultados para "${searchTerm}" en ${currentSearchTypeLabel}.`,
+          suggestionText: `¿Quisiste buscar en ${otherType.label}?`,
+          newSearchType: otherType.value,
+          newSearchTerm: searchTerm,
+        });
+        return; // Stop after finding the first suggestion
+      }
+    }
+}, [filteredNovels.length, searchTerm, searchType, initialNovels]);
+
+  const handleSuggestionClick = (suggestion: { newSearchType: SearchType; newSearchTerm: string }) => {
+    setSearchType(suggestion.newSearchType);
+    setCurrentInputText(suggestion.newSearchTerm);
+    setSearchTerm(suggestion.newSearchTerm);
+    setCurrentPage(1);
+  };
 
   const totalPages = Math.ceil(filteredNovels.length / ITEMS_PER_PAGE);
   const paginatedNovels = useMemo(() => {
@@ -453,6 +511,21 @@ export default function NovelBrowser({ initialNovels }: NovelBrowserProps) {
               <p className="mt-2 text-lg text-muted-foreground">Intenta con otros términos de búsqueda o ajusta los filtros.</p>
             ) : (
               <p className="mt-2 text-lg text-muted-foreground">Parece que no hay novelas disponibles en este momento. ¡Vuelve pronto!</p>
+            )}
+            {suggestion && (
+              <div className="mt-8 bg-primary/5 p-4 rounded-lg border border-primary/20 max-w-md mx-auto text-center">
+                  <div className="flex items-center justify-center gap-2">
+                    <HelpCircle className="h-5 w-5 text-primary" />
+                    <p className="text-sm font-medium text-primary">{suggestion.text}</p>
+                  </div>
+                  <Button
+                      variant="link"
+                      className="mt-1 text-primary text-base p-0 h-auto hover:underline"
+                      onClick={() => handleSuggestionClick(suggestion)}
+                  >
+                      {suggestion.suggestionText}
+                  </Button>
+              </div>
             )}
           </div>
         )}
