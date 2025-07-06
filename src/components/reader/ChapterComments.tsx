@@ -23,7 +23,6 @@ import {
   SheetDescription,
   SheetHeader,
   SheetTitle,
-  SheetClose,
 } from '@/components/ui/sheet';
 import { ScrollArea } from '@/components/ui/scroll-area';
 
@@ -369,9 +368,6 @@ export default function ChapterComments({ novelId, chapterId, isOpen, onOpenChan
                 {isMaximized ? <Minimize className="h-5 w-5"/> : <Maximize className="h-5 w-5"/>}
                 <span className="sr-only">{isMaximized ? 'Restaurar' : 'Maximizar'}</span>
               </Button>
-              <SheetClose asChild>
-                  <Button variant="ghost" size="icon"><span className="sr-only">Cerrar</span><MessageCircle className="h-5 w-5"/></Button>
-              </SheetClose>
             </div>
           </SheetHeader>
 
