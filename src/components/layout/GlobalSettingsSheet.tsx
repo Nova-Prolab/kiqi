@@ -1,4 +1,3 @@
-
 'use client';
 
 import React, { useState, useEffect } from 'react';
@@ -252,6 +251,10 @@ const predefinedThemes = [
       0% { transform: translate(20px, -100vh) rotate(0deg); }
       100% { transform: translate(-25px, 100vh) rotate(720deg); }
     }
+    @keyframes snow-fall-3 {
+      0% { transform: translate(0, -100vh) rotate(0deg); }
+      100% { transform: translate(-15px, 100vh) rotate(180deg); }
+    }
     body {
       position: relative;
       overflow-x: hidden !important;
@@ -275,7 +278,7 @@ const predefinedThemes = [
       filter: blur(0.6px);
     }
     body::after {
-      background-image:
+      background-image: 
         radial-gradient(circle at 30px 10px, rgba(255,255,255,0.7) 2px, transparent 4px),
         radial-gradient(circle at 70px 70px, rgba(255,255,255,0.9) 1px, transparent 3px);
       background-size: 100px 150px, 150px 100px;
@@ -541,7 +544,6 @@ export default function GlobalSettingsSheet({ isOpen, onOpenChange }: GlobalSett
     colors, setColors, 
     rawCss, setRawCss,
     resetCustomTheme,
-    exportTheme,
     importTheme,
   } = useCustomTheme();
 
@@ -634,6 +636,23 @@ export default function GlobalSettingsSheet({ isOpen, onOpenChange }: GlobalSett
     } catch (e: any) {
       toast({ variant: "destructive", title: "Error al Importar", description: e.message || "Por favor, comprueba el texto del tema." });
     }
+  };
+
+  const generateExportJsonString = () => {
+    // Filter out entries where the value is null, undefined, or an empty string.
+    const filteredColors = Object.entries(tempColors).reduce((acc, [key, value]) => {
+      if (value) {
+        acc[key as keyof CustomColors] = value;
+      }
+      return acc;
+    }, {} as CustomColors);
+
+    const themeToExport: CustomThemeData = {
+      version: 1,
+      colors: filteredColors,
+      rawCss: { raw: tempRawCss },
+    };
+    return JSON.stringify(themeToExport, null, 2);
   };
 
   const handleCopyToClipboard = (text: string) => {
@@ -874,7 +893,7 @@ body {
                   <DialogDescription>Copia este texto y guárdalo. Puedes importarlo más tarde o compartirlo.</DialogDescription>
               </DialogHeader>
               <Textarea 
-                value={JSON.stringify(exportTheme(), null, 2)}
+                value={generateExportJsonString()}
                 readOnly
                 className="font-mono h-48 bg-muted"
               />
@@ -882,7 +901,7 @@ body {
                   <DialogClose asChild>
                     <Button variant="secondary">Cerrar</Button>
                   </DialogClose>
-                  <Button onClick={() => handleCopyToClipboard(JSON.stringify(exportTheme(), null, 2))}>
+                  <Button onClick={() => handleCopyToClipboard(generateExportJsonString())}>
                       {hasCopied ? <Check className="mr-2 h-4 w-4"/> : <ClipboardCopy className="mr-2 h-4 w-4"/>}
                       {hasCopied ? 'Copiado' : 'Copiar al Portapapeles'}
                   </Button>
@@ -893,5 +912,3 @@ body {
     </Sheet>
   );
 }
-
-    
