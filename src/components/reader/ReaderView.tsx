@@ -15,6 +15,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Card } from '../ui/card';
 import { cn } from '@/lib/utils';
 import { useToast } from '@/hooks/use-toast';
+import { translateChapterAction } from '@/actions/translationActions';
 
 interface ReaderViewProps {
   novel: Novel;
@@ -33,7 +34,9 @@ export default function ReaderView({ novel, currentChapter }: ReaderViewProps) {
     customForeground,
     readerFontFamilyStyle, 
     combinedReaderClasses, 
-    textWidthClass, 
+    textWidthClass,
+    autoTranslate,
+    autoTranslateLanguage,
   } = useReaderSettings();
 
   const { toast } = useToast();
@@ -95,7 +98,39 @@ export default function ReaderView({ novel, currentChapter }: ReaderViewProps) {
     }, 50);
 
     return () => clearTimeout(timer);
-  }, [currentChapter.id, currentChapter.content, novel?.id, novel?.title, currentChapter?.title, currentChapter?.order, isMounted, loadPosition, addRecentlyReadChapter]);
+  }, [currentChapter.id, novel?.id, isMounted, addRecentlyReadChapter]); // Simplified dependencies
+
+  // Effect for auto-translation
+  useEffect(() => {
+    const performAutoTranslation = async () => {
+      // Only run if mounted, auto-translate is on, a language is selected, and content isn't already translated
+      if (isMounted && autoTranslate && autoTranslateLanguage && !isCurrentlyTranslated) {
+        toast({
+            title: "Traducción Automática en Progreso...",
+            description: `Traduciendo capítulo al ${autoTranslateLanguage}.`,
+        });
+
+        const result = await translateChapterAction(currentChapter.content, autoTranslateLanguage);
+        
+        if (result.translatedContent) {
+          setTranslatedContentForDisplay(result.translatedContent);
+          toast({
+              title: "Capítulo Traducido",
+              description: "Se ha aplicado la traducción automática.",
+          });
+        } else {
+          toast({
+              variant: "destructive",
+              title: "Error de Traducción Automática",
+              description: result.error || "No se pudo traducir el capítulo.",
+          });
+        }
+      }
+    };
+
+    performAutoTranslation();
+    
+  }, [currentChapter.content, isMounted, autoTranslate, autoTranslateLanguage, toast]);
 
 
   const debounceTimeoutRef = useRef<NodeJS.Timeout | null>(null);
@@ -304,4 +339,3 @@ export default function ReaderView({ novel, currentChapter }: ReaderViewProps) {
     </div>
   );
 }
-

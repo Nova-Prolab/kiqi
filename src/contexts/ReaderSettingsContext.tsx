@@ -11,7 +11,8 @@ import type {
   ReaderLetterSpacing,
   ReaderTextAlign,
   ReaderTextWidth,
-  ReaderParagraphSpacing
+  ReaderParagraphSpacing,
+  TargetLanguage
 } from '@/lib/types';
 import { 
   Type, Columns, Palette, RefreshCcw, Sun, Moon, Coffee, MoonStar, FileTextIcon as PaperIcon, Trees, Paintbrush, 
@@ -32,6 +33,8 @@ interface ReaderSettingsContextType extends ReaderSettings {
   setTextAlign: (align: ReaderTextAlign) => void;
   setTextWidth: (width: ReaderTextWidth) => void;
   setParagraphSpacing: (spacing: ReaderParagraphSpacing) => void;
+  setAutoTranslate: (autoTranslate: boolean) => void;
+  setAutoTranslateLanguage: (language: TargetLanguage | '') => void;
   resetSettings: () => void;
 
   fontClass: string;
@@ -69,6 +72,9 @@ export const DEFAULT_LETTER_SPACING: ReaderLetterSpacing = 'normal';
 export const DEFAULT_TEXT_ALIGN: ReaderTextAlign = 'left';
 export const DEFAULT_TEXT_WIDTH: ReaderTextWidth = 'medium';
 export const DEFAULT_PARAGRAPH_SPACING: ReaderParagraphSpacing = 'default';
+export const DEFAULT_AUTO_TRANSLATE = false;
+export const DEFAULT_AUTO_TRANSLATE_LANGUAGE: TargetLanguage | '' = '';
+
 
 // --- OPTIONS FOR UI (Exported for ReaderSettingsSheet) ---
 export const FONT_SIZES_OPTIONS: { label: string, value: ReaderFontSize, icon: React.ElementType }[] = [
@@ -133,6 +139,8 @@ export const ReaderSettingsProvider = ({ children }: { children: ReactNode }) =>
   const [textAlign, setTextAlignState] = useState<ReaderTextAlign>(DEFAULT_TEXT_ALIGN);
   const [textWidth, setTextWidthState] = useState<ReaderTextWidth>(DEFAULT_TEXT_WIDTH);
   const [paragraphSpacing, setParagraphSpacingState] = useState<ReaderParagraphSpacing>(DEFAULT_PARAGRAPH_SPACING);
+  const [autoTranslate, setAutoTranslateState] = useState<boolean>(DEFAULT_AUTO_TRANSLATE);
+  const [autoTranslateLanguage, setAutoTranslateLanguageState] = useState<TargetLanguage | ''>(DEFAULT_AUTO_TRANSLATE_LANGUAGE);
 
   useEffect(() => {
     setIsMounted(true);
@@ -140,14 +148,15 @@ export const ReaderSettingsProvider = ({ children }: { children: ReactNode }) =>
       const settingsToLoad: Array<keyof ReaderSettings> = [
         'theme', 'fontSize', 'lineHeight', 'fontFamily', 'customFontFamily', 
         'isImmersive', 'customBackground', 'customForeground', 
-        'letterSpacing', 'textAlign', 'textWidth', 'paragraphSpacing'
+        'letterSpacing', 'textAlign', 'textWidth', 'paragraphSpacing',
+        'autoTranslate', 'autoTranslateLanguage'
       ];
       const loadedSettings: Partial<ReaderSettings> = {};
 
       settingsToLoad.forEach(key => {
         const item = localStorage.getItem(`reader${key.charAt(0).toUpperCase() + key.slice(1)}`);
         if (item !== null) {
-          if (key === 'isImmersive') {
+          if (key === 'isImmersive' || key === 'autoTranslate') {
             (loadedSettings as any)[key] = JSON.parse(item);
           } else {
             (loadedSettings as any)[key] = item;
@@ -167,9 +176,12 @@ export const ReaderSettingsProvider = ({ children }: { children: ReactNode }) =>
       setTextAlignState((loadedSettings.textAlign as ReaderTextAlign) || DEFAULT_TEXT_ALIGN);
       setTextWidthState((loadedSettings.textWidth as ReaderTextWidth) || DEFAULT_TEXT_WIDTH);
       setParagraphSpacingState((loadedSettings.paragraphSpacing as ReaderParagraphSpacing) || DEFAULT_PARAGRAPH_SPACING);
+      setAutoTranslateState(loadedSettings.autoTranslate === undefined ? false : loadedSettings.autoTranslate);
+      setAutoTranslateLanguageState((loadedSettings.autoTranslateLanguage as TargetLanguage | '') || DEFAULT_AUTO_TRANSLATE_LANGUAGE);
 
     } catch (error) {
       console.warn("Could not access localStorage for reader settings:", error);
+      // Set all to default if local storage fails
       setThemeState(DEFAULT_THEME);
       setFontSizeState(DEFAULT_FONT_SIZE);
       setLineHeightState(DEFAULT_LINE_HEIGHT);
@@ -182,6 +194,8 @@ export const ReaderSettingsProvider = ({ children }: { children: ReactNode }) =>
       setTextAlignState(DEFAULT_TEXT_ALIGN);
       setTextWidthState(DEFAULT_TEXT_WIDTH);
       setParagraphSpacingState(DEFAULT_PARAGRAPH_SPACING);
+      setAutoTranslateState(DEFAULT_AUTO_TRANSLATE);
+      setAutoTranslateLanguageState(DEFAULT_AUTO_TRANSLATE_LANGUAGE);
     }
   }, []);
 
@@ -192,8 +206,12 @@ export const ReaderSettingsProvider = ({ children }: { children: ReactNode }) =>
     return (newValue: ReaderSettings[T]) => {
       setStateFunc(newValue);
       if (isMounted) {
-        const storageKey = `reader${key.charAt(0).toUpperCase() + key.slice(1)}`;
-        localStorage.setItem(storageKey, typeof newValue === 'boolean' ? JSON.stringify(newValue) : String(newValue));
+        try {
+            const storageKey = `reader${key.charAt(0).toUpperCase() + key.slice(1)}`;
+            localStorage.setItem(storageKey, typeof newValue === 'boolean' ? JSON.stringify(newValue) : String(newValue));
+        } catch (error) {
+            console.warn(`Could not save setting ${key} to localStorage:`, error);
+        }
       }
     };
   };
@@ -210,6 +228,8 @@ export const ReaderSettingsProvider = ({ children }: { children: ReactNode }) =>
   const setTextAlign = createSetter('textAlign', setTextAlignState);
   const setTextWidth = createSetter('textWidth', setTextWidthState);
   const setParagraphSpacing = createSetter('paragraphSpacing', setParagraphSpacingState);
+  const setAutoTranslate = createSetter('autoTranslate', setAutoTranslateState);
+  const setAutoTranslateLanguage = createSetter('autoTranslateLanguage', setAutoTranslateLanguageState);
   
   const resetSettings = useCallback(() => {
     setTheme(DEFAULT_THEME);
@@ -224,7 +244,9 @@ export const ReaderSettingsProvider = ({ children }: { children: ReactNode }) =>
     setTextAlign(DEFAULT_TEXT_ALIGN);
     setTextWidth(DEFAULT_TEXT_WIDTH);
     setParagraphSpacing(DEFAULT_PARAGRAPH_SPACING);
-  }, [isMounted, setTheme, setFontSize, setLineHeight, setFontFamily, setCustomFontFamily, setIsImmersive, setCustomBackground, setCustomForeground, setLetterSpacing, setTextAlign, setTextWidth, setParagraphSpacing]);
+    setAutoTranslate(DEFAULT_AUTO_TRANSLATE);
+    setAutoTranslateLanguage(DEFAULT_AUTO_TRANSLATE_LANGUAGE);
+  }, [setTheme, setFontSize, setLineHeight, setFontFamily, setCustomFontFamily, setIsImmersive, setCustomBackground, setCustomForeground, setLetterSpacing, setTextAlign, setTextWidth, setParagraphSpacing, setAutoTranslate, setAutoTranslateLanguage]);
 
 
   const fontClass = FONT_SIZE_MAP[fontSize] || FONT_SIZE_MAP[DEFAULT_FONT_SIZE];
@@ -251,9 +273,9 @@ export const ReaderSettingsProvider = ({ children }: { children: ReactNode }) =>
 
   const contextValue: ReaderSettingsContextType = {
     theme, fontSize, lineHeight, fontFamily, customFontFamily, isImmersive, customBackground, customForeground,
-    letterSpacing, textAlign, textWidth, paragraphSpacing,
+    letterSpacing, textAlign, textWidth, paragraphSpacing, autoTranslate, autoTranslateLanguage,
     setTheme, setFontSize, setLineHeight, setFontFamily, setCustomFontFamily, setIsImmersive, setCustomBackground, setCustomForeground,
-    setLetterSpacing, setTextAlign, setTextWidth, setParagraphSpacing,
+    setLetterSpacing, setTextAlign, setTextWidth, setParagraphSpacing, setAutoTranslate, setAutoTranslateLanguage,
     resetSettings,
     fontClass, themeClass, lineHeightClass, letterSpacingClass, textAlignClass, textWidthClass, paragraphSpacingClass,
     readerFontFamilyStyle, combinedReaderClasses
@@ -274,8 +296,10 @@ export const ReaderSettingsProvider = ({ children }: { children: ReactNode }) =>
         textAlign: DEFAULT_TEXT_ALIGN,
         textWidth: DEFAULT_TEXT_WIDTH,
         paragraphSpacing: DEFAULT_PARAGRAPH_SPACING,
+        autoTranslate: DEFAULT_AUTO_TRANSLATE,
+        autoTranslateLanguage: DEFAULT_AUTO_TRANSLATE_LANGUAGE,
         setTheme: () => {}, setFontSize: () => {}, setLineHeight: () => {}, setFontFamily: () => {}, setCustomFontFamily: () => {}, setIsImmersive: () => {}, setCustomBackground: () => {}, setCustomForeground: () => {},
-        setLetterSpacing: () => {}, setTextAlign: () => {}, setTextWidth: () => {}, setParagraphSpacing: () => {},
+        setLetterSpacing: () => {}, setTextAlign: () => {}, setTextWidth: () => {}, setParagraphSpacing: () => {}, setAutoTranslate: () => {}, setAutoTranslateLanguage: () => {},
         resetSettings: () => {},
         fontClass: FONT_SIZE_MAP[DEFAULT_FONT_SIZE],
         themeClass: THEME_CLASS_MAP[DEFAULT_THEME as Exclude<ReaderTheme, 'custom'>],

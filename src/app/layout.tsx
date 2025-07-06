@@ -22,6 +22,7 @@ import {
 import './globals.css';
 import { ThemeProvider } from '@/components/providers/theme-provider';
 import { ReaderSettingsProvider } from '@/contexts/ReaderSettingsContext';
+import { CustomThemeProvider } from '@/contexts/CustomThemeContext';
 import { Toaster } from '@/components/ui/toaster';
 import AppHeader from '@/components/layout/AppHeader';
 
@@ -89,13 +90,15 @@ export default function RootLayout({
           enableSystem
           disableTransitionOnChange
         >
-          <ReaderSettingsProvider>
-            <AppHeader />
-            <main className="flex-grow container mx-auto px-4 py-8">
-              {children}
-            </main>
-            <Toaster />
-          </ReaderSettingsProvider>
+          <CustomThemeProvider>
+            <ReaderSettingsProvider>
+              <AppHeader />
+              <main className="flex-grow container mx-auto px-4 py-8">
+                {children}
+              </main>
+              <Toaster />
+            </ReaderSettingsProvider>
+          </CustomThemeProvider>
         </ThemeProvider>
       </body>
     </html>

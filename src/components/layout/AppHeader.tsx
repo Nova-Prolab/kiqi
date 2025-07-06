@@ -5,6 +5,8 @@ import Link from 'next/link';
 import Image from 'next/image';
 import { ModeToggle } from '@/components/layout/ModeToggle';
 import { Button, buttonVariants } from '@/components/ui/button';
+import { Settings } from 'lucide-react';
+import GlobalSettingsSheet from './GlobalSettingsSheet';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -41,6 +43,7 @@ export default function AppHeader() {
   const [easterEggActive, setEasterEggActive] = useState(false);
   const easterEggTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const [showDiscordConfirmDialog, setShowDiscordConfirmDialog] = useState(false);
+  const [isSettingsSheetOpen, setIsSettingsSheetOpen] = useState(false);
 
   const handleLogoClick = () => {
     if (easterEggActive) return;
@@ -117,6 +120,9 @@ export default function AppHeader() {
               <DiscordIcon className="h-5 w-5" />
           </Button>
           <ModeToggle />
+          <Button variant="ghost" size="icon" onClick={() => setIsSettingsSheetOpen(true)} aria-label="Abrir configuración global">
+            <Settings className="h-5 w-5" />
+          </Button>
         </div>
       </div>
 
@@ -152,6 +158,11 @@ export default function AppHeader() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      <GlobalSettingsSheet 
+        isOpen={isSettingsSheetOpen}
+        onOpenChange={setIsSettingsSheetOpen}
+      />
 
     </header>
   );

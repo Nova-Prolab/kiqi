@@ -90,6 +90,8 @@ export interface ReaderSettings {
   textAlign: ReaderTextAlign;
   textWidth: ReaderTextWidth;
   paragraphSpacing: ReaderParagraphSpacing;
+  autoTranslate: boolean;
+  autoTranslateLanguage: TargetLanguage | '';
 }
 
 // For Recently Read Chapters
