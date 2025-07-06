@@ -224,7 +224,253 @@ const predefinedThemes = [
       --border: 0 0% 31% !important;
       --accent: 40 82% 64% !important;
     }
-  `}
+  `},
+  { name: 'País de las Maravillas Invernal ❄️', value: 'winter-wonderland', css: `
+    :root {
+      --background: 210 40% 96% !important;
+      --foreground: 215 28% 25% !important;
+      --primary: 205 78% 55% !important;
+      --primary-foreground: 0 0% 100% !important;
+      --card: 210 40% 100% !important;
+      --border: 214 32% 91% !important;
+      --accent: 190 95% 68% !important;
+    }
+  `},
+  { name: 'Brillo del Atardecer 🌇', value: 'sunset-glow', css: `
+    :root {
+      --background: 25 56% 92% !important;
+      --foreground: 20 20% 25% !important;
+      --primary: 350 80% 60% !important;
+      --primary-foreground: 0 0% 100% !important;
+      --card: 15 60% 97% !important;
+      --border: 10 40% 85% !important;
+      --accent: 25 95% 60% !important;
+    }
+    body {
+      background: linear-gradient(to top, #fddb92, #d1fdff) !important;
+    }
+  `},
+  { name: 'Sueño de Sakura 🌸', value: 'sakura-dream', css: `
+    :root {
+      --background: 340 100% 98% !important;
+      --foreground: 340 30% 30% !important;
+      --primary: 335 85% 70% !important;
+      --primary-foreground: 340 100% 10% !important;
+      --card: 0 0% 100% !important;
+      --border: 340 50% 90% !important;
+      --accent: 280 60% 75% !important;
+    }
+  `},
+  { name: 'Outrun 🚗', value: 'outrun', css: `
+    :root {
+      --background: 260 50% 10% !important;
+      --foreground: 240 20% 90% !important;
+      --primary: 320 100% 55% !important;
+      --primary-foreground: 0 0% 100% !important;
+      --card: 260 50% 15% !important;
+      --border: 320 100% 30% !important;
+      --accent: 195 100% 50% !important;
+    }
+    body {
+      background: #1a0629 !important;
+    }
+    h1, h2, h3, h4, button, .text-primary {
+      text-shadow: 0 0 5px hsl(var(--primary)), 0 0 10px hsl(var(--primary));
+    }
+  `},
+  { name: 'Océano Profundo 🌊', value: 'deep-ocean', css: `
+    :root {
+      --background: 210 50% 10% !important;
+      --foreground: 190 30% 85% !important;
+      --primary: 180 90% 50% !important;
+      --primary-foreground: 210 50% 5% !important;
+      --card: 210 50% 15% !important;
+      --border: 200 40% 25% !important;
+      --accent: 170 100% 65% !important;
+    }
+  `},
+  { name: 'Vibras de la Selva 🌴', value: 'jungle-vibes', css: `
+    :root {
+      --background: 100 20% 20% !important;
+      --foreground: 80 25% 85% !important;
+      --primary: 75 70% 45% !important;
+      --primary-foreground: 90 60% 10% !important;
+      --card: 100 20% 25% !important;
+      --border: 90 15% 35% !important;
+      --accent: 40 80% 60% !important;
+    }
+  `},
+  { name: 'Cafetería ☕', value: 'coffee-house', css: `
+    :root {
+      --background: 25 35% 92% !important;
+      --foreground: 25 25% 25% !important;
+      --primary: 30 40% 40% !important;
+      --primary-foreground: 25 35% 95% !important;
+      --card: 25 45% 98% !important;
+      --border: 25 30% 85% !important;
+      --accent: 20 60% 55% !important;
+    }
+  `},
+  { name: 'Mono Noir 🎥', value: 'mono-noir', css: `
+    :root {
+      --background: 0 0% 10% !important;
+      --foreground: 0 0% 95% !important;
+      --primary: 0 0% 90% !important;
+      --primary-foreground: 0 0% 5% !important;
+      --card: 0 0% 15% !important;
+      --border: 0 0% 30% !important;
+      --accent: 0 0% 70% !important;
+    }
+    body {
+      filter: grayscale(1);
+    }
+  `},
+  { name: 'Art Deco Dorado ✨', value: 'golden-deco', css: `
+    :root {
+      --background: 0 0% 8% !important;
+      --foreground: 45 30% 85% !important;
+      --primary: 45 80% 60% !important;
+      --primary-foreground: 0 0% 5% !important;
+      --card: 0 0% 12% !important;
+      --border: 45 50% 30% !important;
+      --accent: 40 70% 70% !important;
+    }
+  `},
+  { name: 'Sueño Pastel 🍭', value: 'pastel-dream', css: `
+    :root {
+      --background: 200 40% 95% !important;
+      --foreground: 250 20% 40% !important;
+      --primary: 320 80% 80% !important;
+      --primary-foreground: 320 30% 20% !important;
+      --card: 0 0% 100% !important;
+      --border: 270 30% 90% !important;
+      --accent: 170 70% 75% !important;
+    }
+  `},
+  { name: 'Libro de Cómics 💥', value: 'comic-book', css: `
+    :root {
+      --background: 50 100% 95% !important;
+      --foreground: 220 80% 20% !important;
+      --primary: 0 85% 55% !important;
+      --primary-foreground: 0 0% 100% !important;
+      --card: 0 0% 100% !important;
+      --border: 220 80% 20% !important;
+      --accent: 45 100% 50% !important;
+    }
+    body {
+        font-family: 'Comic Sans MS', 'Bangers', cursive !important;
+    }
+    .card, button, input, select, textarea {
+        border-width: 2px !important;
+        border-color: hsl(var(--foreground)) !important;
+        box-shadow: 2px 2px 0px hsl(var(--foreground)) !important;
+    }
+  `},
+  { name: 'Fuego y Hielo 🔥❄️', value: 'fire-and-ice', css: `
+    :root {
+      --background: 220 30% 15% !important;
+      --foreground: 210 20% 90% !important;
+      --primary: 15 90% 55% !important;
+      --primary-foreground: 0 0% 100% !important;
+      --card: 220 30% 20% !important;
+      --border: 210 20% 40% !important;
+      --accent: 190 100% 60% !important;
+    }
+  `},
+  { name: 'Steampunk ⚙️', value: 'steampunk-gear', css: `
+    :root {
+      --background: 30 25% 85% !important;
+      --foreground: 30 30% 20% !important;
+      --primary: 35 60% 45% !important;
+      --primary-foreground: 30 25% 95% !important;
+      --card: 35 30% 92% !important;
+      --border: 30 35% 60% !important;
+      --accent: 190 40% 50% !important;
+    }
+  `},
+  { name: 'Púrpura Real 👑', value: 'royal-purple', css: `
+    :root {
+      --background: 270 30% 15% !important;
+      --foreground: 270 20% 90% !important;
+      --primary: 265 80% 70% !important;
+      --primary-foreground: 270 30% 10% !important;
+      --card: 270 30% 20% !important;
+      --border: 270 20% 40% !important;
+      --accent: 50 80% 65% !important;
+    }
+  `},
+  { name: 'Menta con Chocolate 🍦', value: 'mint-chip', css: `
+    :root {
+      --background: 150 40% 95% !important;
+      --foreground: 25 40% 20% !important;
+      --primary: 25 40% 30% !important;
+      --primary-foreground: 150 40% 95% !important;
+      --card: 0 0% 100% !important;
+      --border: 150 20% 85% !important;
+      --accent: 150 70% 60% !important;
+    }
+  `},
+  { name: 'Oasis del Desierto 🏜️', value: 'desert-oasis', css: `
+    :root {
+      --background: 35 60% 90% !important;
+      --foreground: 25 40% 25% !important;
+      --primary: 200 80% 45% !important;
+      --primary-foreground: 0 0% 100% !important;
+      --card: 40 50% 95% !important;
+      --border: 35 40% 80% !important;
+      --accent: 30 90% 60% !important;
+    }
+  `},
+  { name: 'Aventura 8-bit 👾', value: '8-bit-adventure', css: `
+    :root {
+      --background: 220 30% 10% !important;
+      --foreground: 0 0% 95% !important;
+      --primary: 50 100% 50% !important;
+      --primary-foreground: 220 30% 10% !important;
+      --card: 220 30% 15% !important;
+      --border: 0 0% 95% !important;
+      --accent: 0 80% 60% !important;
+    }
+    body {
+        font-family: 'Press Start 2P', 'VT323', monospace !important;
+    }
+  `},
+  { name: 'Temporada de Miedo 🎃', value: 'spooky-season', css: `
+    :root {
+      --background: 25 10% 10% !important;
+      --foreground: 30 80% 90% !important;
+      --primary: 25 90% 55% !important;
+      --primary-foreground: 25 10% 5% !important;
+      --card: 25 10% 15% !important;
+      --border: 25 15% 30% !important;
+      --accent: 270 80% 65% !important;
+    }
+  `},
+  { name: 'Algodón de Azúcar 🍬', value: 'cotton-candy', css: `
+    :root {
+      --background: 0 0% 100% !important;
+      --foreground: 230 40% 30% !important;
+      --primary: 330 100% 85% !important;
+      --primary-foreground: 330 50% 25% !important;
+      --card: 200 100% 98% !important;
+      --border: 200 70% 90% !important;
+      --accent: 200 100% 80% !important;
+    }
+    body {
+      background: linear-gradient(135deg, #ffc3e1, #cdefff) !important;
+    }
+  `},
+  { name: 'Limonada de Fresa 🍓', value: 'strawberry-lemonade', css: `
+    :root {
+      --background: 50 100% 97% !important;
+      --foreground: 350 50% 40% !important;
+      --primary: 350 90% 65% !important;
+      --primary-foreground: 0 0% 100% !important;
+      --card: 0 0% 100% !important;
+      --border: 10 70% 90% !important;
+      --accent: 50 100% 60% !important;
+    }
+  `},
 ];
 
 export default function GlobalSettingsSheet({ isOpen, onOpenChange }: GlobalSettingsSheetProps) {
