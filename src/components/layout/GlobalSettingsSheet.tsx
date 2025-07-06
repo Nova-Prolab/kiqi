@@ -776,15 +776,17 @@ export default function GlobalSettingsSheet({ isOpen, onOpenChange }: GlobalSett
             Ajusta las opciones de la aplicación. Los cambios se guardarán para tus futuras visitas.
           </SheetDescription>
         </SheetHeader>
-        <Tabs defaultValue="appearance" className="flex-grow flex flex-col">
-          <TabsList className="m-4 mx-auto grid w-full grid-cols-2 sm:grid-cols-4">
-            <TabsTrigger value="appearance"><Palette className="mr-2 h-4 w-4" />Apariencia</TabsTrigger>
-            <TabsTrigger value="translation"><Languages className="mr-2 h-4 w-4" />Traducción</TabsTrigger>
-            <TabsTrigger value="content-filtering"><BlockIcon className="mr-2 h-4 w-4" />Filtrado</TabsTrigger>
-            <TabsTrigger value="advanced-css"><Code className="mr-2 h-4 w-4" />CSS</TabsTrigger>
-          </TabsList>
+        <Tabs defaultValue="appearance" className="flex-grow flex flex-col overflow-hidden">
+          <div className="px-4 pt-4">
+              <TabsList className="mx-auto grid w-full grid-cols-2 sm:grid-cols-4">
+                <TabsTrigger value="appearance"><Palette className="mr-2 h-4 w-4" />Apariencia</TabsTrigger>
+                <TabsTrigger value="translation"><Languages className="mr-2 h-4 w-4" />Traducción</TabsTrigger>
+                <TabsTrigger value="content-filtering"><BlockIcon className="mr-2 h-4 w-4" />Filtrado</TabsTrigger>
+                <TabsTrigger value="advanced-css"><Code className="mr-2 h-4 w-4" />CSS</TabsTrigger>
+              </TabsList>
+          </div>
           
-          <div className="flex-grow overflow-y-auto px-4">
+          <div className="flex-grow overflow-y-auto p-4">
             <TabsContent value="appearance" className="m-0 space-y-6">
               <p className="text-sm text-muted-foreground">
                 Personaliza los colores de la interfaz. Usa el selector de color o introduce valores HSL (ej: <code className="bg-muted px-1 py-0.5 rounded">240 10% 3.9%</code>).
@@ -969,7 +971,7 @@ body {
             </TabsContent>
           </div>
         </Tabs>
-        <SheetFooter className="p-4 border-t flex-col sm:flex-row sm:justify-between gap-2">
+        <SheetFooter className="p-4 border-t flex-col sm:flex-row sm:justify-between gap-2 mt-auto">
              <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                     <Button variant="outline">

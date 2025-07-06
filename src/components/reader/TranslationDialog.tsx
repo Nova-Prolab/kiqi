@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useEffect } from 'react';
@@ -85,8 +86,8 @@ export default function TranslationDialog({
           </DialogDescription>
         </DialogHeader>
 
-        <div className="py-4 space-y-4 flex-grow min-h-[300px] flex flex-col">
-          <div className="flex flex-col sm:flex-row gap-2 items-center">
+        <div className="py-4 space-y-4 flex-grow min-h-0 flex flex-col">
+          <div className="flex flex-col sm:flex-row gap-2 items-center flex-shrink-0">
             <Label htmlFor="target-language-select" className="sm:sr-only">Idioma:</Label>
             <Select
               value={selectedLanguage}
@@ -108,7 +109,7 @@ export default function TranslationDialog({
             </Button>
           </div>
 
-          <div className="flex-grow flex flex-col justify-center items-center border rounded-md p-2 bg-muted/20">
+          <div className="flex-grow min-h-0 flex flex-col justify-center items-center border rounded-md p-2 bg-muted/20">
             {isLoading ? (
               <div className="text-center space-y-2">
                 <Loader2 className="mx-auto h-12 w-12 text-primary animate-spin" />
@@ -122,7 +123,7 @@ export default function TranslationDialog({
                 <p className="text-sm mt-1">{error}</p>
               </div>
             ) : translatedContent ? (
-              <ScrollArea className="w-full h-[35vh] sm:h-[40vh]">
+              <ScrollArea className="w-full h-full">
                  <div className="prose prose-sm sm:prose md:prose-lg max-w-none p-4" dangerouslySetInnerHTML={{ __html: translatedContent }} />
               </ScrollArea>
             ) : (
@@ -145,7 +146,7 @@ export default function TranslationDialog({
           </div>
         </div>
 
-        <DialogFooter className="gap-2 mt-auto pt-4 border-t flex-col sm:flex-row sm:justify-between">
+        <DialogFooter className="gap-2 mt-auto pt-4 border-t flex-col sm:flex-row sm:justify-between flex-shrink-0">
             <div>
               {isCurrentlyTranslated && (
                 <Button onClick={handleRevertAndClose} variant="outline">

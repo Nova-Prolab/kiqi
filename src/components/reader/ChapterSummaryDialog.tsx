@@ -22,13 +22,8 @@ interface ChapterSummaryDialogProps {
 
 const countWordsInHtml = (html: string): number => {
   if (!html) return 0;
-  if (typeof document === 'undefined') {
-    const text = html.replace(/<[^>]*>?/gm, ' ');
-    return text.trim().split(/\s+/).filter(Boolean).length;
-  }
-  const tempDiv = document.createElement('div');
-  tempDiv.innerHTML = html;
-  const text = tempDiv.textContent || tempDiv.innerText || "";
+  // Use a simple regex for server-side or non-DOM environments as a fallback.
+  const text = html.replace(/<[^>]*>?/gm, ' ');
   return text.trim().split(/\s+/).filter(Boolean).length;
 };
 
@@ -45,6 +40,7 @@ export default function ChapterSummaryDialog({ chapterHtmlContent, isOpen, onOpe
     if (isOpen) {
       setWordCount(countWordsInHtml(chapterHtmlContent));
     } else {
+      // Delay reset to allow for closing animation
       const timer = setTimeout(() => {
         setSummary(null);
         setIsLoading(false);
@@ -82,7 +78,7 @@ export default function ChapterSummaryDialog({ chapterHtmlContent, isOpen, onOpe
           </DialogDescription>
         </DialogHeader>
 
-        <div className="space-y-4">
+        <div className="space-y-4 flex-shrink-0">
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div className="space-y-2">
                     <Label className="font-semibold">Longitud</Label>
@@ -113,9 +109,9 @@ export default function ChapterSummaryDialog({ chapterHtmlContent, isOpen, onOpe
             </Button>
         </div>
         
-        <Separator />
+        <Separator className="my-4"/>
         
-        <div className="py-2 space-y-4 flex-grow min-h-[300px] flex flex-col">
+        <div className="py-2 space-y-4 flex-grow min-h-0 flex flex-col">
           {isLoading ? (
             <div className="flex-grow flex flex-col items-center justify-center space-y-3 p-4 text-center">
                 <Loader2 className="h-12 w-12 text-primary animate-spin" />
@@ -145,7 +141,7 @@ export default function ChapterSummaryDialog({ chapterHtmlContent, isOpen, onOpe
           )}
         </div>
 
-        <DialogFooter className="gap-2 mt-auto pt-4 border-t">
+        <DialogFooter className="gap-2 mt-auto pt-4 border-t flex-shrink-0">
           {error && (
              <Button onClick={handleGenerateSummary} variant="outline" disabled={isLoading}>
                 <RotateCcw className="mr-2 h-4 w-4" />
