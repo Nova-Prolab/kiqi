@@ -37,8 +37,11 @@ import {
   LETTER_SPACINGS_OPTIONS,
   TEXT_ALIGNS_OPTIONS,
   TEXT_WIDTHS_OPTIONS,
-  PARAGRAPH_SPACINGS_OPTIONS
-} from '@/contexts/ReaderSettingsContext'; // Import new constants
+  PARAGRAPH_SPACINGS_OPTIONS,
+  DEFAULT_CUSTOM_BACKGROUND,
+  DEFAULT_CUSTOM_FOREGROUND
+} from '@/contexts/ReaderSettingsContext';
+import { cn } from "@/lib/utils";
 
 interface ReaderSettingsSheetProps {
   isOpen: boolean;
@@ -53,6 +56,7 @@ export default function ReaderSettingsSheet({ isOpen, onOpenChange }: ReaderSett
     letterSpacing, setLetterSpacing, textAlign, setTextAlign,
     textWidth, setTextWidth, paragraphSpacing, setParagraphSpacing,
     resetSettings,
+    fontClass, themeClass, lineHeightClass, letterSpacingClass, textAlignClass, paragraphSpacingClass, readerFontFamilyStyle,
   } = useReaderSettings();
 
   const [tempCustomFont, setTempCustomFont] = useState(customFontFamily || '');
@@ -77,13 +81,31 @@ export default function ReaderSettingsSheet({ isOpen, onOpenChange }: ReaderSett
       colorSetter(newColor); 
     }
   };
+  
+  const previewClasses = cn(
+    'reading-content-area',
+    'prose',
+    'rounded-md p-4 shadow-inner transition-colors duration-200',
+    theme === 'custom' ? '' : themeClass,
+    fontClass,
+    lineHeightClass,
+    letterSpacingClass,
+    textAlignClass,
+    paragraphSpacingClass
+  );
+
+  const previewStyle: React.CSSProperties = { ...readerFontFamilyStyle };
+  if (theme === 'custom') {
+    previewStyle.backgroundColor = customBackground || DEFAULT_CUSTOM_BACKGROUND;
+    previewStyle.color = customForeground || DEFAULT_CUSTOM_FOREGROUND;
+  }
 
   return (
     <Sheet open={isOpen} onOpenChange={onOpenChange}>
       <SheetContent 
         side="right" 
-        className="w-full max-w-sm sm:max-w-md p-0 flex flex-col z-[150]" // Increased z-index
-        data-vaul-drawer-direction="right" // For potential future Vaul integration if used elsewhere
+        className="w-full max-w-sm sm:max-w-md p-0 flex flex-col z-[150]"
+        data-vaul-drawer-direction="right"
       >
         <SheetHeader className="p-4 pb-3 border-b">
           <SheetTitle className="flex items-center text-primary">
@@ -95,10 +117,19 @@ export default function ReaderSettingsSheet({ isOpen, onOpenChange }: ReaderSett
           </SheetDescription>
         </SheetHeader>
 
+        <div className="p-4 border-b bg-muted/30">
+          <Label className="text-xs font-semibold text-muted-foreground flex items-center mb-2"><Paintbrush className="mr-2 h-4 w-4" />VISTA PREVIA</Label>
+          <div className={previewClasses} style={previewStyle}>
+            <h4 className="font-bold mb-1" style={{color: 'inherit'}}>El Viaje del Héroe</h4>
+            <p className="text-sm" style={{color: 'inherit', margin: 0}}>
+              El veloz murciélago hindú comía feliz cardillo y kiwi. La cigüeña tocaba el saxofón detrás del palenque de paja.
+            </p>
+          </div>
+        </div>
+
         <ScrollArea className="flex-grow">
           <div className="p-4 space-y-6">
             
-            {/* Section: Tipografía */}
             <div className="space-y-1">
               <Label className="text-xs font-semibold text-muted-foreground flex items-center mb-2"><Type className="mr-2 h-4 w-4" />TIPOGRAFÍA</Label>
               <div className="space-y-3 pl-1">
@@ -134,7 +165,6 @@ export default function ReaderSettingsSheet({ isOpen, onOpenChange }: ReaderSett
             </div>
             <Separator />
 
-            {/* Section: Espaciado y Disposición */}
             <div className="space-y-1">
               <Label className="text-xs font-semibold text-muted-foreground flex items-center mb-2"><Columns className="mr-2 h-4 w-4" />ESPACIADO Y DISPOSICIÓN</Label>
               <div className="space-y-3 pl-1">
@@ -187,7 +217,6 @@ export default function ReaderSettingsSheet({ isOpen, onOpenChange }: ReaderSett
             </div>
             <Separator />
 
-            {/* Section: Tema y Colores */}
             <div className="space-y-1">
               <Label className="text-xs font-semibold text-muted-foreground flex items-center mb-2"><Palette className="mr-2 h-4 w-4" />TEMA Y COLORES</Label>
               <div className="space-y-3 pl-1">
