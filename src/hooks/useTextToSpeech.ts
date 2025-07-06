@@ -6,110 +6,171 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 // Helper to strip HTML and get clean text for speech synthesis
 const stripHtmlForSpeech = (html: string): string => {
   if (typeof document === 'undefined') {
-    // Basic fallback for server-side or non-DOM environments
     return html.replace(/<[^>]*>?/gm, ' ');
   }
   const doc = new DOMParser().parseFromString(html, 'text/html');
-  // Simple text extraction
-  const text = (doc.body.textContent || "");
+  const text = doc.body.textContent || "";
   return text.replace(/\s+/g, ' ').trim();
 };
 
-export const useTextToSpeech = (textToSpeak: string) => {
-  const [isSpeaking, setIsSpeaking] = useState(false);
-  const utteranceRef = useRef<SpeechSynthesisUtterance | null>(null);
+const CHUNK_MAX_LENGTH = 250; // Max characters per utterance chunk
 
-  // Function to cancel speech synthesis
-  const cancelSpeech = useCallback(() => {
+const splitTextIntoChunks = (text: string): string[] => {
+  const chunks: string[] = [];
+  if (!text) return chunks;
+
+  // Split by sentences for more natural pauses
+  const sentences = text.match(/[^.!?]+[.!?\u2026]*\s*|.+$/g) || [];
+  
+  sentences.forEach(sentence => {
+    let currentSentence = sentence.trim();
+    if (currentSentence.length === 0) return;
+
+    // If a sentence is longer than the max length, split it further
+    while (currentSentence.length > CHUNK_MAX_LENGTH) {
+      let splitPos = currentSentence.lastIndexOf(' ', CHUNK_MAX_LENGTH);
+      if (splitPos === -1) {
+        splitPos = CHUNK_MAX_LENGTH;
+      }
+      chunks.push(currentSentence.substring(0, splitPos));
+      currentSentence = currentSentence.substring(splitPos).trim();
+    }
+    if (currentSentence.length > 0) {
+      chunks.push(currentSentence);
+    }
+  });
+
+  return chunks;
+};
+
+export const useTextToSpeech = (htmlToSpeak: string) => {
+  const [isSpeaking, setIsSpeaking] = useState(false);
+  const utteranceQueueRef = useRef<SpeechSynthesisUtterance[]>([]);
+  const synthRef = useRef<SpeechSynthesis | null>(null);
+
+  // Keep the synth instance in a ref
+  useEffect(() => {
     if (typeof window !== 'undefined' && window.speechSynthesis) {
-      window.speechSynthesis.cancel();
+      synthRef.current = window.speechSynthesis;
     }
   }, []);
 
-  // Main toggle function
-  const toggleSpeech = useCallback(() => {
-    if (typeof window === 'undefined' || !window.speechSynthesis) {
-      console.error('Browser Speech Synthesis not supported.');
+  // Function to process and speak the queue
+  const speakQueue = useCallback(() => {
+    const synth = synthRef.current;
+    if (!synth || synth.speaking || utteranceQueueRef.current.length === 0) {
       return;
     }
     
-    const synth = window.speechSynthesis;
+    const utterance = utteranceQueueRef.current.shift();
+    if (utterance) {
+      utterance.onend = () => {
+        // When one utterance ends, speak the next one in the queue
+        if (utteranceQueueRef.current.length > 0) {
+          speakQueue();
+        } else {
+          setIsSpeaking(false);
+        }
+      };
+      utterance.onerror = (event) => {
+        console.error('SpeechSynthesisUtterance.onerror:', event.error);
+        // Try to continue with the next chunk even if one fails
+        if (utteranceQueueRef.current.length > 0) {
+          speakQueue();
+        } else {
+          setIsSpeaking(false);
+        }
+      };
+      
+      setIsSpeaking(true);
+      synth.speak(utterance);
+    } else {
+      setIsSpeaking(false);
+    }
+  }, []);
 
-    if (synth.speaking) {
-      cancelSpeech();
+  const cancelSpeech = useCallback(() => {
+    const synth = synthRef.current;
+    if (synth) {
+      utteranceQueueRef.current = [];
+      synth.cancel();
+      setIsSpeaking(false);
+    }
+  }, []);
+
+  const toggleSpeech = useCallback(() => {
+    const synth = synthRef.current;
+    if (!synth) {
+      console.error('Browser Speech Synthesis not supported.');
       return;
     }
 
-    // A hack to "wake up" the speech synthesis engine on some browsers
-    if (!synth.speaking && !synth.pending) {
-       synth.resume(); 
-       const dummyUtterance = new SpeechSynthesisUtterance('');
-       synth.speak(dummyUtterance);
-       synth.cancel();
+    if (isSpeaking) {
+      // If currently speaking, stop everything.
+      cancelSpeech();
+      return;
     }
-
-    const plainText = stripHtmlForSpeech(textToSpeak);
+    
+    const plainText = stripHtmlForSpeech(htmlToSpeak);
     if (!plainText) return;
 
-    const utterance = new SpeechSynthesisUtterance(plainText);
-    utteranceRef.current = utterance;
-
-    // Try to select a preferred Spanish voice if available
+    const chunks = splitTextIntoChunks(plainText);
     const voices = synth.getVoices();
     const spanishVoice = voices.find(voice => voice.lang.startsWith('es-')) || voices.find(voice => voice.lang.startsWith('es'));
-    if (spanishVoice) {
-      utterance.voice = spanishVoice;
+
+    // Create a queue of utterances
+    utteranceQueueRef.current = chunks.map(chunk => {
+      const utterance = new SpeechSynthesisUtterance(chunk);
+      if (spanishVoice) {
+        utterance.voice = spanishVoice;
+      }
+      utterance.lang = 'es-ES';
+      return utterance;
+    });
+
+    // A hack to "wake up" the speech synthesis engine on some browsers
+    if (!synth.speaking) {
+      synth.cancel(); // Clear any previous state
     }
-    utterance.lang = 'es-ES';
+    
+    speakQueue();
 
-    utterance.onstart = () => {
-        setIsSpeaking(true);
-    };
-    utterance.onend = () => {
-      setIsSpeaking(false);
-      utteranceRef.current = null;
-    };
-    utterance.onerror = (event) => {
-      console.error('SpeechSynthesisUtterance.onerror', event);
-      setIsSpeaking(false);
-      utteranceRef.current = null;
-    };
+  }, [isSpeaking, htmlToSpeak, cancelSpeech, speakQueue]);
 
-    // Set speaking state immediately to provide quick UI feedback
-    setIsSpeaking(true);
-    synth.speak(utterance);
-  }, [textToSpeak, cancelSpeech]);
-
-  // Effect to handle state changes from external controls (e.g., browser's media controls)
-  useEffect(() => {
-    const synth = window.speechSynthesis;
-    const checkSpeakingState = () => {
-      setIsSpeaking(synth.speaking);
-    };
-    const interval = setInterval(checkSpeakingState, 250);
-    return () => clearInterval(interval);
-  }, []);
-
-  // Effect to clean up when the component unmounts or the text changes
+  // Effect to clean up when the component unmounts or text changes
   useEffect(() => {
     return () => {
       cancelSpeech();
     };
-  }, [textToSpeak, cancelSpeech]);
+  }, [htmlToSpeak, cancelSpeech]);
 
-  // Initial call to getVoices() might return an empty array.
-  // This ensures voices are loaded when they become available.
+  // Ensure voices are loaded.
   useEffect(() => {
-      if (typeof window !== 'undefined' && window.speechSynthesis) {
-          const loadVoices = () => window.speechSynthesis.getVoices();
-          loadVoices(); // Initial try
-          window.speechSynthesis.onvoiceschanged = loadVoices;
-          return () => {
-            window.speechSynthesis.onvoiceschanged = null;
-          }
-      }
+    const synth = synthRef.current;
+    if (synth) {
+      const loadVoices = () => synth.getVoices();
+      loadVoices();
+      synth.onvoiceschanged = loadVoices;
+      return () => {
+        if (synth) {
+          synth.onvoiceschanged = null;
+        }
+      };
+    }
   }, []);
-
+  
+  // Periodically check the speaking state to keep it in sync, as `onend` can be unreliable.
+  useEffect(() => {
+    const synth = synthRef.current;
+    if (synth) {
+      const interval = setInterval(() => {
+        if (isSpeaking && !synth.speaking) {
+          setIsSpeaking(false);
+        }
+      }, 500);
+      return () => clearInterval(interval);
+    }
+  }, [isSpeaking]);
 
   return { isSpeaking, toggleSpeech, cancelSpeech };
 };
