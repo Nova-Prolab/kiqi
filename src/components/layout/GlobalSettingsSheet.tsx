@@ -21,7 +21,7 @@ import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter, DialogClose } from '@/components/ui/dialog';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
-import { Palette, Languages, Code, AlertTriangle, RefreshCcw, Import as ImportIcon, Export as ExportIcon, ClipboardCopy, Check } from 'lucide-react';
+import { Palette, Languages, Code, AlertTriangle, RefreshCcw, Download as ImportIcon, Share as ExportIcon, ClipboardCopy, Check } from 'lucide-react';
 import { useReaderSettings } from '@/contexts/ReaderSettingsContext';
 import { useCustomTheme, type CustomColors, type CustomThemeData } from '@/contexts/CustomThemeContext';
 import { TARGET_LANGUAGES, type TargetLanguage } from '@/lib/types';
@@ -881,5 +881,3 @@ body {
     </Sheet>
   );
 }
-
-    
