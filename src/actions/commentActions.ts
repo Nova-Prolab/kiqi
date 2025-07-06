@@ -1,3 +1,4 @@
+
 'use server';
 
 import { fetchFileContent } from '@/lib/github';
@@ -6,7 +7,7 @@ import { fetchFromGitHub } from '@/lib/github';
 import { revalidatePath } from 'next/cache';
 
 const getCommentFilePath = (novelId: string, chapterId: string) => {
-    return `${novelId}/comments-${chapterId}.json`;
+    return `${novelId}/Comments/comments-${chapterId}.json`;
 }
 
 // Helper function to find and mutate a comment in a nested structure
