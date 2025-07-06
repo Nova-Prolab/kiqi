@@ -9,7 +9,8 @@ import {
   Maximize,
   Languages,
   Loader2,
-  Volume2
+  Volume2,
+  PauseCircle
 } from 'lucide-react';
 import React, { Suspense } from 'react';
 import dynamic from 'next/dynamic';
@@ -39,8 +40,8 @@ interface ReaderControlsProps {
   onApplyTranslation: (translatedHtml: string) => void;
   onRevertToOriginal: () => void;
   isCurrentlyTranslated: boolean;
-  onFetchAudio: () => void;
-  isFetchingAudio: boolean;
+  onToggleSpeech: () => void;
+  isSpeaking: boolean;
 }
 
 
@@ -48,7 +49,7 @@ function ReaderControls({
   chapterHtmlContent, onToggleImmersive, isImmersive, novelId,
   isVisibleInImmersiveMode, onHoverStateChange, onToggleSettingsSheet, isSettingsSheetOpen,
   onApplyTranslation, onRevertToOriginal, isCurrentlyTranslated,
-  onFetchAudio, isFetchingAudio
+  onToggleSpeech, isSpeaking
 }: ReaderControlsProps) {
   const [isSummaryDialogOpen, setIsSummaryDialogOpen] = React.useState(false);
   const [isTranslationDialogOpen, setIsTranslationDialogOpen] = React.useState(false);
@@ -146,11 +147,11 @@ function ReaderControls({
           <TooltipProvider delayDuration={100}>
             <Tooltip>
               <TooltipTrigger asChild>
-                <Button variant="ghost" size="icon" onClick={onFetchAudio} disabled={isFetchingAudio} aria-label="Escuchar Capítulo (IA)">
-                  {isFetchingAudio ? <Loader2 className="h-5 w-5 animate-spin" /> : <Volume2 />}
+                <Button variant="ghost" size="icon" onClick={onToggleSpeech} aria-label={isSpeaking ? "Detener Narración" : "Escuchar Capítulo"}>
+                  {isSpeaking ? <PauseCircle className="h-5 w-5 text-primary" /> : <Volume2 />}
                 </Button>
               </TooltipTrigger>
-              <TooltipContent><p>Escuchar Capítulo (IA)</p></TooltipContent>
+              <TooltipContent><p>{isSpeaking ? "Detener Narración" : "Escuchar Capítulo"}</p></TooltipContent>
             </Tooltip>
           </TooltipProvider>
 

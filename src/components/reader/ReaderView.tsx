@@ -8,7 +8,6 @@ import { useRecentlyRead } from '@/hooks/useRecentlyRead';
 import React, { useEffect, useRef, useState, useCallback } from 'react';
 import ReaderControls from './ReaderControls';
 import ReaderSettingsSheet from './ReaderSettingsSheet'; 
-import AudioPlayer from './AudioPlayer';
 import { Button } from '@/components/ui/button';
 import { ChevronLeft, ChevronRight, Home, Loader2 } from 'lucide-react';
 import Link from 'next/link';
@@ -17,7 +16,7 @@ import { Card } from '../ui/card';
 import { cn } from '@/lib/utils';
 import { useToast } from '@/hooks/use-toast';
 import { translateChapterAction } from '@/actions/translationActions';
-import { getAudioNarrationAction } from '@/actions/ttsActions';
+import { useTextToSpeech } from '@/hooks/useTextToSpeech';
 
 interface ReaderViewProps {
   novel: Novel;
@@ -45,6 +44,7 @@ export default function ReaderView({ novel, currentChapter }: ReaderViewProps) {
   const chapterKey = `${novel.id}_${currentChapter.id}`;
   const { savePosition, loadPosition } = useReadingPosition(chapterKey);
   const { addRecentlyReadChapter } = useRecentlyRead();
+  const { isSpeaking, toggleSpeech, cancelSpeech } = useTextToSpeech(currentChapter.content);
 
   const scrollViewportRef = useRef<HTMLDivElement>(null);
   const doubleClickRevealTimerRef = useRef<NodeJS.Timeout | null>(null);
@@ -57,9 +57,6 @@ export default function ReaderView({ novel, currentChapter }: ReaderViewProps) {
   const [isSettingsSheetOpen, setIsSettingsSheetOpen] = useState(false); 
   const [isNavigatingToChapter, setIsNavigatingToChapter] = useState(false);
 
-  const [audioSrc, setAudioSrc] = useState<string | null>(null);
-  const [isFetchingAudio, setIsFetchingAudio] = useState(false);
-
   const contentToRender = translatedContentForDisplay ?? currentChapter.content;
   const isCurrentlyTranslated = translatedContentForDisplay !== null;
 
@@ -69,6 +66,8 @@ export default function ReaderView({ novel, currentChapter }: ReaderViewProps) {
       if (doubleClickRevealTimerRef.current) {
         clearTimeout(doubleClickRevealTimerRef.current);
       }
+      // Ensure speech is stopped when navigating away
+      cancelSpeech();
     };
   }, []);
 
@@ -85,7 +84,7 @@ export default function ReaderView({ novel, currentChapter }: ReaderViewProps) {
 
     // Reset state when chapter changes
     setTranslatedContentForDisplay(null);
-    setAudioSrc(null);
+    cancelSpeech();
 
     if (scrollViewportRef.current) {
       scrollViewportRef.current.scrollTop = 0;
@@ -104,7 +103,7 @@ export default function ReaderView({ novel, currentChapter }: ReaderViewProps) {
     }, 50);
 
     return () => clearTimeout(timer);
-  }, [currentChapter.id, novel?.id, isMounted, addRecentlyReadChapter, loadPosition]); // loadPosition added
+  }, [currentChapter.id, novel?.id, isMounted, addRecentlyReadChapter, loadPosition, cancelSpeech]);
 
 
   // Effect for auto-translation
@@ -220,38 +219,6 @@ export default function ReaderView({ novel, currentChapter }: ReaderViewProps) {
     toast({ title: "Contenido Original Restaurado"});
   };
   
-  const handleFetchAudio = useCallback(async () => {
-    if (isFetchingAudio) return;
-
-    setIsFetchingAudio(true);
-    toast({
-      title: 'Generando audio...',
-      description: 'La IA está preparando la narración. Esto puede tardar unos segundos.',
-    });
-
-    try {
-      const result = await getAudioNarrationAction(currentChapter.content);
-      if (result.audioUrl) {
-        setAudioSrc(result.audioUrl);
-        toast({
-          title: '¡Audio listo!',
-          description: 'La narración del capítulo está lista para escuchar.',
-        });
-      } else {
-        throw new Error(result.error || 'Ocurrió un error desconocido.');
-      }
-    } catch (error: any) {
-      toast({
-        variant: 'destructive',
-        title: 'Error al generar audio',
-        description: error.message || 'No se pudo completar la solicitud.',
-      });
-      setAudioSrc(null);
-    } finally {
-      setIsFetchingAudio(false);
-    }
-  }, [currentChapter.content, isFetchingAudio, toast]);
-
   const handleChapterLinkClick = () => {
     setIsNavigatingToChapter(true);
   };
@@ -328,8 +295,8 @@ export default function ReaderView({ novel, currentChapter }: ReaderViewProps) {
         onApplyTranslation={handleApplyTranslation}
         onRevertToOriginal={handleRevertToOriginal}
         isCurrentlyTranslated={isCurrentlyTranslated}
-        onFetchAudio={handleFetchAudio}
-        isFetchingAudio={isFetchingAudio}
+        onToggleSpeech={toggleSpeech}
+        isSpeaking={isSpeaking}
       />
       
       <ReaderSettingsSheet 
@@ -374,13 +341,6 @@ export default function ReaderView({ novel, currentChapter }: ReaderViewProps) {
         </Card>
       </ScrollArea>
       
-      {audioSrc && (
-        <AudioPlayer
-          src={audioSrc}
-          onClose={() => setAudioSrc(null)}
-          title={`Capítulo ${currentChapter.order}: ${currentChapter.title}`}
-        />
-      )}
     </div>
   );
 }
