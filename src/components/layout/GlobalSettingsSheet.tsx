@@ -21,7 +21,7 @@ import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter, DialogClose } from '@/components/ui/dialog';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
-import { Palette, Languages, Code, AlertTriangle, RefreshCcw, Import, Export, ClipboardCopy, Check } from 'lucide-react';
+import { Palette, Languages, Code, AlertTriangle, RefreshCcw, Import as ImportIcon, Export as ExportIcon, ClipboardCopy, Check } from 'lucide-react';
 import { useReaderSettings } from '@/contexts/ReaderSettingsContext';
 import { useCustomTheme, type CustomColors, type CustomThemeData } from '@/contexts/CustomThemeContext';
 import { TARGET_LANGUAGES, type TargetLanguage } from '@/lib/types';
@@ -731,8 +731,8 @@ export default function GlobalSettingsSheet({ isOpen, onOpenChange }: GlobalSett
                 <h4 className="font-semibold text-foreground">Gestionar Tema</h4>
                 <p className="text-sm text-muted-foreground">Guarda o carga tu configuración de apariencia personalizada (colores + CSS).</p>
                 <div className="flex justify-center gap-4">
-                    <Button variant="outline" onClick={() => setIsImportDialogOpen(true)}><Import className="mr-2 h-4 w-4"/> Importar</Button>
-                    <Button variant="outline" onClick={() => setIsExportDialogOpen(true)}><Export className="mr-2 h-4 w-4"/> Exportar</Button>
+                    <Button variant="outline" onClick={() => setIsImportDialogOpen(true)}><ImportIcon className="mr-2 h-4 w-4"/> Importar</Button>
+                    <Button variant="outline" onClick={() => setIsExportDialogOpen(true)}><ExportIcon className="mr-2 h-4 w-4"/> Exportar</Button>
                 </div>
               </div>
 
@@ -881,3 +881,5 @@ body {
     </Sheet>
   );
 }
+
+    
