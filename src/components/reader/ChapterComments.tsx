@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useTransition, useEffect, useCallback, FormEvent } from 'react';
@@ -7,10 +6,9 @@ import { es } from 'date-fns/locale';
 import type { Comment } from '@/lib/types';
 import { addCommentAction, fetchCommentsAction, addReplyAction, likeCommentAction } from '@/actions/commentActions';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Textarea } from '@/components/ui/textarea';
 import { Input } from '@/components/ui/input';
-import { Loader2, MessageCircle, AlertTriangle, Send, Heart, MessageSquare } from 'lucide-react';
+import { Loader2, MessageCircle, AlertTriangle, Send, Heart, MessageSquare, Maximize, Minimize } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { useReaderSettings } from '@/contexts/ReaderSettingsContext';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
@@ -19,6 +17,15 @@ import { useLikedComments } from '@/contexts/LikedCommentsContext';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
 import { Separator } from '@/components/ui/separator';
+import {
+  Sheet,
+  SheetContent,
+  SheetDescription,
+  SheetHeader,
+  SheetTitle,
+  SheetClose,
+} from '@/components/ui/sheet';
+import { ScrollArea } from '@/components/ui/scroll-area';
 
 // Helper functions for optimistic updates
 const updateLikesInTree = (comments: Comment[], commentId: string): Comment[] => {
@@ -69,13 +76,16 @@ const addReplyInTree = (comments: Comment[], parentId: string, newReply: Comment
 interface ChapterCommentsProps {
   novelId: string;
   chapterId: string;
+  isOpen: boolean;
+  onOpenChange: (isOpen: boolean) => void;
 }
 
-export default function ChapterComments({ novelId, chapterId }: ChapterCommentsProps) {
+export default function ChapterComments({ novelId, chapterId, isOpen, onOpenChange }: ChapterCommentsProps) {
   const [comments, setComments] = useState<Comment[] | null>(null);
   const [isLoading, startLoadingTransition] = useTransition();
   const [isSubmitting, startSubmittingTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
+  const [isMaximized, setIsMaximized] = useState(false);
   
   const { commentAuthorName, setCommentAuthorName, commentAuthorAvatar } = useReaderSettings();
   const { isCommentLiked, addLikedComment, isLoaded: likedCommentsLoaded } = useLikedComments();
@@ -97,6 +107,12 @@ export default function ChapterComments({ novelId, chapterId }: ChapterCommentsP
       }
     });
   }, [novelId, chapterId]);
+
+  useEffect(() => {
+    if (isOpen && comments === null) {
+      handleLoadComments();
+    }
+  }, [isOpen, comments, handleLoadComments]);
 
   const publishComment = useCallback((authorName: string, content: string) => {
     startSubmittingTransition(async () => {
@@ -283,104 +299,142 @@ export default function ChapterComments({ novelId, chapterId }: ChapterCommentsP
     );
   };
 
+  const renderContent = () => {
+    if (isLoading) {
+      return (
+        <div className="flex-grow flex items-center justify-center">
+          <Loader2 className="h-12 w-12 text-primary animate-spin" />
+        </div>
+      );
+    }
+
+    if (error) {
+      return (
+        <div className="flex-grow flex items-center justify-center">
+          <div className="text-center py-8 text-destructive bg-destructive/10 rounded-md p-6">
+            <AlertTriangle className="mx-auto h-8 w-8 mb-3" />
+            <p className="font-semibold">Error al cargar</p>
+            <p className="text-sm mt-1 mb-4 max-w-xs mx-auto">{error}</p>
+            <Button variant="outline" onClick={handleLoadComments}>Intentar de Nuevo</Button>
+          </div>
+        </div>
+      );
+    }
+    
+    if (comments) {
+      return (
+        <ScrollArea className="flex-grow h-full">
+          <div className="p-4 sm:p-6 space-y-8">
+            {comments.length > 0 ? (
+              comments.map(comment => <CommentItem key={comment.id} comment={comment} level={0} />)
+            ) : (
+              <p className="text-center text-muted-foreground py-12">Sé el primero en comentar.</p>
+            )}
+          </div>
+        </ScrollArea>
+      );
+    }
+    
+    return null; // Should not happen if logic is correct
+  };
+
   return (
     <>
-    <Card className="shadow rounded-lg border mt-6">
-      <CardHeader>
-        <CardTitle className="flex items-center text-primary text-xl sm:text-2xl">
-          <MessageCircle className="mr-3 h-6 w-6" />
-          Comentarios
-        </CardTitle>
-      </CardHeader>
-      <CardContent className="space-y-6">
-        {comments === null ? (
-          <div className="text-center py-8">
-            <p className="text-muted-foreground mb-4">Los comentarios para este capítulo no se han cargado.</p>
-            <Button onClick={handleLoadComments} disabled={isLoading}>
-              {isLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <MessageCircle className="mr-2 h-4 w-4" />}
-              {isLoading ? 'Cargando...' : 'Cargar Comentarios'}
-            </Button>
-          </div>
-        ) : isLoading ? (
-          <div className="flex justify-center items-center py-8">
-            <Loader2 className="h-8 w-8 text-primary animate-spin" />
-          </div>
-        ) : error ? (
-           <div className="text-center py-8 text-destructive bg-destructive/10 rounded-md">
-              <AlertTriangle className="mx-auto h-8 w-8 mb-3" />
-              <p className="font-semibold">Error al cargar</p>
-              <p className="text-sm mt-1 mb-4">{error}</p>
-              <Button variant="outline" onClick={handleLoadComments}>Intentar de Nuevo</Button>
+      <Sheet open={isOpen} onOpenChange={onOpenChange}>
+        <SheetContent
+          side="bottom"
+          className={cn(
+            'mt-16 flex h-[85vh] flex-col gap-0 p-0 transition-all duration-300 ease-in-out z-[160]',
+            isMaximized && 'h-screen'
+          )}
+          onOpenAutoFocus={(e) => e.preventDefault()} // Prevent autofocus on first element
+        >
+          <SheetHeader className="flex-row items-center justify-between gap-4 border-b p-3 sm:p-4">
+            <div className="space-y-1">
+              <SheetTitle className="flex items-center text-primary">
+                <MessageCircle className="mr-3 h-6 w-6" />
+                Comentarios
+              </SheetTitle>
+              <SheetDescription className="hidden sm:block">
+                Lee lo que otros piensan o comparte tu propia opinión.
+              </SheetDescription>
             </div>
-        ) : (
-          <div className="space-y-8">
-            <div className="space-y-6">
-                {comments.length > 0 ? (
-                    comments.map(comment => <CommentItem key={comment.id} comment={comment} level={0} />)
-                ) : (
-                    <p className="text-center text-muted-foreground py-6">Sé el primero en comentar.</p>
-                )}
+            <div className="flex items-center gap-2">
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={() => setIsMaximized(!isMaximized)}
+                className="hidden sm:inline-flex"
+              >
+                {isMaximized ? <Minimize className="h-5 w-5"/> : <Maximize className="h-5 w-5"/>}
+                <span className="sr-only">{isMaximized ? 'Restaurar' : 'Maximizar'}</span>
+              </Button>
+              <SheetClose asChild>
+                  <Button variant="ghost" size="icon"><span className="sr-only">Cerrar</span><MessageCircle className="h-5 w-5"/></Button>
+              </SheetClose>
             </div>
+          </SheetHeader>
 
-            <Separator />
-            
-            <form onSubmit={handleAddTopLevelComment} className="flex items-start gap-4 pt-4">
-              <Avatar className="h-10 w-10">
-                <AvatarImage src={commentAuthorAvatar} alt={commentAuthorName || 'Tu'} />
-                <AvatarFallback>{(commentAuthorName || '?').charAt(0).toUpperCase()}</AvatarFallback>
-              </Avatar>
-              <div className="w-full space-y-3">
-                <Textarea
-                  value={commentText}
-                  onChange={(e) => setCommentText(e.target.value)}
-                  placeholder="Añade tu comentario..."
-                  required
-                  rows={3}
-                  className="bg-background text-base"
-                />
-                <div className="flex justify-end">
-                  <Button type="submit" disabled={isSubmitting}>
-                    {isSubmitting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Send className="mr-2 h-4 w-4" />}
-                    {isSubmitting ? 'Publicando...' : 'Publicar'}
-                  </Button>
-                </div>
-              </div>
-            </form>
+          {renderContent()}
 
-          </div>
-        )}
-      </CardContent>
-    </Card>
-
-    <Dialog open={isNameModalOpen} onOpenChange={setIsNameModalOpen}>
-        <DialogContent className="sm:max-w-md">
-            <DialogHeader>
-                <DialogTitle>¿Cómo te llamas?</DialogTitle>
-                <DialogDescription>
-                    Necesitas un nombre para poder comentar. Este se guardará para futuras ocasiones.
-                </DialogDescription>
-            </DialogHeader>
-            <div className="grid gap-4 py-4">
-                <div className="grid grid-cols-4 items-center gap-4">
-                    <Label htmlFor="name" className="text-right">
-                        Nombre
-                    </Label>
-                    <Input 
-                        id="name" 
-                        value={tempName}
-                        onChange={(e) => setTempName(e.target.value)}
-                        className="col-span-3"
-                        placeholder="Tu apodo"
-                        onKeyDown={(e) => { if (e.key === 'Enter') handleNameModalSubmit(); }}
+          {comments && !error && (
+            <div className="border-t bg-background p-3 sm:p-4">
+                <form onSubmit={handleAddTopLevelComment} className="flex items-start gap-4">
+                <Avatar className="h-10 w-10">
+                    <AvatarImage src={commentAuthorAvatar} alt={commentAuthorName || 'Tu'} />
+                    <AvatarFallback>{(commentAuthorName || '?').charAt(0).toUpperCase()}</AvatarFallback>
+                </Avatar>
+                <div className="w-full space-y-3">
+                    <Textarea
+                    value={commentText}
+                    onChange={(e) => setCommentText(e.target.value)}
+                    placeholder="Añade tu comentario..."
+                    required
+                    rows={2}
+                    className="bg-muted text-base"
                     />
+                    <div className="flex justify-end">
+                    <Button type="submit" disabled={isSubmitting}>
+                        {isSubmitting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Send className="mr-2 h-4 w-4" />}
+                        {isSubmitting ? 'Publicando...' : 'Publicar'}
+                    </Button>
+                    </div>
                 </div>
+                </form>
             </div>
-            <DialogFooter>
-                <Button variant="outline" onClick={() => setIsNameModalOpen(false)}>Cancelar</Button>
-                <Button onClick={handleNameModalSubmit}>Guardar y Publicar</Button>
-            </DialogFooter>
-        </DialogContent>
-    </Dialog>
+          )}
+        </SheetContent>
+      </Sheet>
+
+      <Dialog open={isNameModalOpen} onOpenChange={setIsNameModalOpen}>
+          <DialogContent className="sm:max-w-md">
+              <DialogHeader>
+                  <DialogTitle>¿Cómo te llamas?</DialogTitle>
+                  <DialogDescription>
+                      Necesitas un nombre para poder comentar. Este se guardará para futuras ocasiones.
+                  </DialogDescription>
+              </DialogHeader>
+              <div className="grid gap-4 py-4">
+                  <div className="grid grid-cols-4 items-center gap-4">
+                      <Label htmlFor="name" className="text-right">
+                          Nombre
+                      </Label>
+                      <Input 
+                          id="name" 
+                          value={tempName}
+                          onChange={(e) => setTempName(e.target.value)}
+                          className="col-span-3"
+                          placeholder="Tu apodo"
+                          onKeyDown={(e) => { if (e.key === 'Enter') handleNameModalSubmit(); }}
+                      />
+                  </div>
+              </div>
+              <DialogFooter>
+                  <Button variant="outline" onClick={() => setIsNameModalOpen(false)}>Cancelar</Button>
+                  <Button onClick={handleNameModalSubmit}>Guardar y Publicar</Button>
+              </DialogFooter>
+          </DialogContent>
+      </Dialog>
     </>
   );
 }

@@ -1,4 +1,3 @@
-
 'use client';
 
 import { Button } from '@/components/ui/button';
@@ -10,7 +9,8 @@ import {
   Languages,
   Loader2,
   Volume2,
-  PauseCircle
+  PauseCircle,
+  MessageSquare
 } from 'lucide-react';
 import React, { Suspense } from 'react';
 import dynamic from 'next/dynamic';
@@ -42,6 +42,7 @@ interface ReaderControlsProps {
   isCurrentlyTranslated: boolean;
   onToggleSpeech: () => void;
   isSpeaking: boolean;
+  onToggleCommentsSheet: () => void;
 }
 
 
@@ -49,7 +50,7 @@ function ReaderControls({
   chapterHtmlContent, onToggleImmersive, isImmersive, novelId,
   isVisibleInImmersiveMode, onHoverStateChange, onToggleSettingsSheet, isSettingsSheetOpen,
   onApplyTranslation, onRevertToOriginal, isCurrentlyTranslated,
-  onToggleSpeech, isSpeaking
+  onToggleSpeech, isSpeaking, onToggleCommentsSheet
 }: ReaderControlsProps) {
   const [isSummaryDialogOpen, setIsSummaryDialogOpen] = React.useState(false);
   const [isTranslationDialogOpen, setIsTranslationDialogOpen] = React.useState(false);
@@ -152,6 +153,17 @@ function ReaderControls({
                 </Button>
               </TooltipTrigger>
               <TooltipContent><p>{isSpeaking ? "Detener Narración" : "Escuchar Capítulo"}</p></TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
+
+           <TooltipProvider delayDuration={100}>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button variant="ghost" size="icon" onClick={onToggleCommentsSheet} aria-label="Ver Comentarios">
+                  <MessageSquare />
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent><p>Ver Comentarios</p></TooltipContent>
             </Tooltip>
           </TooltipProvider>
 

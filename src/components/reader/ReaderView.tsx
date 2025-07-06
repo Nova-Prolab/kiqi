@@ -1,4 +1,3 @@
-
 'use client';
 
 import type { Novel, Chapter } from '@/lib/types';
@@ -56,6 +55,7 @@ export default function ReaderView({ novel, currentChapter }: ReaderViewProps) {
   const [isMouseOverImmersiveControls, setIsMouseOverImmersiveControls] = useState(false);
   const [forceShowImmersiveControlsByDoubleClick, setForceShowImmersiveControlsByDoubleClick] = useState(false);
   const [isSettingsSheetOpen, setIsSettingsSheetOpen] = useState(false); 
+  const [isCommentsSheetOpen, setIsCommentsSheetOpen] = useState(false);
   const [isNavigatingToChapter, setIsNavigatingToChapter] = useState(false);
 
   const contentToRender = translatedContentForDisplay ?? currentChapter.content;
@@ -191,6 +191,10 @@ export default function ReaderView({ novel, currentChapter }: ReaderViewProps) {
   const handleToggleSettingsSheet = () => {
     setIsSettingsSheetOpen(prev => !prev);
   };
+  
+  const handleToggleCommentsSheet = () => {
+    setIsCommentsSheetOpen(prev => !prev);
+  };
 
   const handleImmersiveTopAreaDoubleClick = () => {
     if (!isImmersive) return;
@@ -298,11 +302,19 @@ export default function ReaderView({ novel, currentChapter }: ReaderViewProps) {
         isCurrentlyTranslated={isCurrentlyTranslated}
         onToggleSpeech={toggleSpeech}
         isSpeaking={isSpeaking}
+        onToggleCommentsSheet={handleToggleCommentsSheet}
       />
       
       <ReaderSettingsSheet 
         isOpen={isSettingsSheetOpen}
         onOpenChange={setIsSettingsSheetOpen}
+      />
+
+      <ChapterComments
+        novelId={novel.id}
+        chapterId={currentChapter.id}
+        isOpen={isCommentsSheetOpen}
+        onOpenChange={setIsCommentsSheetOpen}
       />
 
       <ScrollArea
@@ -341,12 +353,6 @@ export default function ReaderView({ novel, currentChapter }: ReaderViewProps) {
           </nav>
         </Card>
       </ScrollArea>
-      
-      {!isImmersive && (
-         <div className={`mx-auto pb-4 px-2 ${textWidthClass}`}>
-           <ChapterComments novelId={novel.id} chapterId={currentChapter.id} />
-        </div>
-      )}
     </div>
   );
 }
