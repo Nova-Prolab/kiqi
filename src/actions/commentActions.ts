@@ -1,4 +1,3 @@
-
 'use server';
 
 import { fetchFileContent } from '@/lib/github';
@@ -140,6 +139,9 @@ export async function addReplyAction(novelId: string, chapterId: string, parentC
     };
 
     const foundAndMutated = findAndMutateComment(currentComments, parentCommentId, (parentComment) => {
+        if (!parentComment.replies) {
+            parentComment.replies = [];
+        }
         parentComment.replies.unshift(newReply);
     });
 
@@ -166,7 +168,7 @@ export async function likeCommentAction(novelId: string, chapterId: string, comm
         return { error: 'No se puede dar Me Gusta en un hilo de comentarios que no existe.' };
     }
     
-    const foundAndMutated = findAndMutateComment(currentComments, commentId, (comment) => {
+    const foundAndMutateComment = findAndMutateComment(currentComments, commentId, (comment) => {
         comment.likes = (comment.likes || 0) + 1;
     });
 
