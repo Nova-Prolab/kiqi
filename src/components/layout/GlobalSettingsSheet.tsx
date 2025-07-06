@@ -1,3 +1,4 @@
+
 'use client';
 
 import React, { useState, useEffect } from 'react';
@@ -25,6 +26,7 @@ import { useReaderSettings } from '@/contexts/ReaderSettingsContext';
 import { useCustomTheme, type CustomColors, type CustomThemeData } from '@/contexts/CustomThemeContext';
 import { TARGET_LANGUAGES, type TargetLanguage } from '@/lib/types';
 import { useToast } from '@/hooks/use-toast';
+import { Separator } from '../ui/separator';
 
 interface GlobalSettingsSheetProps {
   isOpen: boolean;
@@ -95,7 +97,6 @@ const hexToHslString = (hex: string): string => {
 };
 
 // --- PREDEFINED THEMES ---
-// ... (omitting for brevity as it's large and unchanged, but it is present in the final file)
 const predefinedThemes = [
   { name: 'Vacío', value: 'empty', css: `` },
   { name: 'Pride 🏳️‍🌈', value: 'pride', css: `
@@ -163,7 +164,7 @@ const predefinedThemes = [
     .card, .bg-card { background-color: #111 !important; border: 1px solid #444; }
   `},
   { name: 'GitHub Dark Dimmed 🐙', value: 'github-dimmed', css: `
-    :root {
+    :root.dark, :root {
       --background: 222 24% 11% !important;
       --foreground: 215 15% 75% !important;
       --primary: 212 92% 64% !important;
@@ -175,7 +176,7 @@ const predefinedThemes = [
     }
   `},
   { name: 'Discord Dark 👾', value: 'discord-dark', css: `
-    :root {
+    :root.dark, :root {
       --background: 226 23% 18% !important;
       --foreground: 220 17% 89% !important;
       --primary: 235 86% 65% !important;
@@ -187,7 +188,7 @@ const predefinedThemes = [
     }
   `},
   { name: 'Spotify 🎧', value: 'spotify', css: `
-    :root {
+    :root.dark, :root {
       --background: 0 0% 7% !important;
       --foreground: 0 0% 95% !important;
       --primary: 83 76% 51% !important;
@@ -210,7 +211,7 @@ const predefinedThemes = [
     }
   `},
   { name: 'Nord ❄️', value: 'nord', css: `
-    :root {
+    :root.dark, :root {
       --background: 220 13% 20% !important;
       --foreground: 220 14% 87% !important;
       --primary: 207 38% 61% !important;
@@ -221,7 +222,7 @@ const predefinedThemes = [
     }
   `},
   { name: 'Gruvbox Dark 📦', value: 'gruvbox-dark', css: `
-    :root {
+    :root.dark, :root {
       --background: 0 0% 16% !important;
       --foreground: 45 52% 86% !important;
       --primary: 26 98% 55% !important;
@@ -231,7 +232,7 @@ const predefinedThemes = [
       --accent: 40 82% 64% !important;
     }
   `},
-  { name: 'País de las Maravillas Invernal ❄️', value: 'winter-wonderland', css: `
+  { name: 'País de las Maravillas Invernal ⛄', value: 'winter-wonderland', css: `
     :root {
       --background: 210 40% 96% !important;
       --foreground: 215 28% 25% !important;
@@ -240,6 +241,44 @@ const predefinedThemes = [
       --card: 210 40% 100% !important;
       --border: 214 32% 91% !important;
       --accent: 190 95% 68% !important;
+    }
+  `},
+  { name: 'Nieve Cayendo 🌨️', value: 'falling-snow', css: `
+    @keyframes snow-fall-1 { 0% { transform: translateY(-100vh); } 100% { transform: translateY(100vh); } }
+    @keyframes snow-fall-2 { 0% { transform: translateY(-100vh); } 100% { transform: translateY(100vh); } }
+    body { 
+        position: relative;
+        overflow-x: hidden !important; 
+        background-color: #3e5c76 !important;
+    }
+    body::before, body::after {
+        content: '';
+        position: fixed;
+        top: 0; left: 0; right: 0; bottom: 0;
+        pointer-events: none;
+        background-repeat: repeat;
+        z-index: 1000;
+        opacity: 0.8;
+    }
+    body::before {
+        background-image: radial-gradient(circle, white 1px, transparent 1.5px);
+        background-size: 30px 30px;
+        animation: snow-fall-1 25s linear infinite;
+    }
+    body::after {
+        background-image: radial-gradient(circle, white 2px, transparent 2.5px);
+        background-size: 70px 70px;
+        animation: snow-fall-2 18s linear infinite;
+        animation-delay: -7s;
+    }
+    :root.dark, :root {
+        --background: 210 26% 23% !important;
+        --foreground: 210 40% 98% !important;
+        --primary: 190 95% 68% !important;
+        --primary-foreground: 210 26% 15% !important;
+        --card: 210 26% 28% !important;
+        --border: 210 26% 40% !important;
+        --accent: 190 95% 68% !important;
     }
   `},
   { name: 'Brillo del Atardecer 🌇', value: 'sunset-glow', css: `
@@ -268,7 +307,7 @@ const predefinedThemes = [
     }
   `},
   { name: 'Outrun 🚗', value: 'outrun', css: `
-    :root {
+    :root.dark, :root {
       --background: 260 50% 10% !important;
       --foreground: 240 20% 90% !important;
       --primary: 320 100% 55% !important;
@@ -285,7 +324,7 @@ const predefinedThemes = [
     }
   `},
   { name: 'Océano Profundo 🌊', value: 'deep-ocean', css: `
-    :root {
+    :root.dark, :root {
       --background: 210 50% 10% !important;
       --foreground: 190 30% 85% !important;
       --primary: 180 90% 50% !important;
@@ -296,7 +335,7 @@ const predefinedThemes = [
     }
   `},
   { name: 'Vibras de la Selva 🌴', value: 'jungle-vibes', css: `
-    :root {
+    :root.dark, :root {
       --background: 100 20% 20% !important;
       --foreground: 80 25% 85% !important;
       --primary: 75 70% 45% !important;
@@ -318,7 +357,7 @@ const predefinedThemes = [
     }
   `},
   { name: 'Mono Noir 🎥', value: 'mono-noir', css: `
-    :root {
+    :root.dark, :root {
       --background: 0 0% 10% !important;
       --foreground: 0 0% 95% !important;
       --primary: 0 0% 90% !important;
@@ -332,7 +371,7 @@ const predefinedThemes = [
     }
   `},
   { name: 'Art Deco Dorado ✨', value: 'golden-deco', css: `
-    :root {
+    :root.dark, :root {
       --background: 0 0% 8% !important;
       --foreground: 45 30% 85% !important;
       --primary: 45 80% 60% !important;
@@ -373,7 +412,7 @@ const predefinedThemes = [
     }
   `},
   { name: 'Fuego y Hielo 🔥❄️', value: 'fire-and-ice', css: `
-    :root {
+    :root.dark, :root {
       --background: 220 30% 15% !important;
       --foreground: 210 20% 90% !important;
       --primary: 15 90% 55% !important;
@@ -395,7 +434,7 @@ const predefinedThemes = [
     }
   `},
   { name: 'Púrpura Real 👑', value: 'royal-purple', css: `
-    :root {
+    :root.dark, :root {
       --background: 270 30% 15% !important;
       --foreground: 270 20% 90% !important;
       --primary: 265 80% 70% !important;
@@ -428,7 +467,7 @@ const predefinedThemes = [
     }
   `},
   { name: 'Aventura 8-bit 👾', value: '8-bit-adventure', css: `
-    :root {
+    :root.dark, :root {
       --background: 220 30% 10% !important;
       --foreground: 0 0% 95% !important;
       --primary: 50 100% 50% !important;
@@ -442,7 +481,7 @@ const predefinedThemes = [
     }
   `},
   { name: 'Temporada de Miedo 🎃', value: 'spooky-season', css: `
-    :root {
+    :root.dark, :root {
       --background: 25 10% 10% !important;
       --foreground: 30 80% 90% !important;
       --primary: 25 90% 55% !important;
@@ -508,13 +547,18 @@ export default function GlobalSettingsSheet({ isOpen, onOpenChange }: GlobalSett
     if (typeof window === 'undefined') return '';
     return getComputedStyle(document.documentElement).getPropertyValue(variable).trim();
   };
+  
+  const allColorKeys: (keyof CustomColors)[] = [
+    'background', 'foreground', 'primary', 'primary-foreground', 'secondary', 'secondary-foreground',
+    'accent', 'accent-foreground', 'destructive', 'destructive-foreground', 'ring',
+    'card', 'card-foreground', 'popover', 'popover-foreground', 'border', 'input', 'muted', 'muted-foreground'
+  ];
 
   // Populate temp state when sheet opens
   useEffect(() => {
     if (isOpen) {
-      const allColorKeys = Object.keys(tempColors);
       const currentComputedColors: CustomColors = {};
-
+      
       // This ensures we get the "live" values from the DOM
       for (const key of allColorKeys) {
         currentComputedColors[key as keyof CustomColors] = getCssVariableValue(`--${key}`);
@@ -547,15 +591,10 @@ export default function GlobalSettingsSheet({ isOpen, onOpenChange }: GlobalSett
   
   const handleReset = (options: { colors?: boolean, css?: boolean }) => {
       resetCustomTheme(options);
-      // Let the reset take effect, then repopulate temp state with new defaults
+      
+      // We need a slight delay to let the CSS variables reset in the DOM before reading them again
       setTimeout(() => {
         if(options.colors) {
-            const allColorKeys: (keyof CustomColors)[] = [
-                'primary', 'primary-foreground', 'secondary', 'secondary-foreground', 'muted', 
-                'muted-foreground', 'accent', 'accent-foreground', 'destructive', 'destructive-foreground',
-                'background', 'foreground', 'card', 'card-foreground', 'popover', 'popover-foreground',
-                'border', 'input', 'ring'
-            ];
             const defaultComputedColors: CustomColors = {};
             allColorKeys.forEach(key => {
                  defaultComputedColors[key] = getCssVariableValue(`--${key}`);
@@ -566,6 +605,7 @@ export default function GlobalSettingsSheet({ isOpen, onOpenChange }: GlobalSett
             setTempRawCss('');
         }
       }, 50);
+
       toast({ title: "Personalización Restaurada", description: "Se han restaurado las opciones seleccionadas." });
   };
 
@@ -651,15 +691,15 @@ export default function GlobalSettingsSheet({ isOpen, onOpenChange }: GlobalSett
         </SheetHeader>
         <Tabs defaultValue="appearance" className="flex-grow flex flex-col">
           <TabsList className="m-4 mx-auto">
-            <TabsTrigger value="appearance"><Palette className="mr-2" />Apariencia</TabsTrigger>
-            <TabsTrigger value="translation"><Languages className="mr-2" />Traducción</TabsTrigger>
-            <TabsTrigger value="advanced-css"><Code className="mr-2" />CSS Avanzado</TabsTrigger>
+            <TabsTrigger value="appearance"><Palette className="mr-2 h-4 w-4" />Apariencia</TabsTrigger>
+            <TabsTrigger value="translation"><Languages className="mr-2 h-4 w-4" />Traducción</TabsTrigger>
+            <TabsTrigger value="advanced-css"><Code className="mr-2 h-4 w-4" />CSS Avanzado</TabsTrigger>
           </TabsList>
           
           <div className="flex-grow overflow-y-auto px-4">
             <TabsContent value="appearance" className="m-0 space-y-6">
               <p className="text-sm text-muted-foreground">
-                Personaliza los colores de la interfaz. Usa el selector o introduce valores HSL (ej: <code className="bg-muted px-1 py-0.5 rounded">240 10% 3.9%</code>).
+                Personaliza los colores de la interfaz. Usa el selector de color o introduce valores HSL (ej: <code className="bg-muted px-1 py-0.5 rounded">240 10% 3.9%</code>).
               </p>
               <Accordion type="multiple" defaultValue={['item-0']} className="w-full">
                 {colorFields.map((group, index) => (
@@ -691,8 +731,8 @@ export default function GlobalSettingsSheet({ isOpen, onOpenChange }: GlobalSett
                 <h4 className="font-semibold text-foreground">Gestionar Tema</h4>
                 <p className="text-sm text-muted-foreground">Guarda o carga tu configuración de apariencia personalizada (colores + CSS).</p>
                 <div className="flex justify-center gap-4">
-                    <Button variant="outline" onClick={() => setIsImportDialogOpen(true)}><Import className="mr-2"/> Importar</Button>
-                    <Button variant="outline" onClick={() => setIsExportDialogOpen(true)}><Export className="mr-2"/> Exportar</Button>
+                    <Button variant="outline" onClick={() => setIsImportDialogOpen(true)}><Import className="mr-2 h-4 w-4"/> Importar</Button>
+                    <Button variant="outline" onClick={() => setIsExportDialogOpen(true)}><Export className="mr-2 h-4 w-4"/> Exportar</Button>
                 </div>
               </div>
 
@@ -784,7 +824,7 @@ body {
                     <DropdownMenuItem onSelect={() => handleReset({ css: true })}>
                         Restaurar CSS
                     </DropdownMenuItem>
-                    <DropdownMenuItem onSelect={() => handleReset({ colors: true, css: true })} className="text-destructive focus:text-destructive">
+                    <DropdownMenuItem onSelect={() => handleReset({ colors: true, css: true })} className="text-destructive focus:text-destructive focus:bg-destructive/10">
                         Restaurar Todo
                     </DropdownMenuItem>
                 </DropdownMenuContent>
@@ -831,7 +871,7 @@ body {
                     <Button variant="secondary">Cerrar</Button>
                   </DialogClose>
                   <Button onClick={() => handleCopyToClipboard(JSON.stringify(exportTheme(), null, 2))}>
-                      {hasCopied ? <Check className="mr-2"/> : <ClipboardCopy className="mr-2"/>}
+                      {hasCopied ? <Check className="mr-2 h-4 w-4"/> : <ClipboardCopy className="mr-2 h-4 w-4"/>}
                       {hasCopied ? 'Copiado' : 'Copiar al Portapapeles'}
                   </Button>
               </DialogFooter>
