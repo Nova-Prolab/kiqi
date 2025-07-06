@@ -77,7 +77,7 @@ export default function TranslationDialog({
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-2xl md:max-w-3xl max-h-[90vh] flex flex-col">
-        <DialogHeader>
+        <DialogHeader className="flex-shrink-0">
           <DialogTitle className="flex items-center text-primary">
             <Languages className="mr-2 h-6 w-6"/> Traducir Capítulo (IA)
           </DialogTitle>
@@ -146,7 +146,7 @@ export default function TranslationDialog({
           </div>
         </div>
 
-        <DialogFooter className="gap-2 mt-auto pt-4 border-t flex-col sm:flex-row sm:justify-between flex-shrink-0">
+        <DialogFooter className="gap-2 pt-4 border-t flex-shrink-0 flex-col sm:flex-row sm:justify-between">
             <div>
               {isCurrentlyTranslated && (
                 <Button onClick={handleRevertAndClose} variant="outline">

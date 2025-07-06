@@ -69,7 +69,7 @@ export default function ChapterSummaryDialog({ chapterHtmlContent, isOpen, onOpe
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-2xl max-h-[90vh] flex flex-col">
-        <DialogHeader>
+        <DialogHeader className="flex-shrink-0">
           <DialogTitle className="flex items-center text-primary">
             <BrainCircuit className="mr-2 h-6 w-6"/> Resumen del Capítulo (IA)
           </DialogTitle>
@@ -78,7 +78,7 @@ export default function ChapterSummaryDialog({ chapterHtmlContent, isOpen, onOpe
           </DialogDescription>
         </DialogHeader>
 
-        <div className="space-y-4 flex-shrink-0">
+        <div className="space-y-4 flex-shrink-0 pt-4">
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div className="space-y-2">
                     <Label className="font-semibold">Longitud</Label>
@@ -109,9 +109,9 @@ export default function ChapterSummaryDialog({ chapterHtmlContent, isOpen, onOpe
             </Button>
         </div>
         
-        <Separator className="my-4"/>
+        <Separator className="my-4 flex-shrink-0"/>
         
-        <div className="py-2 space-y-4 flex-grow min-h-0 flex flex-col">
+        <div className="flex-grow min-h-0 flex flex-col">
           {isLoading ? (
             <div className="flex-grow flex flex-col items-center justify-center space-y-3 p-4 text-center">
                 <Loader2 className="h-12 w-12 text-primary animate-spin" />
@@ -141,7 +141,7 @@ export default function ChapterSummaryDialog({ chapterHtmlContent, isOpen, onOpe
           )}
         </div>
 
-        <DialogFooter className="gap-2 mt-auto pt-4 border-t flex-shrink-0">
+        <DialogFooter className="gap-2 pt-4 border-t flex-shrink-0">
           {error && (
              <Button onClick={handleGenerateSummary} variant="outline" disabled={isLoading}>
                 <RotateCcw className="mr-2 h-4 w-4" />

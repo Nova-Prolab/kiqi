@@ -9,7 +9,7 @@ import { addCommentAction, fetchCommentsAction, addReplyAction, likeCommentActio
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Input } from '@/components/ui/input';
-import { Loader2, MessageCircle, AlertTriangle, Send, Heart, MessageSquare, Maximize, Minimize, Crown, Star, Award } from 'lucide-react';
+import { Loader2, MessageCircle, AlertTriangle, Send, Heart, MessageSquare, Maximize, Minimize, Crown, Star, Award, X } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { useReaderSettings } from '@/contexts/ReaderSettingsContext';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
@@ -24,6 +24,7 @@ import {
   SheetDescription,
   SheetHeader,
   SheetTitle,
+  SheetClose
 } from '@/components/ui/sheet';
 import { ScrollArea } from '@/components/ui/scroll-area';
 
@@ -344,7 +345,7 @@ export default function ChapterComments({ novelId, chapterId, isOpen, onOpenChan
   const renderContent = () => {
     if (isLoading) {
       return (
-        <div className="flex-grow flex items-center justify-center">
+        <div className="flex-grow flex items-center justify-center p-4">
           <Loader2 className="h-12 w-12 text-primary animate-spin" />
         </div>
       );
@@ -352,7 +353,7 @@ export default function ChapterComments({ novelId, chapterId, isOpen, onOpenChan
 
     if (error) {
       return (
-        <div className="flex-grow flex items-center justify-center">
+        <div className="flex-grow flex items-center justify-center p-4">
           <div className="text-center py-8 text-destructive bg-destructive/10 rounded-md p-6">
             <AlertTriangle className="mx-auto h-8 w-8 mb-3" />
             <p className="font-semibold">Error al cargar</p>
@@ -391,8 +392,8 @@ export default function ChapterComments({ novelId, chapterId, isOpen, onOpenChan
           )}
           onOpenAutoFocus={(e) => e.preventDefault()} // Prevent autofocus on first element
         >
-          <SheetHeader className="flex-row items-center justify-between gap-4 border-b p-3 sm:p-4">
-            <div className="space-y-1">
+          <SheetHeader className="flex-shrink-0 flex-row items-center justify-between gap-4 border-b p-3 sm:p-4">
+            <div className="flex-1 space-y-1">
               <SheetTitle className="flex items-center text-primary">
                 <MessageCircle className="mr-3 h-6 w-6" />
                 Comentarios
@@ -401,7 +402,7 @@ export default function ChapterComments({ novelId, chapterId, isOpen, onOpenChan
                 Lee lo que otros piensan o comparte tu propia opinión.
               </SheetDescription>
             </div>
-            <div className="flex items-center gap-2">
+            <div className="flex flex-shrink-0 items-center gap-1">
               <Button
                 variant="ghost"
                 size="icon"
@@ -411,13 +412,21 @@ export default function ChapterComments({ novelId, chapterId, isOpen, onOpenChan
                 {isMaximized ? <Minimize className="h-5 w-5"/> : <Maximize className="h-5 w-5"/>}
                 <span className="sr-only">{isMaximized ? 'Restaurar' : 'Maximizar'}</span>
               </Button>
+              <SheetClose asChild>
+                  <Button variant="ghost" size="icon">
+                    <X className="h-5 w-5" />
+                    <span className="sr-only">Cerrar</span>
+                  </Button>
+              </SheetClose>
             </div>
           </SheetHeader>
 
-          {renderContent()}
+          <div className="flex-grow min-h-0 flex flex-col">
+            {renderContent()}
+          </div>
 
           {comments && !error && (
-            <div className="border-t bg-background p-3 sm:p-4">
+            <div className="flex-shrink-0 border-t bg-background p-3 sm:p-4">
                 <form onSubmit={handleAddTopLevelComment} className="flex items-start gap-4">
                 <Avatar className="h-10 w-10">
                     <AvatarImage src={commentAuthorAvatar} alt={commentAuthorName || 'Tu'} />

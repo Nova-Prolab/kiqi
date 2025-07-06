@@ -29,6 +29,7 @@ import { useToast } from '@/hooks/use-toast';
 import { Separator } from '../ui/separator';
 import { useContentFilter, type BlockableCategory } from '@/contexts/ContentFilterContext';
 import { Badge } from '@/components/ui/badge';
+import { ScrollArea } from '../ui/scroll-area';
 
 
 interface GlobalSettingsSheetProps {
@@ -770,208 +771,211 @@ export default function GlobalSettingsSheet({ isOpen, onOpenChange }: GlobalSett
   return (
     <Sheet open={isOpen} onOpenChange={onOpenChange}>
       <SheetContent className="w-full max-w-lg sm:max-w-xl p-0 flex flex-col z-[250]">
-        <SheetHeader className="p-4 pb-3 border-b">
+        <SheetHeader className="p-4 pb-3 border-b flex-shrink-0">
           <SheetTitle>Configuración Global</SheetTitle>
           <SheetDescription>
             Ajusta las opciones de la aplicación. Los cambios se guardarán para tus futuras visitas.
           </SheetDescription>
         </SheetHeader>
-        <Tabs defaultValue="appearance" className="flex-grow flex flex-col overflow-hidden">
-          <div className="px-4 pt-4">
-              <TabsList className="mx-auto grid w-full grid-cols-2 sm:grid-cols-4">
-                <TabsTrigger value="appearance"><Palette className="mr-2 h-4 w-4" />Apariencia</TabsTrigger>
-                <TabsTrigger value="translation"><Languages className="mr-2 h-4 w-4" />Traducción</TabsTrigger>
-                <TabsTrigger value="content-filtering"><BlockIcon className="mr-2 h-4 w-4" />Filtrado</TabsTrigger>
-                <TabsTrigger value="advanced-css"><Code className="mr-2 h-4 w-4" />CSS</TabsTrigger>
-              </TabsList>
-          </div>
-          
-          <div className="flex-grow overflow-y-auto p-4">
-            <TabsContent value="appearance" className="m-0 space-y-6">
-              <p className="text-sm text-muted-foreground">
-                Personaliza los colores de la interfaz. Usa el selector de color o introduce valores HSL (ej: <code className="bg-muted px-1 py-0.5 rounded">240 10% 3.9%</code>).
-              </p>
-              <Accordion type="multiple" defaultValue={['item-0']} className="w-full">
-                {colorFields.map((group, index) => (
-                    <AccordionItem value={`item-${index}`} key={group.group}>
-                        <AccordionTrigger className="text-base">{group.group}</AccordionTrigger>
-                        <AccordionContent>
-                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-5 pt-2">
-                                {group.fields.map(field => (
-                                    <ColorInput 
-                                        key={field} 
-                                        label={field} 
-                                        id={field} 
-                                        value={tempColors[field] || ''} 
-                                        onHslStringChange={hsl => handleColorChange(field, hsl)} 
-                                        onHexChange={hex => handleColorChange(field, hexToHslString(hex))} 
-                                    />
-                                ))}
-                            </div>
-                        </AccordionContent>
-                    </AccordionItem>
-                ))}
-              </Accordion>
-
-              <Button onClick={applyThemeChanges} className="w-full">Aplicar Colores Personalizados</Button>
-
-              <Separator />
-
-              <div className="space-y-3 text-center">
-                <h4 className="font-semibold text-foreground">Gestionar Tema</h4>
-                <p className="text-sm text-muted-foreground">Guarda o carga tu configuración de apariencia personalizada (colores + CSS).</p>
-                <div className="flex justify-center gap-4">
-                    <Button variant="outline" onClick={() => setIsImportDialogOpen(true)}><ImportIcon className="mr-2 h-4 w-4"/> Importar</Button>
-                    <Button variant="outline" onClick={() => setIsExportDialogOpen(true)}><ExportIcon className="mr-2 h-4 w-4"/> Exportar</Button>
-                </div>
-              </div>
-
-            </TabsContent>
+        <div className="flex-grow min-h-0">
+          <Tabs defaultValue="appearance" className="flex-grow flex flex-col h-full">
+            <div className="px-4 pt-4 flex-shrink-0">
+                <TabsList className="mx-auto grid w-full grid-cols-2 sm:grid-cols-4">
+                  <TabsTrigger value="appearance"><Palette className="mr-2 h-4 w-4" />Apariencia</TabsTrigger>
+                  <TabsTrigger value="translation"><Languages className="mr-2 h-4 w-4" />Traducción</TabsTrigger>
+                  <TabsTrigger value="content-filtering"><BlockIcon className="mr-2 h-4 w-4" />Filtrado</TabsTrigger>
+                  <TabsTrigger value="advanced-css"><Code className="mr-2 h-4 w-4" />CSS</TabsTrigger>
+                </TabsList>
+            </div>
             
-            <TabsContent value="translation" className="m-0 space-y-6">
-               <h3 className="font-semibold text-lg">Traducción Automática</h3>
-               <div className="flex items-center justify-between p-3 border rounded-lg">
-                    <div>
-                        <Label htmlFor="auto-translate-switch" className="font-medium">Habilitar traducción automática</Label>
-                        <p className="text-sm text-muted-foreground">Traduce automáticamente los capítulos al idioma que elijas.</p>
+            <ScrollArea className="flex-grow h-full">
+              <div className="p-4">
+                <TabsContent value="appearance" className="m-0 space-y-6">
+                  <p className="text-sm text-muted-foreground">
+                    Personaliza los colores de la interfaz. Usa el selector de color o introduce valores HSL (ej: <code className="bg-muted px-1 py-0.5 rounded">240 10% 3.9%</code>).
+                  </p>
+                  <Accordion type="multiple" defaultValue={['item-0']} className="w-full">
+                    {colorFields.map((group, index) => (
+                        <AccordionItem value={`item-${index}`} key={group.group}>
+                            <AccordionTrigger className="text-base">{group.group}</AccordionTrigger>
+                            <AccordionContent>
+                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-5 pt-2">
+                                    {group.fields.map(field => (
+                                        <ColorInput 
+                                            key={field} 
+                                            label={field} 
+                                            id={field} 
+                                            value={tempColors[field] || ''} 
+                                            onHslStringChange={hsl => handleColorChange(field, hsl)} 
+                                            onHexChange={hex => handleColorChange(field, hexToHslString(hex))} 
+                                        />
+                                    ))}
+                                </div>
+                            </AccordionContent>
+                        </AccordionItem>
+                    ))}
+                  </Accordion>
+
+                  <Button onClick={applyThemeChanges} className="w-full">Aplicar Colores Personalizados</Button>
+
+                  <Separator />
+
+                  <div className="space-y-3 text-center">
+                    <h4 className="font-semibold text-foreground">Gestionar Tema</h4>
+                    <p className="text-sm text-muted-foreground">Guarda o carga tu configuración de apariencia personalizada (colores + CSS).</p>
+                    <div className="flex justify-center gap-4">
+                        <Button variant="outline" onClick={() => setIsImportDialogOpen(true)}><ImportIcon className="mr-2 h-4 w-4"/> Importar</Button>
+                        <Button variant="outline" onClick={() => setIsExportDialogOpen(true)}><ExportIcon className="mr-2 h-4 w-4"/> Exportar</Button>
                     </div>
-                    <Switch
-                        id="auto-translate-switch"
-                        checked={autoTranslate}
-                        onCheckedChange={setAutoTranslate}
-                    />
-               </div>
-               {autoTranslate && (
-                 <div className="space-y-2">
-                    <Label htmlFor="auto-translate-lang">Idioma de destino</Label>
-                    <Select value={autoTranslateLanguage} onValueChange={val => setAutoTranslateLanguage(val as TargetLanguage)}>
-                        <SelectTrigger id="auto-translate-lang">
-                            <SelectValue placeholder="Selecciona un idioma..." />
+                  </div>
+                </TabsContent>
+                
+                <TabsContent value="translation" className="m-0 space-y-6">
+                   <h3 className="font-semibold text-lg">Traducción Automática</h3>
+                   <div className="flex items-center justify-between p-3 border rounded-lg">
+                        <div>
+                            <Label htmlFor="auto-translate-switch" className="font-medium">Habilitar traducción automática</Label>
+                            <p className="text-sm text-muted-foreground">Traduce automáticamente los capítulos al idioma que elijas.</p>
+                        </div>
+                        <Switch
+                            id="auto-translate-switch"
+                            checked={autoTranslate}
+                            onCheckedChange={setAutoTranslate}
+                        />
+                   </div>
+                   {autoTranslate && (
+                     <div className="space-y-2">
+                        <Label htmlFor="auto-translate-lang">Idioma de destino</Label>
+                        <Select value={autoTranslateLanguage} onValueChange={val => setAutoTranslateLanguage(val as TargetLanguage)}>
+                            <SelectTrigger id="auto-translate-lang">
+                                <SelectValue placeholder="Selecciona un idioma..." />
+                            </SelectTrigger>
+                            <SelectContent>
+                                {TARGET_LANGUAGES.map(lang => (
+                                    <SelectItem key={lang} value={lang}>{lang}</SelectItem>
+                                ))}
+                            </SelectContent>
+                        </Select>
+                     </div>
+                   )}
+                </TabsContent>
+
+                <TabsContent value="content-filtering" className="m-0 space-y-6">
+                    <div className="space-y-2">
+                        <h3 className="font-semibold text-lg">Filtrado de Contenido</h3>
+                        <p className="text-sm text-muted-foreground">
+                            Oculta novelas que no quieres ver. Los elementos bloqueados se sincronizarán en este navegador. Introduce un término y presiona "Bloquear".
+                        </p>
+                    </div>
+                    <Separator/>
+                    <Accordion type="multiple" className="w-full" defaultValue={['item-text']}>
+                        <AccordionItem value="item-text">
+                            <AccordionTrigger>Bloqueo por Texto</AccordionTrigger>
+                            <AccordionContent className="space-y-4 pt-4">
+                                <BlockListManagement category="blockedAuthors" title="Autores Bloqueados" placeholder="Nombre del autor..." />
+                                <BlockListManagement category="blockedTranslators" title="Traductores Bloqueados" placeholder="Nombre del traductor..." />
+                                <BlockListManagement category="blockedCategories" title="Categorías Bloqueadas" placeholder="Nombre de la categoría..." />
+                                <BlockListManagement category="blockedTags" title="Etiquetas Bloqueadas" placeholder="Nombre de la etiqueta..." />
+                            </AccordionContent>
+                        </AccordionItem>
+                        <AccordionItem value="item-select">
+                            <AccordionTrigger>Bloqueo por Atributos</AccordionTrigger>
+                            <AccordionContent className="space-y-4 pt-4">
+                                 <div className="space-y-3">
+                                    <h4 className="font-semibold">Clasificación de Edad Bloqueada</h4>
+                                    <Select onValueChange={(val) => addBlockedItem('blockedAgeRatings', val)} value="">
+                                        <SelectTrigger><SelectValue placeholder="Selecciona una clasificación para bloquear..." /></SelectTrigger>
+                                        <SelectContent>
+                                            {AGE_RATING_VALUES.filter(r => !blockedAgeRatings.includes(r)).map(rating => (
+                                                <SelectItem key={rating} value={rating}>{ageRatingLabels[rating]}</SelectItem>
+                                            ))}
+                                        </SelectContent>
+                                    </Select>
+                                    {blockedAgeRatings.length > 0 && (
+                                        <div className="flex flex-wrap gap-2 rounded-md border p-2 bg-muted/50 max-h-40 overflow-y-auto">
+                                            {blockedAgeRatings.map(item => (
+                                                <Badge key={item} variant="secondary" className="pl-2 pr-1 gap-1">
+                                                    {ageRatingLabels[item as AgeRating]}
+                                                    <button onClick={() => removeBlockedItem('blockedAgeRatings', item)} className="rounded-full hover:bg-destructive/20 p-0.5">
+                                                        <X className="h-3 w-3" />
+                                                    </button>
+                                                </Badge>
+                                            ))}
+                                        </div>
+                                    )}
+                                </div>
+                                 <div className="space-y-3">
+                                    <h4 className="font-semibold">Estado de Novela Bloqueado</h4>
+                                    <Select onValueChange={(val) => addBlockedItem('blockedStatuses', val)} value="">
+                                        <SelectTrigger><SelectValue placeholder="Selecciona un estado para bloquear..." /></SelectTrigger>
+                                        <SelectContent>
+                                            {STATUS_VALUES.filter(s => !blockedStatuses.includes(s)).map(status => (
+                                                <SelectItem key={status} value={status}>{novelStatusLabels[status]}</SelectItem>
+                                            ))}
+                                        </SelectContent>
+                                    </Select>
+                                    {blockedStatuses.length > 0 && (
+                                        <div className="flex flex-wrap gap-2 rounded-md border p-2 bg-muted/50 max-h-40 overflow-y-auto">
+                                            {blockedStatuses.map(item => (
+                                                <Badge key={item} variant="secondary" className="pl-2 pr-1 gap-1">
+                                                    {novelStatusLabels[item as NovelStatus]}
+                                                    <button onClick={() => removeBlockedItem('blockedStatuses', item)} className="rounded-full hover:bg-destructive/20 p-0.5">
+                                                        <X className="h-3 w-3" />
+                                                    </button>
+                                                </Badge>
+                                            ))}
+                                        </div>
+                                    )}
+                                </div>
+                            </AccordionContent>
+                        </AccordionItem>
+                    </Accordion>
+                </TabsContent>
+
+                <TabsContent value="advanced-css" className="m-0 space-y-4">
+                  <Alert variant="destructive">
+                    <AlertTriangle className="h-4 w-4" />
+                    <AlertTitle>¡Zona para Expertos!</AlertTitle>
+                    <AlertDescription>
+                      Esta opción es para usuarios que saben CSS. Estilos incorrectos pueden romper la apariencia del sitio. Úsalo bajo tu propio riesgo.
+                    </AlertDescription>
+                  </Alert>
+                  <div className="space-y-2">
+                    <Label htmlFor="predefined-themes-select">Cargar Tema Prediseñado</Label>
+                    <Select onValueChange={(value) => {
+                        const selectedTheme = predefinedThemes.find(t => t.value === value);
+                        setTempRawCss(selectedTheme ? selectedTheme.css.trim() : '');
+                      }}>
+                        <SelectTrigger id="predefined-themes-select">
+                            <SelectValue placeholder="Selecciona un tema para empezar..." />
                         </SelectTrigger>
                         <SelectContent>
-                            {TARGET_LANGUAGES.map(lang => (
-                                <SelectItem key={lang} value={lang}>{lang}</SelectItem>
+                            {predefinedThemes.map(theme => (
+                                <SelectItem key={theme.name} value={theme.value}>{theme.name}</SelectItem>
                             ))}
                         </SelectContent>
                     </Select>
-                 </div>
-               )}
-            </TabsContent>
-
-            <TabsContent value="content-filtering" className="m-0 space-y-6">
-                <div className="space-y-2">
-                    <h3 className="font-semibold text-lg">Filtrado de Contenido</h3>
-                    <p className="text-sm text-muted-foreground">
-                        Oculta novelas que no quieres ver. Los elementos bloqueados se sincronizarán en este navegador. Introduce un término y presiona "Bloquear".
-                    </p>
-                </div>
-                <Separator/>
-                <Accordion type="multiple" className="w-full" defaultValue={['item-text']}>
-                    <AccordionItem value="item-text">
-                        <AccordionTrigger>Bloqueo por Texto</AccordionTrigger>
-                        <AccordionContent className="space-y-4 pt-4">
-                            <BlockListManagement category="blockedAuthors" title="Autores Bloqueados" placeholder="Nombre del autor..." />
-                            <BlockListManagement category="blockedTranslators" title="Traductores Bloqueados" placeholder="Nombre del traductor..." />
-                            <BlockListManagement category="blockedCategories" title="Categorías Bloqueadas" placeholder="Nombre de la categoría..." />
-                            <BlockListManagement category="blockedTags" title="Etiquetas Bloqueadas" placeholder="Nombre de la etiqueta..." />
-                        </AccordionContent>
-                    </AccordionItem>
-                    <AccordionItem value="item-select">
-                        <AccordionTrigger>Bloqueo por Atributos</AccordionTrigger>
-                        <AccordionContent className="space-y-4 pt-4">
-                             <div className="space-y-3">
-                                <h4 className="font-semibold">Clasificación de Edad Bloqueada</h4>
-                                <Select onValueChange={(val) => addBlockedItem('blockedAgeRatings', val)} value="">
-                                    <SelectTrigger><SelectValue placeholder="Selecciona una clasificación para bloquear..." /></SelectTrigger>
-                                    <SelectContent>
-                                        {AGE_RATING_VALUES.filter(r => !blockedAgeRatings.includes(r)).map(rating => (
-                                            <SelectItem key={rating} value={rating}>{ageRatingLabels[rating]}</SelectItem>
-                                        ))}
-                                    </SelectContent>
-                                </Select>
-                                {blockedAgeRatings.length > 0 && (
-                                    <div className="flex flex-wrap gap-2 rounded-md border p-2 bg-muted/50 max-h-40 overflow-y-auto">
-                                        {blockedAgeRatings.map(item => (
-                                            <Badge key={item} variant="secondary" className="pl-2 pr-1 gap-1">
-                                                {ageRatingLabels[item as AgeRating]}
-                                                <button onClick={() => removeBlockedItem('blockedAgeRatings', item)} className="rounded-full hover:bg-destructive/20 p-0.5">
-                                                    <X className="h-3 w-3" />
-                                                </button>
-                                            </Badge>
-                                        ))}
-                                    </div>
-                                )}
-                            </div>
-                             <div className="space-y-3">
-                                <h4 className="font-semibold">Estado de Novela Bloqueado</h4>
-                                <Select onValueChange={(val) => addBlockedItem('blockedStatuses', val)} value="">
-                                    <SelectTrigger><SelectValue placeholder="Selecciona un estado para bloquear..." /></SelectTrigger>
-                                    <SelectContent>
-                                        {STATUS_VALUES.filter(s => !blockedStatuses.includes(s)).map(status => (
-                                            <SelectItem key={status} value={status}>{novelStatusLabels[status]}</SelectItem>
-                                        ))}
-                                    </SelectContent>
-                                </Select>
-                                {blockedStatuses.length > 0 && (
-                                    <div className="flex flex-wrap gap-2 rounded-md border p-2 bg-muted/50 max-h-40 overflow-y-auto">
-                                        {blockedStatuses.map(item => (
-                                            <Badge key={item} variant="secondary" className="pl-2 pr-1 gap-1">
-                                                {novelStatusLabels[item as NovelStatus]}
-                                                <button onClick={() => removeBlockedItem('blockedStatuses', item)} className="rounded-full hover:bg-destructive/20 p-0.5">
-                                                    <X className="h-3 w-3" />
-                                                </button>
-                                            </Badge>
-                                        ))}
-                                    </div>
-                                )}
-                            </div>
-                        </AccordionContent>
-                    </AccordionItem>
-                </Accordion>
-            </TabsContent>
-
-            <TabsContent value="advanced-css" className="m-0 space-y-4">
-              <Alert variant="destructive">
-                <AlertTriangle className="h-4 w-4" />
-                <AlertTitle>¡Zona para Expertos!</AlertTitle>
-                <AlertDescription>
-                  Esta opción es para usuarios que saben CSS. Estilos incorrectos pueden romper la apariencia del sitio. Úsalo bajo tu propio riesgo.
-                </AlertDescription>
-              </Alert>
-              <div className="space-y-2">
-                <Label htmlFor="predefined-themes-select">Cargar Tema Prediseñado</Label>
-                <Select onValueChange={(value) => {
-                    const selectedTheme = predefinedThemes.find(t => t.value === value);
-                    setTempRawCss(selectedTheme ? selectedTheme.css.trim() : '');
-                  }}>
-                    <SelectTrigger id="predefined-themes-select">
-                        <SelectValue placeholder="Selecciona un tema para empezar..." />
-                    </SelectTrigger>
-                    <SelectContent>
-                        {predefinedThemes.map(theme => (
-                            <SelectItem key={theme.name} value={theme.value}>{theme.name}</SelectItem>
-                        ))}
-                    </SelectContent>
-                </Select>
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="raw-css-input">Editor de CSS Personalizado</Label>
+                    <Textarea 
+                        id="raw-css-input"
+                        value={tempRawCss}
+                        onChange={(e) => setTempRawCss(e.target.value)}
+                        placeholder="/* Escribe tu CSS aquí. Ejemplo: */
+    body {
+      text-transform: uppercase !important;
+    }"
+                        className="font-mono h-64"
+                    />
+                  </div>
+                   <Button onClick={applyAdvancedCss} className="w-full">Aplicar CSS</Button>
+                </TabsContent>
               </div>
-              <div className="space-y-2">
-                <Label htmlFor="raw-css-input">Editor de CSS Personalizado</Label>
-                <Textarea 
-                    id="raw-css-input"
-                    value={tempRawCss}
-                    onChange={(e) => setTempRawCss(e.target.value)}
-                    placeholder="/* Escribe tu CSS aquí. Ejemplo: */
-body {
-  text-transform: uppercase !important;
-}"
-                    className="font-mono h-64"
-                />
-              </div>
-               <Button onClick={applyAdvancedCss} className="w-full">Aplicar CSS</Button>
-            </TabsContent>
-          </div>
-        </Tabs>
-        <SheetFooter className="p-4 border-t flex-col sm:flex-row sm:justify-between gap-2 mt-auto">
+            </ScrollArea>
+          </Tabs>
+        </div>
+        <SheetFooter className="p-4 border-t flex-shrink-0 flex-col sm:flex-row sm:justify-between gap-2">
              <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                     <Button variant="outline">
