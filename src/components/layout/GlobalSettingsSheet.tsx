@@ -91,8 +91,8 @@ const hexToHslString = (hex: string): string => {
 };
 
 const predefinedThemes = [
-  { name: 'Vacío', css: `` },
-  { name: 'Pride 🏳️‍🌈', css: `
+  { name: 'Vacío', value: 'empty', css: `` },
+  { name: 'Pride 🏳️‍🌈', value: 'pride', css: `
     @keyframes pride-gradient {
       0% { background-position: 0% 50%; }
       50% { background-position: 100% 50%; }
@@ -109,7 +109,7 @@ const predefinedThemes = [
     .card, .bg-card, .bg-background { background-color: rgba(255,255,255,0.8) !important; backdrop-filter: blur(5px); }
     .dark .card, .dark .bg-card, .dark .bg-background { background-color: rgba(0,0,0,0.7) !important; backdrop-filter: blur(5px); }
   `},
-  { name: 'Vaporwave 🌴', css: `
+  { name: 'Vaporwave 🌴', value: 'vaporwave', css: `
     body { 
       background: linear-gradient(to bottom, #ff71ce, #01cdfe, #05ffa1);
       font-family: 'Lucida Console', 'Courier New', monospace;
@@ -123,7 +123,7 @@ const predefinedThemes = [
     .card, .bg-card { background-color: rgba(0,0,50,0.5) !important; border: 1px solid #ff71ce; }
     h1, h2, .text-primary { text-shadow: 2px 2px 5px #01cdfe; }
   `},
-  { name: 'The Matrix 📟', css: `
+  { name: 'The Matrix 📟', value: 'matrix', css: `
     body {
       background-color: #000 !important;
       color: #00FF41 !important;
@@ -141,7 +141,7 @@ const predefinedThemes = [
     .card, .bg-card { background-color: #080808 !important; border: 1px solid #00FF41; box-shadow: 0 0 5px #00FF41; }
     a, button { text-shadow: 0 0 3px #00FF41; }
   `},
-  { name: 'Terminal 📠', css: `
+  { name: 'Terminal 📠', value: 'terminal', css: `
     body { 
       background-color: #1a1a1a !important;
       color: #F8B41E !important;
@@ -156,7 +156,7 @@ const predefinedThemes = [
     }
     .card, .bg-card { background-color: #111 !important; border: 1px solid #444; }
   `},
-  { name: 'GitHub Dark Dimmed 🐙', css: `
+  { name: 'GitHub Dark Dimmed 🐙', value: 'github-dimmed', css: `
     :root {
       --background: 222 24% 11% !important;
       --foreground: 215 15% 75% !important;
@@ -168,7 +168,7 @@ const predefinedThemes = [
       --accent: 212 92% 64% !important;
     }
   `},
-  { name: 'Discord Dark 👾', css: `
+  { name: 'Discord Dark 👾', value: 'discord-dark', css: `
     :root {
       --background: 226 23% 18% !important;
       --foreground: 220 17% 89% !important;
@@ -180,7 +180,7 @@ const predefinedThemes = [
       --accent: 235 86% 65% !important;
     }
   `},
-  { name: 'Spotify 🎧', css: `
+  { name: 'Spotify 🎧', value: 'spotify', css: `
     :root {
       --background: 0 0% 7% !important;
       --foreground: 0 0% 95% !important;
@@ -192,7 +192,7 @@ const predefinedThemes = [
       --accent: 83 76% 51% !important;
     }
   `},
-  { name: 'Solarized Light ☀️', css: `
+  { name: 'Solarized Light ☀️', value: 'solarized-light', css: `
     :root {
       --background: 46 52% 95% !important;
       --foreground: 202 12% 41% !important;
@@ -203,7 +203,7 @@ const predefinedThemes = [
       --accent: 196 90% 41% !important;
     }
   `},
-  { name: 'Nord ❄️', css: `
+  { name: 'Nord ❄️', value: 'nord', css: `
     :root {
       --background: 220 13% 20% !important;
       --foreground: 220 14% 87% !important;
@@ -214,7 +214,7 @@ const predefinedThemes = [
       --accent: 194 43% 66% !important;
     }
   `},
-  { name: 'Gruvbox Dark 📦', css: `
+  { name: 'Gruvbox Dark 📦', value: 'gruvbox-dark', css: `
     :root {
       --background: 0 0% 16% !important;
       --foreground: 45 52% 86% !important;
@@ -400,13 +400,16 @@ export default function GlobalSettingsSheet({ isOpen, onOpenChange }: GlobalSett
               </Alert>
               <div className="space-y-2">
                 <Label htmlFor="predefined-themes-select">Cargar Tema Prediseñado</Label>
-                <Select onValueChange={(css) => setTempRawCss(css)}>
+                <Select onValueChange={(value) => {
+                    const selectedTheme = predefinedThemes.find(t => t.value === value);
+                    setTempRawCss(selectedTheme ? selectedTheme.css : '');
+                  }}>
                     <SelectTrigger id="predefined-themes-select">
                         <SelectValue placeholder="Selecciona un tema para empezar..." />
                     </SelectTrigger>
                     <SelectContent>
                         {predefinedThemes.map(theme => (
-                            <SelectItem key={theme.name} value={theme.css}>{theme.name}</SelectItem>
+                            <SelectItem key={theme.name} value={theme.value}>{theme.name}</SelectItem>
                         ))}
                     </SelectContent>
                 </Select>
