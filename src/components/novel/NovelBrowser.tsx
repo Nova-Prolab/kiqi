@@ -7,13 +7,12 @@ import type { Novel, AgeRating, NovelStatus } from '@/lib/types';
 import { AGE_RATING_VALUES, STATUS_VALUES } from '@/lib/types';
 import NovelCard from '@/components/novel/NovelCard';
 import { Input } from '@/components/ui/input';
-import { Search, BookX, Tags, LayoutGrid, Star, FilterX, ChevronLeft, ChevronRight, Loader2, Shield, ClockIcon, Library, User, Tag as TagIcon, FileSearch, Users, HelpCircle, Ban } from 'lucide-react';
+import { Search, BookX, Tags, LayoutGrid, Star, FilterX, ChevronLeft, ChevronRight, Loader2, Shield, ClockIcon, Ban } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import AgeRatingBadge from '@/components/ui/AgeRatingBadge';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useContentFilter } from '@/contexts/ContentFilterContext';
 
 interface NovelBrowserProps {
@@ -55,16 +54,6 @@ const novelStatusLabels: Record<NovelStatus, string> = {
 
 const ITEMS_PER_PAGE = 24;
 
-type SearchType = 'title' | 'author' | 'category_search' | 'tag_search' | 'translator';
-
-const searchTypeOptions: { value: SearchType, label: string, icon: React.ElementType }[] = [
-    { value: 'title', label: 'Título', icon: Library },
-    { value: 'author', label: 'Autor', icon: User },
-    { value: 'category_search', label: 'Categoría', icon: LayoutGrid },
-    { value: 'tag_search', label: 'Etiqueta', icon: TagIcon },
-    { value: 'translator', label: 'Traductor', icon: Users },
-];
-
 export default function NovelBrowser({ initialNovels }: NovelBrowserProps) {
   const searchParams = useSearchParams();
   const router = useRouter();
@@ -76,7 +65,6 @@ export default function NovelBrowser({ initialNovels }: NovelBrowserProps) {
 
   const [currentInputText, setCurrentInputText] = useState('');
   const [searchTerm, setSearchTerm] = useState('');
-  const [searchType, setSearchType] = useState<SearchType>('title');
 
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
   const [selectedTag, setSelectedTag] = useState<string | null>(null);
@@ -84,13 +72,11 @@ export default function NovelBrowser({ initialNovels }: NovelBrowserProps) {
   const [selectedStatus, setSelectedStatus] = useState<NovelStatus | null>(null);
   const [mounted, setMounted] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
-  const [suggestion, setSuggestion] = useState<{ text: string; suggestionText: string; newSearchType: SearchType; newSearchTerm: string; } | null>(null);
 
 
   const updateURLParams = useCallback(() => {
     const params = new URLSearchParams();
     if (searchTerm) params.set('q', searchTerm);
-    if (searchType !== 'title') params.set('st', searchType);
     
     if (selectedCategory) params.set('category', selectedCategory);
     if (selectedTag) params.set('tag', selectedTag);
@@ -98,13 +84,12 @@ export default function NovelBrowser({ initialNovels }: NovelBrowserProps) {
     if (selectedStatus) params.set('status', selectedStatus);
     
     router.push(`?${params.toString()}`, { scroll: false });
-  }, [searchTerm, searchType, selectedCategory, selectedTag, selectedAgeRating, selectedStatus, router]);
+  }, [searchTerm, selectedCategory, selectedTag, selectedAgeRating, selectedStatus, router]);
 
 
   useEffect(() => {
     setMounted(true);
     const queryParam = searchParams.get('q') || '';
-    const searchTypeParam = searchParams.get('st') as SearchType | null;
     const categoryQuery = searchParams.get('category');
     const tagQuery = searchParams.get('tag');
     const ageQuery = searchParams.get('ageRating') as AgeRating | null;
@@ -112,11 +97,6 @@ export default function NovelBrowser({ initialNovels }: NovelBrowserProps) {
 
     setCurrentInputText(queryParam);
     setSearchTerm(queryParam);
-    if (searchTypeParam && searchTypeOptions.some(opt => opt.value === searchTypeParam)) {
-        setSearchType(searchTypeParam);
-    } else {
-        setSearchType('title');
-    }
 
     if (categoryQuery) setSelectedCategory(categoryQuery);
     if (tagQuery) setSelectedTag(tagQuery);
@@ -130,26 +110,18 @@ export default function NovelBrowser({ initialNovels }: NovelBrowserProps) {
   const handleSearchExecute = useCallback(() => {
     setSearchTerm(currentInputText);
     setCurrentPage(1);
-    if (currentInputText.trim() && (searchType === 'category_search' || searchType === 'tag_search')) {
-      setSelectedCategory(null);
-      setSelectedTag(null);
-    }
-  }, [currentInputText, searchType]);
+  }, [currentInputText]);
 
   useEffect(() => {
     if(mounted) {
         updateURLParams();
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [searchTerm, searchType, selectedCategory, selectedTag, selectedAgeRating, selectedStatus, mounted]);
+  }, [searchTerm, selectedCategory, selectedTag, selectedAgeRating, selectedStatus, mounted]);
 
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setCurrentInputText(e.target.value);
-  };
-  
-  const handleSearchTypeChange = (value: string) => {
-    setSearchType(value as SearchType);
   };
 
   const handleFormSubmit = (e: React.FormEvent<HTMLFormElement>) => {
@@ -263,87 +235,22 @@ export default function NovelBrowser({ initialNovels }: NovelBrowserProps) {
     }
 
     if (normalizedSearchTerm) {
-      novelsToFilter = novelsToFilter.filter(novel => {
-        switch (searchType) {
-          case 'title':
-            return novel.title.trim().toLowerCase().includes(normalizedSearchTerm);
-          case 'author':
-            return novel.author.trim().toLowerCase().includes(normalizedSearchTerm);
-          case 'category_search':
-            return novel.categoria?.trim().toLowerCase().includes(normalizedSearchTerm);
-          case 'tag_search':
-            return novel.etiquetas?.some(tag => tag.trim().toLowerCase().includes(normalizedSearchTerm));
-          case 'translator':
-            return novel.traductor?.trim().toLowerCase().includes(normalizedSearchTerm);
-          default:
-            return true;
-        }
-      });
+      novelsToFilter = novelsToFilter.filter(novel => 
+        novel.title.toLowerCase().includes(normalizedSearchTerm) ||
+        novel.author.toLowerCase().includes(normalizedSearchTerm) ||
+        (novel.traductor || '').toLowerCase().includes(normalizedSearchTerm) ||
+        (novel.categoria || '').toLowerCase().includes(normalizedSearchTerm) ||
+        (novel.etiquetas || []).some(tag => tag.toLowerCase().includes(normalizedSearchTerm))
+      );
     }
     return novelsToFilter;
-  }, [globallyFilteredNovels, searchTerm, searchType, selectedCategory, selectedTag, selectedAgeRating, selectedStatus]);
+  }, [globallyFilteredNovels, searchTerm, selectedCategory, selectedTag, selectedAgeRating, selectedStatus]);
 
   const featuredNovels = useMemo(() => {
     return globallyFilteredNovels.filter(novel =>
       novel.etiquetas?.some(tag => tag.toLowerCase() === 'destacado')
     );
   }, [globallyFilteredNovels]);
-
-  useEffect(() => {
-    setSuggestion(null);
-
-    if (filteredNovels.length > 0 || !searchTerm.trim()) {
-      return;
-    }
-
-    const normalizedSearchTerm = searchTerm.toLowerCase().trim();
-    const currentSearchTypeLabel = searchTypeOptions.find(opt => opt.value === searchType)?.label.toLowerCase() || 'títulos';
-    
-    // Check for matches in other categories
-    for (const otherType of searchTypeOptions) {
-      if (otherType.value === searchType) continue;
-
-      const foundInOtherType = globallyFilteredNovels.some(novel => {
-        const title = novel.title?.toLowerCase() || '';
-        const author = novel.author?.toLowerCase() || '';
-        const category = novel.categoria?.toLowerCase() || '';
-        const translator = novel.traductor?.toLowerCase() || '';
-        const tags = novel.etiquetas?.map(t => t.toLowerCase()) || [];
-
-        switch (otherType.value) {
-          case 'title':
-            return title.includes(normalizedSearchTerm);
-          case 'author':
-            return author.includes(normalizedSearchTerm);
-          case 'category_search':
-            return category.includes(normalizedSearchTerm);
-          case 'tag_search':
-            return tags.some(tag => tag.includes(normalizedSearchTerm));
-          case 'translator':
-            return translator.includes(normalizedSearchTerm);
-          default:
-            return false;
-        }
-      });
-
-      if (foundInOtherType) {
-        setSuggestion({
-          text: `No se encontraron resultados para "${searchTerm}" en ${currentSearchTypeLabel}.`,
-          suggestionText: `¿Quisiste buscar en ${otherType.label}?`,
-          newSearchType: otherType.value,
-          newSearchTerm: searchTerm,
-        });
-        return; // Stop after finding the first suggestion
-      }
-    }
-}, [filteredNovels.length, searchTerm, searchType, globallyFilteredNovels]);
-
-  const handleSuggestionClick = (suggestion: { newSearchType: SearchType; newSearchTerm: string }) => {
-    setSearchType(suggestion.newSearchType);
-    setCurrentInputText(suggestion.newSearchTerm);
-    setSearchTerm(suggestion.newSearchTerm);
-    setCurrentPage(1);
-  };
 
   const totalPages = Math.ceil(filteredNovels.length / ITEMS_PER_PAGE);
   const paginatedNovels = useMemo(() => {
@@ -357,16 +264,15 @@ export default function NovelBrowser({ initialNovels }: NovelBrowserProps) {
     if (selectedAgeRating) return `Clasificación: ${ageRatingLabels[selectedAgeRating]}`;
     if (selectedStatus) return `Estado: ${novelStatusLabels[selectedStatus]}`;
     if (searchTerm.trim()) {
-        const typeLabel = searchTypeOptions.find(opt => opt.value === searchType)?.label || 'Búsqueda';
-        return `${typeLabel}: "${searchTerm.trim()}"`;
+        return `Resultados para: "${searchTerm.trim()}"`;
     }
     return "Todas las Novelas";
-  }, [searchTerm, searchType, selectedCategory, selectedTag, selectedAgeRating, selectedStatus]);
+  }, [searchTerm, selectedCategory, selectedTag, selectedAgeRating, selectedStatus]);
 
   const handleBadgeCategorySelect = (category: string | null) => {
     setSelectedCategory(category);
     if (category) {
-      setCurrentInputText(''); setSearchTerm(''); setSearchType('title');
+      setCurrentInputText(''); setSearchTerm('');
       setSelectedTag(null); setSelectedAgeRating(null); setSelectedStatus(null);
     }
     setCurrentPage(1);
@@ -375,7 +281,7 @@ export default function NovelBrowser({ initialNovels }: NovelBrowserProps) {
   const handleBadgeTagSelect = (tag: string | null) => {
     setSelectedTag(tag);
      if (tag) {
-      setCurrentInputText(''); setSearchTerm(''); setSearchType('title');
+      setCurrentInputText(''); setSearchTerm('');
       setSelectedCategory(null); setSelectedAgeRating(null); setSelectedStatus(null);
     }
     setCurrentPage(1);
@@ -384,7 +290,7 @@ export default function NovelBrowser({ initialNovels }: NovelBrowserProps) {
   const handleBadgeAgeRatingSelect = (ageRating: AgeRating | null) => {
     setSelectedAgeRating(ageRating);
     if (ageRating) {
-      setCurrentInputText(''); setSearchTerm(''); setSearchType('title');
+      setCurrentInputText(''); setSearchTerm('');
       setSelectedCategory(null); setSelectedTag(null); setSelectedStatus(null);
     }
     setCurrentPage(1);
@@ -393,7 +299,7 @@ export default function NovelBrowser({ initialNovels }: NovelBrowserProps) {
   const handleBadgeStatusSelect = (status: NovelStatus | null) => {
     setSelectedStatus(status);
      if (status) {
-      setCurrentInputText(''); setSearchTerm(''); setSearchType('title');
+      setCurrentInputText(''); setSearchTerm('');
       setSelectedCategory(null); setSelectedTag(null); setSelectedAgeRating(null);
     }
     setCurrentPage(1);
@@ -408,7 +314,7 @@ export default function NovelBrowser({ initialNovels }: NovelBrowserProps) {
         </div>
         <div className="py-8 sm:py-10 px-4">
           <div className="max-w-2xl mx-auto">
-            <div className="h-14 sm:h-16 bg-muted rounded-xl animate-pulse"></div>
+            <div className="h-16 bg-muted rounded-xl animate-pulse"></div>
           </div>
         </div>
         <div className="h-10 bg-muted rounded w-1/4 mb-4 animate-pulse mx-auto"></div>
@@ -429,7 +335,6 @@ export default function NovelBrowser({ initialNovels }: NovelBrowserProps) {
   const clearAllFilters = () => {
     setCurrentInputText('');
     setSearchTerm('');
-    setSearchType('title');
     setSelectedCategory(null);
     setSelectedTag(null);
     setSelectedAgeRating(null);
@@ -453,40 +358,17 @@ export default function NovelBrowser({ initialNovels }: NovelBrowserProps) {
   return (
     <div className="space-y-10">
       <section className="py-6 sm:py-8">
-        <form onSubmit={handleFormSubmit} className="max-w-3xl mx-auto">
-          <div className="flex flex-col sm:flex-row items-center gap-2">
-            <div className="flex-none w-full sm:w-auto mb-2 sm:mb-0">
-                <Select value={searchType} onValueChange={handleSearchTypeChange}>
-                    <SelectTrigger className="h-14 sm:h-16 text-base shadow-lg rounded-lg border-border focus:ring-2 focus:ring-primary w-full sm:w-[180px]">
-                         <SelectValue placeholder="Tipo de búsqueda" />
-                    </SelectTrigger>
-                    <SelectContent>
-                        {searchTypeOptions.map(option => (
-                            <SelectItem key={option.value} value={option.value}>
-                                <div className="flex items-center">
-                                    <option.icon className="mr-2 h-4 w-4 text-muted-foreground" />
-                                    {option.label}
-                                </div>
-                            </SelectItem>
-                        ))}
-                    </SelectContent>
-                </Select>
-            </div>
-            <div className="relative flex-grow w-full">
-              <Search className="absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-muted-foreground" />
-              <Input
-                type="search"
-                placeholder="Introduce tu búsqueda..."
-                className="w-full pl-12 pr-4 py-3 rounded-lg shadow-xl text-base focus:ring-2 focus:ring-primary border-border h-14 sm:h-16 text-lg"
-                value={currentInputText}
-                onChange={handleInputChange}
-                aria-label="Término de búsqueda"
-              />
-            </div>
-            <Button type="submit" size="lg" className="h-14 sm:h-16 text-base shadow-lg w-full sm:w-auto mt-2 sm:mt-0">
-                <FileSearch className="mr-2 h-5 w-5"/>
-                Buscar
-            </Button>
+        <form onSubmit={handleFormSubmit} className="max-w-2xl mx-auto">
+          <div className="relative w-full">
+            <Search className="absolute left-4 top-1/2 h-6 w-6 -translate-y-1/2 text-muted-foreground" />
+            <Input
+              type="search"
+              placeholder="Buscar novelas por título, autor, categoría..."
+              className="w-full pl-14 pr-4 py-3 rounded-xl shadow-lg text-lg focus:ring-2 focus:ring-primary border-border h-16"
+              value={currentInputText}
+              onChange={handleInputChange}
+              aria-label="Buscar novelas"
+            />
           </div>
         </form>
       </section>
@@ -558,21 +440,6 @@ export default function NovelBrowser({ initialNovels }: NovelBrowserProps) {
                 }
                </p>
             )}
-            {suggestion && (
-              <div className="mt-8 bg-primary/5 p-4 rounded-lg border border-primary/20 max-w-md mx-auto text-center">
-                  <div className="flex items-center justify-center gap-2">
-                    <HelpCircle className="h-5 w-5 text-primary" />
-                    <p className="text-sm font-medium text-primary">{suggestion.text}</p>
-                  </div>
-                  <Button
-                      variant="link"
-                      className="mt-1 text-primary text-base p-0 h-auto hover:underline"
-                      onClick={() => handleSuggestionClick(suggestion)}
-                  >
-                      {suggestion.suggestionText}
-                  </Button>
-              </div>
-            )}
           </div>
         )}
       </section>
@@ -628,3 +495,4 @@ export default function NovelBrowser({ initialNovels }: NovelBrowserProps) {
     </div>
   );
 }
+
