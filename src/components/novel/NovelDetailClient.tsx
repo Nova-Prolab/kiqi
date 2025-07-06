@@ -14,13 +14,15 @@ import { fetchNovels } from '@/lib/github';
 import { 
   List, ChevronRight, BookOpen, ArrowLeft, Tag, CalendarDays, UserCircle, Clock, History, 
   BookCheck, FileText, Users, Shield, BarChart, Loader2, Award, ThumbsUp, TrendingUp,
-  CheckCircle, PauseCircle, XCircle, BookCopy
+  CheckCircle, PauseCircle, XCircle, BookCopy, Heart
 } from 'lucide-react';
 import { Separator } from '@/components/ui/separator';
 import { Badge } from '@/components/ui/badge';
 import React, { useState, useEffect, useMemo } from 'react';
 import AgeRatingBadge from '@/components/ui/AgeRatingBadge';
 import { cn } from "@/lib/utils";
+import { useFavorites } from '@/contexts/FavoritesContext';
+import { useToast } from '@/hooks/use-toast';
 
 interface NovelDetailClientProps {
   novel: Novel;
@@ -60,6 +62,27 @@ const NovelDetailClient = ({ novel }: NovelDetailClientProps) => {
 
   const [allNovels, setAllNovels] = useState<Novel[]>([]);
   const [isLoadingAllNovels, setIsLoadingAllNovels] = useState(true);
+  
+  const { toast } = useToast();
+  const { addFavorite, removeFavorite, isFavorite, isLoaded: favoritesLoaded } = useFavorites();
+  const isNovelFavorite = isFavorite(novel.id);
+
+  const handleFavoriteToggle = () => {
+    if (isNovelFavorite) {
+      removeFavorite(novel.id);
+      toast({
+        title: "Eliminado de Favoritos",
+        description: `"${novel.title}" ha sido eliminado de tu lista.`,
+      });
+    } else {
+      addFavorite(novel.id);
+      toast({
+        title: "Añadido a Favoritos",
+        description: `"${novel.title}" ha sido añadido a tu lista.`,
+      });
+    }
+  };
+
 
   useEffect(() => {
     setIsMounted(true);
@@ -185,6 +208,7 @@ const NovelDetailClient = ({ novel }: NovelDetailClientProps) => {
                 </div>
               )}
             </Card>
+            <div className="flex flex-col gap-2">
              {firstChapter && (
               <Button 
                 size="lg" 
@@ -198,6 +222,17 @@ const NovelDetailClient = ({ novel }: NovelDetailClientProps) => {
                 </Link>
               </Button>
             )}
+             <Button
+                size="lg"
+                variant="outline"
+                className="w-full"
+                onClick={handleFavoriteToggle}
+                disabled={!favoritesLoaded}
+              >
+                <Heart className={cn("mr-2 h-5 w-5 transition-colors", isNovelFavorite && "fill-destructive text-destructive")} />
+                {isNovelFavorite ? 'Quitar de Favoritos' : 'Añadir a Favoritos'}
+              </Button>
+            </div>
           </div>
 
           <div className="md:col-span-2 space-y-6">
