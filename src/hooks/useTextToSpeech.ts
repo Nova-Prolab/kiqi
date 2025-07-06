@@ -73,6 +73,12 @@ export const useTextToSpeech = (htmlToSpeak: string) => {
         }
       };
       utterance.onerror = (event) => {
+        // The 'interrupted' error is expected when synth.cancel() is called.
+        // We don't need to log it as an error or take further action,
+        // as the cancelSpeech function handles the state reset.
+        if (event.error === 'interrupted') {
+          return;
+        }
         console.error('SpeechSynthesisUtterance.onerror:', event.error);
         // Try to continue with the next chunk even if one fails
         if (utteranceQueueRef.current.length > 0) {
@@ -127,11 +133,6 @@ export const useTextToSpeech = (htmlToSpeak: string) => {
       utterance.lang = 'es-ES';
       return utterance;
     });
-
-    // A hack to "wake up" the speech synthesis engine on some browsers
-    if (!synth.speaking) {
-      synth.cancel(); // Clear any previous state
-    }
     
     speakQueue();
 
