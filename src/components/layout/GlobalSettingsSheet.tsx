@@ -244,41 +244,53 @@ const predefinedThemes = [
     }
   `},
   { name: 'Nieve Cayendo 🌨️', value: 'falling-snow', css: `
-    @keyframes snow-fall-1 { 0% { transform: translateY(-100vh); } 100% { transform: translateY(100vh); } }
-    @keyframes snow-fall-2 { 0% { transform: translateY(-100vh); } 100% { transform: translateY(100vh); } }
-    body { 
-        position: relative;
-        overflow-x: hidden !important; 
-        background-color: #3e5c76 !important;
+    @keyframes snow-fall-1 {
+      0% { transform: translate(-10px, -100vh) rotate(0deg); }
+      100% { transform: translate(30px, 100vh) rotate(360deg); }
+    }
+    @keyframes snow-fall-2 {
+      0% { transform: translate(20px, -100vh) rotate(0deg); }
+      100% { transform: translate(-25px, 100vh) rotate(720deg); }
+    }
+    body {
+      position: relative;
+      overflow-x: hidden !important;
+      background-color: #3e5c76 !important;
     }
     body::before, body::after {
-        content: '';
-        position: fixed;
-        top: 0; left: 0; right: 0; bottom: 0;
-        pointer-events: none;
-        background-repeat: repeat;
-        z-index: 1000;
-        opacity: 0.8;
+      content: '';
+      position: fixed;
+      top: 0; left: 0; right: 0; bottom: 0;
+      pointer-events: none;
+      z-index: 1000;
+      background-repeat: repeat;
+      opacity: 0.7;
     }
     body::before {
-        background-image: radial-gradient(circle, white 1px, transparent 1.5px);
-        background-size: 30px 30px;
-        animation: snow-fall-1 25s linear infinite;
+      background-image:
+        radial-gradient(circle at 10px 20px, rgba(255,255,255,0.8) 1px, transparent 3px),
+        radial-gradient(circle at 40px 60px, rgba(255,255,255,0.9) 1px, transparent 2px);
+      background-size: 80px 120px, 120px 80px;
+      animation: snow-fall-1 28s linear infinite;
+      filter: blur(0.6px);
     }
     body::after {
-        background-image: radial-gradient(circle, white 2px, transparent 2.5px);
-        background-size: 70px 70px;
-        animation: snow-fall-2 18s linear infinite;
-        animation-delay: -7s;
+      background-image:
+        radial-gradient(circle at 30px 10px, rgba(255,255,255,0.7) 2px, transparent 4px),
+        radial-gradient(circle at 70px 70px, rgba(255,255,255,0.9) 1px, transparent 3px);
+      background-size: 100px 150px, 150px 100px;
+      animation: snow-fall-2 22s linear infinite;
+      animation-delay: -5s;
+      filter: blur(1px);
     }
     :root.dark, :root {
-        --background: 210 26% 23% !important;
-        --foreground: 210 40% 98% !important;
-        --primary: 190 95% 68% !important;
-        --primary-foreground: 210 26% 15% !important;
-        --card: 210 26% 28% !important;
-        --border: 210 26% 40% !important;
-        --accent: 190 95% 68% !important;
+      --background: 210 26% 23% !important;
+      --foreground: 210 40% 98% !important;
+      --primary: 190 95% 68% !important;
+      --primary-foreground: 210 26% 15% !important;
+      --card: 210 26% 28% !important;
+      --border: 210 26% 40% !important;
+      --accent: 190 95% 68% !important;
     }
   `},
   { name: 'Brillo del Atardecer 🌇', value: 'sunset-glow', css: `
