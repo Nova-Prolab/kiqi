@@ -27,6 +27,7 @@ import { Toaster } from '@/components/ui/toaster';
 import AppHeader from '@/components/layout/AppHeader';
 import { ContentFilterProvider } from '@/contexts/ContentFilterContext';
 import { FavoritesProvider } from '@/contexts/FavoritesContext';
+import { LikedCommentsProvider } from '@/contexts/LikedCommentsContext';
 
 // Reader Font Options (from Google Fonts)
 const lora = Lora({ subsets: ['latin'], variable: '--font-lora', display: 'swap', weight: ['400', '700'] });
@@ -95,13 +96,15 @@ export default function RootLayout({
           <CustomThemeProvider>
             <ContentFilterProvider>
               <FavoritesProvider>
-                <ReaderSettingsProvider>
-                  <AppHeader />
-                  <main className="flex-grow container mx-auto px-4 py-8">
-                    {children}
-                  </main>
-                  <Toaster />
-                </ReaderSettingsProvider>
+                <LikedCommentsProvider>
+                  <ReaderSettingsProvider>
+                    <AppHeader />
+                    <main className="flex-grow container mx-auto px-4 py-8">
+                      {children}
+                    </main>
+                    <Toaster />
+                  </ReaderSettingsProvider>
+                </LikedCommentsProvider>
               </FavoritesProvider>
             </ContentFilterProvider>
           </CustomThemeProvider>

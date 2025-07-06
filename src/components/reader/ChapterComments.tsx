@@ -15,7 +15,10 @@ import { useToast } from '@/hooks/use-toast';
 import { useReaderSettings } from '@/contexts/ReaderSettingsContext';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { cn } from '@/lib/utils';
-
+import { useLikedComments } from '@/contexts/LikedCommentsContext';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
+import { Label } from '@/components/ui/label';
+import { Separator } from '@/components/ui/separator';
 
 // Helper functions for optimistic updates
 const updateLikesInTree = (comments: Comment[], commentId: string): Comment[] => {
@@ -28,6 +31,25 @@ const updateLikesInTree = (comments: Comment[], commentId: string): Comment[] =>
         }
         return c;
     });
+};
+
+const findAndMutateComment = (
+  comments: Comment[],
+  commentId: string,
+  mutation: (comment: Comment) => void
+): boolean => {
+    for (const comment of comments) {
+        if (comment.id === commentId) {
+            mutation(comment);
+            return true;
+        }
+        if (comment.replies?.length > 0) {
+            if (findAndMutateComment(comment.replies, commentId, mutation)) {
+                return true;
+            }
+        }
+    }
+    return false;
 };
 
 const addReplyInTree = (comments: Comment[], parentId: string, newReply: Comment): Comment[] => {
@@ -56,19 +78,15 @@ export default function ChapterComments({ novelId, chapterId }: ChapterCommentsP
   const [error, setError] = useState<string | null>(null);
   
   const { commentAuthorName, setCommentAuthorName, commentAuthorAvatar } = useReaderSettings();
-  const [name, setName] = useState('');
-  const [commentText, setCommentText] = useState('');
-  const [replyingTo, setReplyingTo] = useState<string | null>(null);
-  
+  const { isCommentLiked, addLikedComment, isLoaded: likedCommentsLoaded } = useLikedComments();
   const { toast } = useToast();
 
-  useEffect(() => {
-    if (commentAuthorName) {
-      setName(commentAuthorName);
-    }
-  }, [commentAuthorName]);
-  
-  const handleLoadComments = () => {
+  const [commentText, setCommentText] = useState('');
+  const [replyingTo, setReplyingTo] = useState<string | null>(null);
+  const [isNameModalOpen, setIsNameModalOpen] = useState(false);
+  const [tempName, setTempName] = useState('');
+
+  const handleLoadComments = useCallback(() => {
     startLoadingTransition(async () => {
       setError(null);
       const result = await fetchCommentsAction(novelId, chapterId);
@@ -78,26 +96,20 @@ export default function ChapterComments({ novelId, chapterId }: ChapterCommentsP
         setError(result.error || 'No se pudieron cargar los comentarios.');
       }
     });
-  };
+  }, [novelId, chapterId]);
 
-  const handleAddTopLevelComment = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!name.trim() || !commentText.trim()) {
-      toast({ variant: 'destructive', title: 'Error', description: 'Nombre y comentario son obligatorios.' });
-      return;
-    }
-    
+  const publishComment = useCallback((authorName: string, content: string) => {
     startSubmittingTransition(async () => {
       const originalComments = comments;
       const optimisticComment: Comment = {
         id: `temp-${Date.now()}`,
-        name, content: commentText, avatarUrl: commentAuthorAvatar,
+        name: authorName, content, avatarUrl: commentAuthorAvatar,
         timestamp: Date.now(), likes: 0, replies: [],
       };
       setComments([optimisticComment, ...(comments || [])]);
       setCommentText('');
 
-      const result = await addCommentAction(novelId, chapterId, name, commentText, commentAuthorAvatar);
+      const result = await addCommentAction(novelId, chapterId, authorName, content, commentAuthorAvatar);
       
       if (result.newComment) {
         setComments(prev => (prev || []).map(c => c.id === optimisticComment.id ? result.newComment! : c));
@@ -107,24 +119,62 @@ export default function ChapterComments({ novelId, chapterId }: ChapterCommentsP
         toast({ variant: 'destructive', title: 'Error', description: result.error });
       }
     });
+  }, [comments, commentAuthorAvatar, novelId, chapterId, toast]);
+
+  const handleAddTopLevelComment = (e: FormEvent) => {
+    e.preventDefault();
+    if (!commentText.trim()) {
+      toast({ variant: 'destructive', title: 'Error', description: 'El comentario no puede estar vacío.' });
+      return;
+    }
+    if (!commentAuthorName?.trim()) {
+      setTempName('');
+      setIsNameModalOpen(true);
+      return;
+    }
+    publishComment(commentAuthorName, commentText);
+  };
+  
+  const handleNameModalSubmit = () => {
+    if (!tempName.trim()) {
+      toast({ variant: 'destructive', title: 'Error', description: 'El nombre es obligatorio.' });
+      return;
+    }
+    setCommentAuthorName(tempName);
+    setIsNameModalOpen(false);
+    publishComment(tempName, commentText);
+    setTempName('');
   };
 
   const handleLike = (commentId: string) => {
+    if (!likedCommentsLoaded) return;
+    if (isCommentLiked(commentId)) {
+      toast({ title: "Acción repetida", description: "Ya has indicado que te gusta este comentario." });
+      return;
+    }
+    
     const originalComments = comments;
     setComments(prev => prev ? updateLikesInTree(prev, commentId) : null);
 
     startSubmittingTransition(async () => {
       const result = await likeCommentAction(novelId, chapterId, commentId);
-      if (result.error) {
-          setComments(originalComments);
-          toast({ variant: 'destructive', title: 'Error', description: `No se pudo dar Me Gusta: ${result.error}`});
+      if (result.success) {
+        addLikedComment(commentId);
+      } else {
+        setComments(originalComments);
+        toast({ variant: 'destructive', title: 'Error', description: `No se pudo dar Me Gusta: ${result.error}` });
       }
     });
   };
 
   const handleAddReply = (parentId: string, replyContent: string) => {
-    if (!name.trim() || !replyContent.trim()) {
-      toast({ variant: 'destructive', title: 'Error', description: 'Nombre y comentario son obligatorios.'});
+    const authorName = commentAuthorName || 'Anónimo'; // Fallback
+    if (!replyContent.trim()) {
+      toast({ variant: 'destructive', title: 'Error', description: 'La respuesta no puede estar vacía.'});
+      return;
+    }
+    if (!commentAuthorName?.trim()) {
+      toast({ variant: 'destructive', title: 'Error', description: 'Debes configurar un nombre en las opciones globales para poder responder.' });
       return;
     }
 
@@ -132,22 +182,22 @@ export default function ChapterComments({ novelId, chapterId }: ChapterCommentsP
         const originalComments = comments;
         const optimisticReply: Comment = {
             id: `temp-reply-${Date.now()}`,
-            name, content: replyContent, avatarUrl: commentAuthorAvatar,
+            name: authorName, content: replyContent, avatarUrl: commentAuthorAvatar,
             timestamp: Date.now(), likes: 0, replies: [],
         };
         setComments(prev => prev ? addReplyInTree(prev, parentId, optimisticReply) : null);
         setReplyingTo(null);
 
-        const result = await addReplyAction(novelId, chapterId, parentId, name, replyContent, commentAuthorAvatar);
+        const result = await addReplyAction(novelId, chapterId, parentId, authorName, replyContent, commentAuthorAvatar);
         
         if (result.newReply) {
-            setComments(prev => (prev || []).map(c => {
-                const newC = { ...c };
-                findAndMutateComment([newC], optimisticReply.id, (comment) => {
+            setComments(prev => {
+                const newComments = [...(prev || [])];
+                findAndMutateComment(newComments, optimisticReply.id, (comment) => {
                     Object.assign(comment, result.newReply);
                 });
-                return newC;
-            }));
+                return newComments;
+            });
         } else {
             setComments(originalComments);
             toast({ variant: 'destructive', title: 'Error', description: `No se pudo responder: ${result.error}` });
@@ -158,6 +208,7 @@ export default function ChapterComments({ novelId, chapterId }: ChapterCommentsP
 
   const CommentItem = ({ comment, level }: { comment: Comment; level: number }) => {
     const [isReplySubmitting, startReplyTransition] = useTransition();
+    const hasLiked = isCommentLiked(comment.id);
 
     const onReplySubmit = (e: FormEvent<HTMLFormElement>) => {
       e.preventDefault();
@@ -173,8 +224,8 @@ export default function ChapterComments({ novelId, chapterId }: ChapterCommentsP
     };
     
     return (
-       <div className={cn("flex items-start gap-3 sm:gap-4", level > 0 && "mt-4")}>
-          <Avatar className="mt-1">
+       <div className={cn("flex items-start gap-3 sm:gap-4", level > 0 ? "mt-4" : "")}>
+          <Avatar className="mt-1 h-10 w-10">
             <AvatarImage src={comment.avatarUrl} alt={comment.name} />
             <AvatarFallback>{comment.name.charAt(0).toUpperCase()}</AvatarFallback>
           </Avatar>
@@ -189,8 +240,8 @@ export default function ChapterComments({ novelId, chapterId }: ChapterCommentsP
                   <p className="text-foreground/90 mt-1 whitespace-pre-wrap text-sm sm:text-base">{comment.content}</p>
               </div>
               <div className="mt-2 flex items-center gap-4 text-xs text-muted-foreground font-medium">
-                  <button onClick={() => handleLike(comment.id)} className="flex items-center gap-1.5 group hover:text-red-500 transition-colors">
-                      <Heart size={14} className="group-hover:fill-red-500" />
+                  <button onClick={() => handleLike(comment.id)} disabled={!likedCommentsLoaded} className="flex items-center gap-1.5 group hover:text-red-500 transition-colors disabled:cursor-not-allowed">
+                      <Heart size={14} className={cn('transition-colors', hasLiked ? "fill-red-500 text-red-500" : "group-hover:text-red-500")} />
                       <span>{comment.likes || 0}</span>
                   </button>
                   <button onClick={() => setReplyingTo(replyingTo === comment.id ? null : comment.id)} className="flex items-center gap-1.5 hover:text-primary transition-colors">
@@ -202,11 +253,11 @@ export default function ChapterComments({ novelId, chapterId }: ChapterCommentsP
               {replyingTo === comment.id && (
                   <form onSubmit={onReplySubmit} className="mt-3 flex items-start gap-3">
                       <Avatar className="h-9 w-9">
-                          <AvatarImage src={commentAuthorAvatar} alt={name || 'Tu'} />
-                          <AvatarFallback>{(name || '?').charAt(0).toUpperCase()}</AvatarFallback>
+                          <AvatarImage src={commentAuthorAvatar} alt={commentAuthorName || 'Tu'} />
+                          <AvatarFallback>{(commentAuthorName || '?').charAt(0).toUpperCase()}</AvatarFallback>
                       </Avatar>
                       <div className="flex-grow space-y-2">
-                         <Textarea name="replyContent" placeholder="Escribe una respuesta..." required rows={2} className="bg-background"/>
+                         <Textarea name="replyContent" placeholder={`Respondiendo a ${comment.name}...`} required rows={2} className="bg-background"/>
                          <div className="flex justify-end gap-2">
                              <Button type="button" variant="ghost" size="sm" onClick={() => setReplyingTo(null)}>Cancelar</Button>
                              <Button type="submit" size="sm" disabled={isReplySubmitting}>
@@ -232,8 +283,8 @@ export default function ChapterComments({ novelId, chapterId }: ChapterCommentsP
     );
   };
 
-
   return (
+    <>
     <Card className="shadow rounded-lg border mt-6">
       <CardHeader>
         <CardTitle className="flex items-center text-primary text-xl sm:text-2xl">
@@ -263,26 +314,29 @@ export default function ChapterComments({ novelId, chapterId }: ChapterCommentsP
             </div>
         ) : (
           <div className="space-y-8">
-            <form onSubmit={handleAddTopLevelComment} className="flex items-start gap-4">
-              <Avatar>
-                <AvatarImage src={commentAuthorAvatar} alt={name || 'Tu'} />
-                <AvatarFallback>{(name || '?').charAt(0).toUpperCase()}</AvatarFallback>
+            <div className="space-y-6">
+                {comments.length > 0 ? (
+                    comments.map(comment => <CommentItem key={comment.id} comment={comment} level={0} />)
+                ) : (
+                    <p className="text-center text-muted-foreground py-6">Sé el primero en comentar.</p>
+                )}
+            </div>
+
+            <Separator />
+            
+            <form onSubmit={handleAddTopLevelComment} className="flex items-start gap-4 pt-4">
+              <Avatar className="h-10 w-10">
+                <AvatarImage src={commentAuthorAvatar} alt={commentAuthorName || 'Tu'} />
+                <AvatarFallback>{(commentAuthorName || '?').charAt(0).toUpperCase()}</AvatarFallback>
               </Avatar>
               <div className="w-full space-y-3">
-                <Input
-                  value={name}
-                  onChange={(e) => setCommentAuthorName(e.target.value)}
-                  placeholder="Tu nombre o apodo..."
-                  required
-                  className="font-semibold bg-background"
-                />
                 <Textarea
                   value={commentText}
                   onChange={(e) => setCommentText(e.target.value)}
-                  placeholder="Escribe tu comentario aquí..."
+                  placeholder="Añade tu comentario..."
                   required
                   rows={3}
-                  className="bg-background"
+                  className="bg-background text-base"
                 />
                 <div className="flex justify-end">
                   <Button type="submit" disabled={isSubmitting}>
@@ -292,17 +346,41 @@ export default function ChapterComments({ novelId, chapterId }: ChapterCommentsP
                 </div>
               </div>
             </form>
-            
-            <div className="space-y-6">
-                {comments.length > 0 ? (
-                    comments.map(comment => <CommentItem key={comment.id} comment={comment} level={0} />)
-                ) : (
-                    <p className="text-center text-muted-foreground py-6">Sé el primero en comentar.</p>
-                )}
-            </div>
+
           </div>
         )}
       </CardContent>
     </Card>
+
+    <Dialog open={isNameModalOpen} onOpenChange={setIsNameModalOpen}>
+        <DialogContent className="sm:max-w-md">
+            <DialogHeader>
+                <DialogTitle>¿Cómo te llamas?</DialogTitle>
+                <DialogDescription>
+                    Necesitas un nombre para poder comentar. Este se guardará para futuras ocasiones.
+                </DialogDescription>
+            </DialogHeader>
+            <div className="grid gap-4 py-4">
+                <div className="grid grid-cols-4 items-center gap-4">
+                    <Label htmlFor="name" className="text-right">
+                        Nombre
+                    </Label>
+                    <Input 
+                        id="name" 
+                        value={tempName}
+                        onChange={(e) => setTempName(e.target.value)}
+                        className="col-span-3"
+                        placeholder="Tu apodo"
+                        onKeyDown={(e) => { if (e.key === 'Enter') handleNameModalSubmit(); }}
+                    />
+                </div>
+            </div>
+            <DialogFooter>
+                <Button variant="outline" onClick={() => setIsNameModalOpen(false)}>Cancelar</Button>
+                <Button onClick={handleNameModalSubmit}>Guardar y Publicar</Button>
+            </DialogFooter>
+        </DialogContent>
+    </Dialog>
+    </>
   );
 }
