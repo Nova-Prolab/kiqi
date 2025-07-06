@@ -3,7 +3,7 @@
 
 import { useState, useEffect } from 'react';
 import { getChapterSummaryAction } from '@/actions/summaryActions';
-import { SummaryLengthOptions, SummaryStyleOptions } from '@/ai/flows/generate-chapter-summary';
+import { SummaryLengthOptions, SummaryStyleOptions } from '@/lib/types';
 import type { GenerateChapterSummaryInput } from '@/ai/flows/generate-chapter-summary';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';

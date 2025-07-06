@@ -113,6 +113,11 @@ export interface ChapterUploadState {
   failedFiles?: { name: string; status: 'error'; reason?: string }[];
 }
 
+// For AI Chapter Summary Flow
+export const SummaryLengthOptions = ['breve', 'normal', 'extenso'] as const;
+export const SummaryStyleOptions = ['Puntos Clave', 'Narrativo'] as const;
+
+
 // For AI Translation Flow
 export const TARGET_LANGUAGES = [
   "English",

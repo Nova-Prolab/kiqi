@@ -11,9 +11,7 @@
 
 import {ai} from '@/ai/genkit';
 import {z} from 'genkit';
-
-export const SummaryLengthOptions = ['breve', 'normal', 'extenso'] as const;
-export const SummaryStyleOptions = ['Puntos Clave', 'Narrativo'] as const;
+import { SummaryLengthOptions, SummaryStyleOptions } from '@/lib/types';
 
 const GenerateChapterSummaryInputSchema = z.object({
   chapterText: z
