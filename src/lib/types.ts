@@ -92,6 +92,8 @@ export interface ReaderSettings {
   paragraphSpacing: ReaderParagraphSpacing;
   autoTranslate: boolean;
   autoTranslateLanguage: TargetLanguage | '';
+  commentAuthorName?: string;
+  commentAuthorAvatar?: string;
 }
 
 // For Recently Read Chapters
@@ -137,6 +139,7 @@ export type TargetLanguage = typeof TARGET_LANGUAGES[number];
 export interface Comment {
   id: string;
   name: string;
+  avatarUrl?: string;
   content: string;
   timestamp: number;
 }

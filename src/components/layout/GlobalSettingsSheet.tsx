@@ -21,7 +21,7 @@ import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter, DialogClose } from '@/components/ui/dialog';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
-import { Palette, Languages, Code, AlertTriangle, RefreshCcw, Download as ImportIcon, Share as ExportIcon, ClipboardCopy, Check, FilterX as BlockIcon, X } from 'lucide-react';
+import { Palette, Languages, Code, AlertTriangle, RefreshCcw, Download as ImportIcon, Share as ExportIcon, ClipboardCopy, Check, FilterX as BlockIcon, X, UserCircle } from 'lucide-react';
 import { useReaderSettings } from '@/contexts/ReaderSettingsContext';
 import { useCustomTheme, type CustomColors, type CustomThemeData } from '@/contexts/CustomThemeContext';
 import { TARGET_LANGUAGES, type TargetLanguage, AGE_RATING_VALUES, STATUS_VALUES, AgeRating, NovelStatus } from '@/lib/types';
@@ -255,12 +255,17 @@ const predefinedThemes = [
       0% { transform: translate(20px, -100vh) rotate(0deg); }
       100% { transform: translate(-25px, 100vh) rotate(720deg); }
     }
+    @keyframes snow-fall-3 {
+      0% { transform: translate(0, -100vh) rotate(0deg); }
+      100% { transform: translate(-15px, 100vh) rotate(180deg); }
+    }
     body {
       position: relative;
       overflow-x: hidden !important;
       background-color: #3e5c76 !important;
     }
-    body::before, body::after {
+    body::before,
+    body::after {
       content: '';
       position: fixed;
       top: 0; left: 0; right: 0; bottom: 0;
@@ -270,7 +275,7 @@ const predefinedThemes = [
       opacity: 0.7;
     }
     body::before {
-      background-image:
+      background-image: 
         radial-gradient(circle at 10px 20px, rgba(255,255,255,0.8) 1px, transparent 3px),
         radial-gradient(circle at 40px 60px, rgba(255,255,255,0.9) 1px, transparent 2px);
       background-size: 80px 120px, 120px 80px;
@@ -280,10 +285,12 @@ const predefinedThemes = [
     body::after {
       background-image: 
         radial-gradient(circle at 30px 10px, rgba(255,255,255,0.7) 2px, transparent 4px),
-        radial-gradient(circle at 70px 70px, rgba(255,255,255,0.9) 1px, transparent 3px);
-      background-size: 100px 150px, 150px 100px;
-      animation: snow-fall-2 22s linear infinite;
-      animation-delay: -5s;
+        radial-gradient(circle at 70px 70px, rgba(255,255,255,0.9) 1px, transparent 3px),
+        radial-gradient(circle at 50px 40px, rgba(255,255,255,0.6) 3px, transparent 5px),
+        radial-gradient(circle at 90px 80px, rgba(255,255,255,0.8) 2px, transparent 4px);
+      background-size: 100px 150px, 150px 100px, 200px 200px, 180px 180px;
+      animation: snow-fall-2 22s linear infinite, snow-fall-3 35s linear infinite;
+      animation-delay: -5s, 0s;
       filter: blur(1px);
     }
     :root.dark, :root {
@@ -579,7 +586,9 @@ const BlockListManagement = ({ category, title, placeholder }: { category: Block
 export default function GlobalSettingsSheet({ isOpen, onOpenChange }: GlobalSettingsSheetProps) {
   const { 
     autoTranslate, setAutoTranslate, 
-    autoTranslateLanguage, setAutoTranslateLanguage 
+    autoTranslateLanguage, setAutoTranslateLanguage,
+    commentAuthorName, setCommentAuthorName,
+    commentAuthorAvatar, setCommentAuthorAvatar
   } = useReaderSettings();
   
   const { 
@@ -686,7 +695,6 @@ export default function GlobalSettingsSheet({ isOpen, onOpenChange }: GlobalSett
   };
 
   const generateExportJsonString = () => {
-    // Filter out entries where the value is null, undefined, or an empty string.
     const filteredColors = Object.entries(tempColors).reduce((acc, [key, value]) => {
       if (value) {
         acc[key as keyof CustomColors] = value;
@@ -771,8 +779,9 @@ export default function GlobalSettingsSheet({ isOpen, onOpenChange }: GlobalSett
           </SheetDescription>
         </SheetHeader>
         <Tabs defaultValue="appearance" className="flex-grow flex flex-col">
-          <TabsList className="m-4 mx-auto grid w-full grid-cols-2 sm:grid-cols-4 sm:w-auto">
+          <TabsList className="m-4 mx-auto grid w-full grid-cols-3 sm:grid-cols-5">
             <TabsTrigger value="appearance"><Palette className="mr-2 h-4 w-4" />Apariencia</TabsTrigger>
+            <TabsTrigger value="identity"><UserCircle className="mr-2 h-4 w-4" />Identidad</TabsTrigger>
             <TabsTrigger value="translation"><Languages className="mr-2 h-4 w-4" />Traducción</TabsTrigger>
             <TabsTrigger value="content-filtering"><BlockIcon className="mr-2 h-4 w-4" />Filtrado</TabsTrigger>
             <TabsTrigger value="advanced-css"><Code className="mr-2 h-4 w-4" />CSS</TabsTrigger>
@@ -818,6 +827,39 @@ export default function GlobalSettingsSheet({ isOpen, onOpenChange }: GlobalSett
                 </div>
               </div>
 
+            </TabsContent>
+
+            <TabsContent value="identity" className="m-0 space-y-6">
+                <div className="space-y-2">
+                    <h3 className="font-semibold text-lg">Identidad para Comentarios</h3>
+                    <p className="text-sm text-muted-foreground">
+                    Establece un nombre y un avatar predeterminados para cuando dejes comentarios. Esto se guardará en tu navegador.
+                    </p>
+                </div>
+                <Separator />
+                <div className="space-y-4">
+                    <div className="space-y-2">
+                        <Label htmlFor="comment-name-input">Nombre Predeterminado</Label>
+                        <Input
+                            id="comment-name-input"
+                            value={commentAuthorName || ''}
+                            onChange={(e) => setCommentAuthorName(e.target.value)}
+                            placeholder="Tu nombre o apodo..."
+                        />
+                    </div>
+                    <div className="space-y-2">
+                        <Label htmlFor="comment-avatar-input">URL de tu Avatar</Label>
+                        <Input
+                            id="comment-avatar-input"
+                            value={commentAuthorAvatar || ''}
+                            onChange={(e) => setCommentAuthorAvatar(e.target.value)}
+                            placeholder="https://i.imgur.com/..."
+                        />
+                        <p className="text-xs text-muted-foreground">
+                            Pega la URL de una imagen (ej. de Imgur). Déjalo en blanco para usar las iniciales de tu nombre.
+                        </p>
+                    </div>
+                </div>
             </TabsContent>
             
             <TabsContent value="translation" className="m-0 space-y-6">

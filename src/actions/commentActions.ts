@@ -33,7 +33,7 @@ export async function fetchCommentsAction(novelId: string, chapterId: string): P
     }
 }
 
-export async function addCommentAction(novelId: string, chapterId: string, name: string, content: string): Promise<{ newComment?: Comment, error?: string }> {
+export async function addCommentAction(novelId: string, chapterId: string, name: string, content: string, avatarUrl?: string): Promise<{ newComment?: Comment, error?: string }> {
     if (!novelId || !chapterId || !name.trim() || !content.trim()) {
         return { error: 'Todos los campos son obligatorios.' };
     }
@@ -58,6 +58,7 @@ export async function addCommentAction(novelId: string, chapterId: string, name:
         name: name.trim(),
         content: content.trim(),
         timestamp: Date.now(),
+        avatarUrl: avatarUrl && avatarUrl.trim() !== '' ? avatarUrl.trim() : undefined,
     };
 
     const updatedComments = [...currentComments, newComment];

@@ -1,7 +1,7 @@
 
 'use client';
 
-import { useState, useTransition } from 'react';
+import { useState, useTransition, useEffect } from 'react';
 import { formatDistanceToNow } from 'date-fns';
 import { es } from 'date-fns/locale';
 import type { Comment } from '@/lib/types';
@@ -10,10 +10,12 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Textarea } from '@/components/ui/textarea';
 import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
 import { Loader2, MessageCircle, User, AlertTriangle, Send } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { Separator } from '../ui/separator';
+import { useReaderSettings } from '@/contexts/ReaderSettingsContext';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+
 
 interface ChapterCommentsProps {
   novelId: string;
@@ -26,9 +28,16 @@ export default function ChapterComments({ novelId, chapterId }: ChapterCommentsP
   const [isSubmitting, startSubmittingTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
   
+  const { commentAuthorName, commentAuthorAvatar } = useReaderSettings();
   const [name, setName] = useState('');
   const [commentText, setCommentText] = useState('');
   const { toast } = useToast();
+
+  useEffect(() => {
+    if (commentAuthorName) {
+      setName(commentAuthorName);
+    }
+  }, [commentAuthorName]);
   
   const handleLoadComments = () => {
     startLoadingTransition(async () => {
@@ -54,7 +63,7 @@ export default function ChapterComments({ novelId, chapterId }: ChapterCommentsP
     }
     
     startSubmittingTransition(async () => {
-      const result = await addCommentAction(novelId, chapterId, name, commentText);
+      const result = await addCommentAction(novelId, chapterId, name, commentText, commentAuthorAvatar);
       if (result.newComment) {
         setComments(prev => [result.newComment!, ...(prev || [])]);
         setCommentText('');
@@ -102,60 +111,60 @@ export default function ChapterComments({ novelId, chapterId }: ChapterCommentsP
               <Button variant="outline" onClick={handleLoadComments}>Intentar de Nuevo</Button>
             </div>
         ) : (
-          <div className="space-y-6">
-            <form onSubmit={handleSubmit} className="space-y-4 p-4 border rounded-md bg-muted/30">
-              <h3 className="font-semibold text-lg">Deja tu comentario</h3>
-              <div className="space-y-2">
-                <Label htmlFor="comment-name" className="flex items-center"><User className="mr-2 h-4 w-4" />Nombre</Label>
+          <div className="space-y-8">
+            <form onSubmit={handleSubmit} className="flex items-start gap-4 p-4 border rounded-lg bg-muted/40">
+              <Avatar className="hidden sm:block">
+                <AvatarImage src={commentAuthorAvatar} alt={name} />
+                <AvatarFallback>{(name || '?').charAt(0).toUpperCase()}</AvatarFallback>
+              </Avatar>
+              <div className="w-full space-y-3">
                 <Input
-                  id="comment-name"
                   value={name}
                   onChange={(e) => setName(e.target.value)}
                   placeholder="Tu nombre o apodo..."
                   required
+                  className="font-semibold bg-background"
                 />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="comment-text" className="flex items-center"><MessageCircle className="mr-2 h-4 w-4" />Comentario</Label>
                 <Textarea
-                  id="comment-text"
                   value={commentText}
                   onChange={(e) => setCommentText(e.target.value)}
                   placeholder="Escribe tu comentario aquí..."
                   required
-                  rows={4}
+                  rows={3}
+                  className="bg-background"
                 />
+                <div className="flex justify-end">
+                  <Button type="submit" disabled={isSubmitting}>
+                    {isSubmitting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Send className="mr-2 h-4 w-4" />}
+                    {isSubmitting ? 'Publicando...' : 'Publicar'}
+                  </Button>
+                </div>
               </div>
-              <Button type="submit" disabled={isSubmitting} className="w-full sm:w-auto">
-                {isSubmitting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Send className="mr-2 h-4 w-4" />}
-                {isSubmitting ? 'Publicando...' : 'Publicar Comentario'}
-              </Button>
             </form>
             
-            <Separator />
-
             <div>
                 <h3 className="font-semibold text-lg mb-4">
                     {comments.length > 0 ? `Comentarios (${comments.length})` : 'Aún no hay comentarios'}
                 </h3>
                 {comments.length > 0 ? (
-                    <div className="space-y-6 max-h-[50vh] overflow-y-auto pr-3">
-                        {comments.map(comment => (
-                            <div key={comment.id} className="flex gap-4">
-                                <div className="bg-primary text-primary-foreground rounded-full h-10 w-10 flex items-center justify-center shrink-0 font-bold">
-                                    {comment.name.charAt(0).toUpperCase()}
-                                </div>
-                                <div className="flex-grow">
-                                    <div className="flex items-baseline gap-2">
-                                        <p className="font-semibold text-foreground">{comment.name}</p>
-                                        <p className="text-xs text-muted-foreground">
-                                            {formatDistanceToNow(new Date(comment.timestamp), { addSuffix: true, locale: es })}
-                                        </p>
-                                    </div>
-                                    <p className="text-foreground/90 mt-1 whitespace-pre-wrap">{comment.content}</p>
-                                </div>
-                            </div>
-                        ))}
+                    <div className="space-y-6 max-h-[60vh] overflow-y-auto pr-3 -mr-3">
+                      {comments.map(comment => (
+                          <div key={comment.id} className="flex items-start gap-3 sm:gap-4">
+                              <Avatar>
+                                <AvatarImage src={comment.avatarUrl} alt={comment.name} />
+                                <AvatarFallback>{comment.name.charAt(0).toUpperCase()}</AvatarFallback>
+                              </Avatar>
+                              <div className="flex-grow rounded-lg bg-muted/40 px-4 py-3">
+                                  <div className="flex items-baseline gap-2">
+                                      <p className="font-semibold text-foreground">{comment.name}</p>
+                                      <p className="text-xs text-muted-foreground">
+                                          · {formatDistanceToNow(new Date(comment.timestamp), { addSuffix: true, locale: es })}
+                                      </p>
+                                  </div>
+                                  <p className="text-foreground/90 mt-1 whitespace-pre-wrap text-sm sm:text-base">{comment.content}</p>
+                              </div>
+                          </div>
+                      ))}
                     </div>
                 ) : (
                     <p className="text-center text-muted-foreground py-6">Sé el primero en comentar.</p>

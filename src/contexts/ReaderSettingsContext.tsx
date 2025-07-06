@@ -35,6 +35,8 @@ interface ReaderSettingsContextType extends ReaderSettings {
   setParagraphSpacing: (spacing: ReaderParagraphSpacing) => void;
   setAutoTranslate: (autoTranslate: boolean) => void;
   setAutoTranslateLanguage: (language: TargetLanguage | '') => void;
+  setCommentAuthorName: (name: string) => void;
+  setCommentAuthorAvatar: (url: string) => void;
   resetSettings: () => void;
 
   fontClass: string;
@@ -74,6 +76,8 @@ export const DEFAULT_TEXT_WIDTH: ReaderTextWidth = 'medium';
 export const DEFAULT_PARAGRAPH_SPACING: ReaderParagraphSpacing = 'default';
 export const DEFAULT_AUTO_TRANSLATE = false;
 export const DEFAULT_AUTO_TRANSLATE_LANGUAGE: TargetLanguage | '' = '';
+export const DEFAULT_COMMENT_AUTHOR_NAME = 'Lector Anónimo';
+export const DEFAULT_COMMENT_AUTHOR_AVATAR = '';
 
 
 // --- OPTIONS FOR UI (Exported for ReaderSettingsSheet) ---
@@ -141,6 +145,8 @@ export const ReaderSettingsProvider = ({ children }: { children: ReactNode }) =>
   const [paragraphSpacing, setParagraphSpacingState] = useState<ReaderParagraphSpacing>(DEFAULT_PARAGRAPH_SPACING);
   const [autoTranslate, setAutoTranslateState] = useState<boolean>(DEFAULT_AUTO_TRANSLATE);
   const [autoTranslateLanguage, setAutoTranslateLanguageState] = useState<TargetLanguage | ''>(DEFAULT_AUTO_TRANSLATE_LANGUAGE);
+  const [commentAuthorName, setCommentAuthorNameState] = useState<string>(DEFAULT_COMMENT_AUTHOR_NAME);
+  const [commentAuthorAvatar, setCommentAuthorAvatarState] = useState<string>(DEFAULT_COMMENT_AUTHOR_AVATAR);
 
   useEffect(() => {
     setIsMounted(true);
@@ -149,7 +155,7 @@ export const ReaderSettingsProvider = ({ children }: { children: ReactNode }) =>
         'theme', 'fontSize', 'lineHeight', 'fontFamily', 'customFontFamily', 
         'isImmersive', 'customBackground', 'customForeground', 
         'letterSpacing', 'textAlign', 'textWidth', 'paragraphSpacing',
-        'autoTranslate', 'autoTranslateLanguage'
+        'autoTranslate', 'autoTranslateLanguage', 'commentAuthorName', 'commentAuthorAvatar'
       ];
       const loadedSettings: Partial<ReaderSettings> = {};
 
@@ -178,6 +184,8 @@ export const ReaderSettingsProvider = ({ children }: { children: ReactNode }) =>
       setParagraphSpacingState((loadedSettings.paragraphSpacing as ReaderParagraphSpacing) || DEFAULT_PARAGRAPH_SPACING);
       setAutoTranslateState(loadedSettings.autoTranslate === undefined ? false : loadedSettings.autoTranslate);
       setAutoTranslateLanguageState((loadedSettings.autoTranslateLanguage as TargetLanguage | '') || DEFAULT_AUTO_TRANSLATE_LANGUAGE);
+      setCommentAuthorNameState(loadedSettings.commentAuthorName || DEFAULT_COMMENT_AUTHOR_NAME);
+      setCommentAuthorAvatarState(loadedSettings.commentAuthorAvatar || DEFAULT_COMMENT_AUTHOR_AVATAR);
 
     } catch (error) {
       console.warn("Could not access localStorage for reader settings:", error);
@@ -196,6 +204,8 @@ export const ReaderSettingsProvider = ({ children }: { children: ReactNode }) =>
       setParagraphSpacingState(DEFAULT_PARAGRAPH_SPACING);
       setAutoTranslateState(DEFAULT_AUTO_TRANSLATE);
       setAutoTranslateLanguageState(DEFAULT_AUTO_TRANSLATE_LANGUAGE);
+      setCommentAuthorNameState(DEFAULT_COMMENT_AUTHOR_NAME);
+      setCommentAuthorAvatarState(DEFAULT_COMMENT_AUTHOR_AVATAR);
     }
   }, []);
 
@@ -230,6 +240,8 @@ export const ReaderSettingsProvider = ({ children }: { children: ReactNode }) =>
   const setParagraphSpacing = createSetter('paragraphSpacing', setParagraphSpacingState);
   const setAutoTranslate = createSetter('autoTranslate', setAutoTranslateState);
   const setAutoTranslateLanguage = createSetter('autoTranslateLanguage', setAutoTranslateLanguageState);
+  const setCommentAuthorName = createSetter('commentAuthorName', setCommentAuthorNameState);
+  const setCommentAuthorAvatar = createSetter('commentAuthorAvatar', setCommentAuthorAvatarState);
   
   const resetSettings = useCallback(() => {
     setTheme(DEFAULT_THEME);
@@ -246,7 +258,9 @@ export const ReaderSettingsProvider = ({ children }: { children: ReactNode }) =>
     setParagraphSpacing(DEFAULT_PARAGRAPH_SPACING);
     setAutoTranslate(DEFAULT_AUTO_TRANSLATE);
     setAutoTranslateLanguage(DEFAULT_AUTO_TRANSLATE_LANGUAGE);
-  }, [setTheme, setFontSize, setLineHeight, setFontFamily, setCustomFontFamily, setIsImmersive, setCustomBackground, setCustomForeground, setLetterSpacing, setTextAlign, setTextWidth, setParagraphSpacing, setAutoTranslate, setAutoTranslateLanguage]);
+    setCommentAuthorName(DEFAULT_COMMENT_AUTHOR_NAME);
+    setCommentAuthorAvatar(DEFAULT_COMMENT_AUTHOR_AVATAR);
+  }, [setTheme, setFontSize, setLineHeight, setFontFamily, setCustomFontFamily, setIsImmersive, setCustomBackground, setCustomForeground, setLetterSpacing, setTextAlign, setTextWidth, setParagraphSpacing, setAutoTranslate, setAutoTranslateLanguage, setCommentAuthorName, setCommentAuthorAvatar]);
 
 
   const fontClass = FONT_SIZE_MAP[fontSize] || FONT_SIZE_MAP[DEFAULT_FONT_SIZE];
@@ -274,8 +288,10 @@ export const ReaderSettingsProvider = ({ children }: { children: ReactNode }) =>
   const contextValue: ReaderSettingsContextType = {
     theme, fontSize, lineHeight, fontFamily, customFontFamily, isImmersive, customBackground, customForeground,
     letterSpacing, textAlign, textWidth, paragraphSpacing, autoTranslate, autoTranslateLanguage,
+    commentAuthorName, commentAuthorAvatar,
     setTheme, setFontSize, setLineHeight, setFontFamily, setCustomFontFamily, setIsImmersive, setCustomBackground, setCustomForeground,
     setLetterSpacing, setTextAlign, setTextWidth, setParagraphSpacing, setAutoTranslate, setAutoTranslateLanguage,
+    setCommentAuthorName, setCommentAuthorAvatar,
     resetSettings,
     fontClass, themeClass, lineHeightClass, letterSpacingClass, textAlignClass, textWidthClass, paragraphSpacingClass,
     readerFontFamilyStyle, combinedReaderClasses
@@ -298,8 +314,11 @@ export const ReaderSettingsProvider = ({ children }: { children: ReactNode }) =>
         paragraphSpacing: DEFAULT_PARAGRAPH_SPACING,
         autoTranslate: DEFAULT_AUTO_TRANSLATE,
         autoTranslateLanguage: DEFAULT_AUTO_TRANSLATE_LANGUAGE,
+        commentAuthorName: DEFAULT_COMMENT_AUTHOR_NAME,
+        commentAuthorAvatar: DEFAULT_COMMENT_AUTHOR_AVATAR,
         setTheme: () => {}, setFontSize: () => {}, setLineHeight: () => {}, setFontFamily: () => {}, setCustomFontFamily: () => {}, setIsImmersive: () => {}, setCustomBackground: () => {}, setCustomForeground: () => {},
         setLetterSpacing: () => {}, setTextAlign: () => {}, setTextWidth: () => {}, setParagraphSpacing: () => {}, setAutoTranslate: () => {}, setAutoTranslateLanguage: () => {},
+        setCommentAuthorName: () => {}, setCommentAuthorAvatar: () => {},
         resetSettings: () => {},
         fontClass: FONT_SIZE_MAP[DEFAULT_FONT_SIZE],
         themeClass: THEME_CLASS_MAP[DEFAULT_THEME as Exclude<ReaderTheme, 'custom'>],
