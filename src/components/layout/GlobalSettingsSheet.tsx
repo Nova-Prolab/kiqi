@@ -16,10 +16,13 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Switch } from '@/components/ui/switch';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
-import { Palette, Languages, Code, AlertTriangle, RefreshCcw } from 'lucide-react';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter, DialogClose } from '@/components/ui/dialog';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
+import { Palette, Languages, Code, AlertTriangle, RefreshCcw, Import, Export, ClipboardCopy, Check } from 'lucide-react';
 import { useReaderSettings } from '@/contexts/ReaderSettingsContext';
-import { useCustomTheme } from '@/contexts/CustomThemeContext';
+import { useCustomTheme, type CustomColors, type CustomThemeData } from '@/contexts/CustomThemeContext';
 import { TARGET_LANGUAGES, type TargetLanguage } from '@/lib/types';
 import { useToast } from '@/hooks/use-toast';
 
@@ -29,14 +32,15 @@ interface GlobalSettingsSheetProps {
 }
 
 // --- Helper Functions for Color Conversion ---
-
 const isValidHslString = (hslString: string): boolean => {
-  if (!hslString) return false;
+  if (typeof hslString !== 'string' || !hslString) return false;
   const hslRegex = /^\s*(-?\d*\.?\d+)(deg|rad|turn)?\s+(-?\d*\.?\d+)%\s+(-?\d*\.?\d+)%\s*$/;
   return hslRegex.test(hslString);
 }
 
 const hslStringToHex = (hslStr: string): string => {
+  if (!isValidHslString(hslStr)) return '#000000';
+
   const match = hslStr.match(/(-?\d*\.?\d+)\s+(-?\d*\.?\d+)%\s+(-?\d*\.?\d+)%/);
   if (!match) return '#000000';
 
@@ -90,6 +94,8 @@ const hexToHslString = (hex: string): string => {
   return `${h} ${s}% ${l}%`;
 };
 
+// --- PREDEFINED THEMES ---
+// ... (omitting for brevity as it's large and unchanged, but it is present in the final file)
 const predefinedThemes = [
   { name: 'Vacío', value: 'empty', css: `` },
   { name: 'Pride 🏳️‍🌈', value: 'pride', css: `
@@ -473,6 +479,7 @@ const predefinedThemes = [
   `},
 ];
 
+// --- MAIN COMPONENT ---
 export default function GlobalSettingsSheet({ isOpen, onOpenChange }: GlobalSettingsSheetProps) {
   const { 
     autoTranslate, setAutoTranslate, 
@@ -482,42 +489,51 @@ export default function GlobalSettingsSheet({ isOpen, onOpenChange }: GlobalSett
   const { 
     colors, setColors, 
     rawCss, setRawCss,
-    resetCustomTheme
+    resetCustomTheme,
+    exportTheme,
+    importTheme,
   } = useCustomTheme();
 
   const { toast } = useToast();
-
-  const [tempColors, setTempColors] = useState({
-      primary: '', background: '', accent: '', foreground: ''
-  });
+  
+  const [tempColors, setTempColors] = useState<CustomColors>({});
   const [tempRawCss, setTempRawCss] = useState('');
+  const [isImportDialogOpen, setIsImportDialogOpen] = useState(false);
+  const [isExportDialogOpen, setIsExportDialogOpen] = useState(false);
+  const [importJsonString, setImportJsonString] = useState('');
+  const [hasCopied, setHasCopied] = useState(false);
 
+  // Helper to get computed style for defaults
   const getCssVariableValue = (variable: string) => {
     if (typeof window === 'undefined') return '';
     return getComputedStyle(document.documentElement).getPropertyValue(variable).trim();
   };
 
+  // Populate temp state when sheet opens
   useEffect(() => {
     if (isOpen) {
-      setTempColors({
-        primary: colors.primary || getCssVariableValue('--primary'),
-        background: colors.background || getCssVariableValue('--background'),
-        accent: colors.accent || getCssVariableValue('--accent'),
-        foreground: colors.foreground || getCssVariableValue('--foreground'),
-      });
+      const allColorKeys = Object.keys(tempColors);
+      const currentComputedColors: CustomColors = {};
+
+      // This ensures we get the "live" values from the DOM
+      for (const key of allColorKeys) {
+        currentComputedColors[key as keyof CustomColors] = getCssVariableValue(`--${key}`);
+      }
+      
+      setTempColors({ ...currentComputedColors, ...colors });
       setTempRawCss(rawCss.raw || '');
     }
   }, [isOpen, colors, rawCss]);
 
-  const handleColorChange = (colorName: keyof typeof tempColors, value: string) => {
+  const handleColorChange = (colorName: keyof CustomColors, value: string) => {
     setTempColors(prev => ({ ...prev, [colorName]: value }));
   };
   
   const applyThemeChanges = () => {
-    const validColors: typeof colors = {};
+    const validColors: CustomColors = {};
     for (const [key, value] of Object.entries(tempColors)) {
       if (isValidHslString(value)) {
-        validColors[key as keyof typeof colors] = value;
+        validColors[key as keyof CustomColors] = value;
       }
     }
     setColors(validColors);
@@ -529,35 +545,69 @@ export default function GlobalSettingsSheet({ isOpen, onOpenChange }: GlobalSett
     toast({ title: "CSS Aplicado", description: "El estilo CSS personalizado ha sido aplicado." });
   };
   
-  const handleReset = () => {
-      resetCustomTheme();
+  const handleReset = (options: { colors?: boolean, css?: boolean }) => {
+      resetCustomTheme(options);
+      // Let the reset take effect, then repopulate temp state with new defaults
       setTimeout(() => {
-        setTempColors({
-          primary: getCssVariableValue('--primary'),
-          background: getCssVariableValue('--background'),
-          accent: getCssVariableValue('--accent'),
-          foreground: getCssVariableValue('--foreground'),
-        });
+        if(options.colors) {
+            const allColorKeys: (keyof CustomColors)[] = [
+                'primary', 'primary-foreground', 'secondary', 'secondary-foreground', 'muted', 
+                'muted-foreground', 'accent', 'accent-foreground', 'destructive', 'destructive-foreground',
+                'background', 'foreground', 'card', 'card-foreground', 'popover', 'popover-foreground',
+                'border', 'input', 'ring'
+            ];
+            const defaultComputedColors: CustomColors = {};
+            allColorKeys.forEach(key => {
+                 defaultComputedColors[key] = getCssVariableValue(`--${key}`);
+            });
+            setTempColors(defaultComputedColors);
+        }
+        if(options.css) {
+            setTempRawCss('');
+        }
       }, 50);
-      setTempRawCss('');
-      toast({ title: "Personalización Restaurada", description: "Se han eliminado todos los estilos personalizados." });
+      toast({ title: "Personalización Restaurada", description: "Se han restaurado las opciones seleccionadas." });
   };
 
-  const ColorInput = ({ label, id, value, onHslStringChange, onHexChange }: { label: string, id: string, value: string, onHslStringChange: (hslString: string) => void, onHexChange: (hex: string) => void }) => {
+  const handleImport = () => {
+    try {
+      const parsed = JSON.parse(importJsonString);
+      if (typeof parsed !== 'object' || parsed === null || parsed.version !== 1) {
+        throw new Error("Formato JSON inválido o versión no compatible.");
+      }
+      importTheme(parsed as CustomThemeData);
+      toast({ title: "Tema Importado", description: "El tema se ha aplicado correctamente." });
+      setIsImportDialogOpen(false);
+      setImportJsonString('');
+    } catch (e: any) {
+      toast({ variant: "destructive", title: "Error al Importar", description: e.message || "Por favor, comprueba el texto del tema." });
+    }
+  };
+
+  const handleCopyToClipboard = (text: string) => {
+    navigator.clipboard.writeText(text).then(() => {
+      setHasCopied(true);
+      setTimeout(() => setHasCopied(false), 2000);
+    });
+  };
+
+  // --- SUB COMPONENTS ---
+
+  const ColorInput = ({ label, id, value, onHslStringChange, onHexChange }: { label: string, id: keyof CustomColors, value: string, onHslStringChange: (hslString: string) => void, onHexChange: (hex: string) => void }) => {
     const isValueValid = isValidHslString(value);
     const colorStyle = isValueValid ? `hsl(${value})` : 'transparent';
     const hexValue = isValueValid ? hslStringToHex(value) : '#000000';
     
     return (
       <div className="space-y-1.5">
-        <Label htmlFor={id}>{label}</Label>
+        <Label htmlFor={id} className="capitalize">{label.replace(/-/g, ' ')}</Label>
         <div className="flex items-center gap-2">
           <Input 
             id={id} 
-            value={value} 
+            value={value || ''} 
             onChange={e => onHslStringChange(e.target.value)} 
             placeholder="Ej: 338 80% 65%" 
-            className="font-mono"
+            className="font-mono text-xs h-9"
           />
           <Input 
             type="color" 
@@ -575,6 +625,21 @@ export default function GlobalSettingsSheet({ isOpen, onOpenChange }: GlobalSett
     );
   };
 
+  const colorFields: { group: string, fields: (keyof CustomColors)[] }[] = [
+      {
+        group: 'Paleta Principal',
+        fields: ['background', 'foreground', 'primary', 'primary-foreground', 'secondary', 'secondary-foreground']
+      },
+      {
+        group: 'Acentos y Estados',
+        fields: ['accent', 'accent-foreground', 'destructive', 'destructive-foreground', 'ring']
+      },
+      {
+        group: 'Componentes y Bordes',
+        fields: ['card', 'card-foreground', 'popover', 'popover-foreground', 'border', 'input', 'muted', 'muted-foreground']
+      }
+  ];
+
   return (
     <Sheet open={isOpen} onOpenChange={onOpenChange}>
       <SheetContent className="w-full max-w-lg sm:max-w-xl p-0 flex flex-col z-[250]">
@@ -591,22 +656,49 @@ export default function GlobalSettingsSheet({ isOpen, onOpenChange }: GlobalSett
             <TabsTrigger value="advanced-css"><Code className="mr-2" />CSS Avanzado</TabsTrigger>
           </TabsList>
           
-          <div className="flex-grow overflow-y-auto">
-            <TabsContent value="appearance" className="m-0 p-4 space-y-6">
-              <h3 className="font-semibold text-lg">Colores del Tema</h3>
-              <p className="text-sm text-muted-foreground -mt-4">
-                Personaliza los colores principales de la interfaz. Usa el selector de color o introduce valores HSL (ej: <code className="bg-muted px-1 py-0.5 rounded">240 10% 3.9%</code>).
+          <div className="flex-grow overflow-y-auto px-4">
+            <TabsContent value="appearance" className="m-0 space-y-6">
+              <p className="text-sm text-muted-foreground">
+                Personaliza los colores de la interfaz. Usa el selector o introduce valores HSL (ej: <code className="bg-muted px-1 py-0.5 rounded">240 10% 3.9%</code>).
               </p>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                 <ColorInput label="Primario" id="primary-color" value={tempColors.primary} onHslStringChange={hsl => handleColorChange('primary', hsl)} onHexChange={hex => handleColorChange('primary', hexToHslString(hex))} />
-                 <ColorInput label="Fondo" id="background-color" value={tempColors.background} onHslStringChange={hsl => handleColorChange('background', hsl)} onHexChange={hex => handleColorChange('background', hexToHslString(hex))} />
-                 <ColorInput label="Acento" id="accent-color" value={tempColors.accent} onHslStringChange={hsl => handleColorChange('accent', hsl)} onHexChange={hex => handleColorChange('accent', hexToHslString(hex))} />
-                 <ColorInput label="Texto Principal" id="foreground-color" value={tempColors.foreground} onHslStringChange={hsl => handleColorChange('foreground', hsl)} onHexChange={hex => handleColorChange('foreground', hexToHslString(hex))} />
+              <Accordion type="multiple" defaultValue={['item-0']} className="w-full">
+                {colorFields.map((group, index) => (
+                    <AccordionItem value={`item-${index}`} key={group.group}>
+                        <AccordionTrigger className="text-base">{group.group}</AccordionTrigger>
+                        <AccordionContent>
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-5 pt-2">
+                                {group.fields.map(field => (
+                                    <ColorInput 
+                                        key={field} 
+                                        label={field} 
+                                        id={field} 
+                                        value={tempColors[field] || ''} 
+                                        onHslStringChange={hsl => handleColorChange(field, hsl)} 
+                                        onHexChange={hex => handleColorChange(field, hexToHslString(hex))} 
+                                    />
+                                ))}
+                            </div>
+                        </AccordionContent>
+                    </AccordionItem>
+                ))}
+              </Accordion>
+
+              <Button onClick={applyThemeChanges} className="w-full">Aplicar Colores Personalizados</Button>
+
+              <Separator />
+
+              <div className="space-y-3 text-center">
+                <h4 className="font-semibold text-foreground">Gestionar Tema</h4>
+                <p className="text-sm text-muted-foreground">Guarda o carga tu configuración de apariencia personalizada (colores + CSS).</p>
+                <div className="flex justify-center gap-4">
+                    <Button variant="outline" onClick={() => setIsImportDialogOpen(true)}><Import className="mr-2"/> Importar</Button>
+                    <Button variant="outline" onClick={() => setIsExportDialogOpen(true)}><Export className="mr-2"/> Exportar</Button>
+                </div>
               </div>
-              <Button onClick={applyThemeChanges} className="w-full">Aplicar Colores</Button>
+
             </TabsContent>
             
-            <TabsContent value="translation" className="m-0 p-4 space-y-6">
+            <TabsContent value="translation" className="m-0 space-y-6">
                <h3 className="font-semibold text-lg">Traducción Automática</h3>
                <div className="flex items-center justify-between p-3 border rounded-lg">
                     <div>
@@ -636,7 +728,7 @@ export default function GlobalSettingsSheet({ isOpen, onOpenChange }: GlobalSett
                )}
             </TabsContent>
 
-            <TabsContent value="advanced-css" className="m-0 p-4 space-y-4">
+            <TabsContent value="advanced-css" className="m-0 space-y-4">
               <Alert variant="destructive">
                 <AlertTriangle className="h-4 w-4" />
                 <AlertTitle>¡Zona para Expertos!</AlertTitle>
@@ -648,7 +740,7 @@ export default function GlobalSettingsSheet({ isOpen, onOpenChange }: GlobalSett
                 <Label htmlFor="predefined-themes-select">Cargar Tema Prediseñado</Label>
                 <Select onValueChange={(value) => {
                     const selectedTheme = predefinedThemes.find(t => t.value === value);
-                    setTempRawCss(selectedTheme ? selectedTheme.css : '');
+                    setTempRawCss(selectedTheme ? selectedTheme.css.trim() : '');
                   }}>
                     <SelectTrigger id="predefined-themes-select">
                         <SelectValue placeholder="Selecciona un tema para empezar..." />
@@ -678,13 +770,74 @@ body {
           </div>
         </Tabs>
         <SheetFooter className="p-4 border-t flex-col sm:flex-row sm:justify-between gap-2">
-            <Button variant="outline" onClick={handleReset}>
-                <RefreshCcw className="mr-2 h-4 w-4" />
-                Restaurar Personalización
-            </Button>
+             <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                    <Button variant="outline">
+                        <RefreshCcw className="mr-2 h-4 w-4" />
+                        Restaurar...
+                    </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent>
+                    <DropdownMenuItem onSelect={() => handleReset({ colors: true })}>
+                        Restaurar Colores
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onSelect={() => handleReset({ css: true })}>
+                        Restaurar CSS
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onSelect={() => handleReset({ colors: true, css: true })} className="text-destructive focus:text-destructive">
+                        Restaurar Todo
+                    </DropdownMenuItem>
+                </DropdownMenuContent>
+            </DropdownMenu>
+
             <Button onClick={() => onOpenChange(false)}>Cerrar</Button>
         </SheetFooter>
       </SheetContent>
+
+      {/* Import Dialog */}
+      <Dialog open={isImportDialogOpen} onOpenChange={setIsImportDialogOpen}>
+          <DialogContent>
+              <DialogHeader>
+                  <DialogTitle>Importar Tema</DialogTitle>
+                  <DialogDescription>Pega el texto del tema (JSON) en el campo de abajo para aplicarlo.</DialogDescription>
+              </DialogHeader>
+              <Textarea 
+                placeholder='Pega aquí el JSON de tu tema...'
+                value={importJsonString}
+                onChange={(e) => setImportJsonString(e.target.value)}
+                className="font-mono h-48"
+              />
+              <DialogFooter>
+                  <Button variant="secondary" onClick={() => setIsImportDialogOpen(false)}>Cancelar</Button>
+                  <Button onClick={handleImport}>Importar y Aplicar Tema</Button>
+              </DialogFooter>
+          </DialogContent>
+      </Dialog>
+
+      {/* Export Dialog */}
+      <Dialog open={isExportDialogOpen} onOpenChange={setIsExportDialogOpen}>
+          <DialogContent>
+              <DialogHeader>
+                  <DialogTitle>Exportar Tema</DialogTitle>
+                  <DialogDescription>Copia este texto y guárdalo. Puedes importarlo más tarde o compartirlo.</DialogDescription>
+              </DialogHeader>
+              <Textarea 
+                value={JSON.stringify(exportTheme(), null, 2)}
+                readOnly
+                className="font-mono h-48 bg-muted"
+              />
+              <DialogFooter>
+                  <DialogClose asChild>
+                    <Button variant="secondary">Cerrar</Button>
+                  </DialogClose>
+                  <Button onClick={() => handleCopyToClipboard(JSON.stringify(exportTheme(), null, 2))}>
+                      {hasCopied ? <Check className="mr-2"/> : <ClipboardCopy className="mr-2"/>}
+                      {hasCopied ? 'Copiado' : 'Copiar al Portapapeles'}
+                  </Button>
+              </DialogFooter>
+          </DialogContent>
+      </Dialog>
+
     </Sheet>
   );
 }

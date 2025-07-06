@@ -3,53 +3,72 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode, useCallback } from 'react';
 
 // Define the structure for theme colors (HSL strings without hsl())
-interface CustomColors {
+export interface CustomColors {
   primary?: string;
-  background?: string;
+  'primary-foreground'?: string;
+  secondary?: string;
+  'secondary-foreground'?: string;
+  muted?: string;
+  'muted-foreground'?: string;
   accent?: string;
+  'accent-foreground'?: string;
+  destructive?: string;
+  'destructive-foreground'?: string;
+  background?: string;
   foreground?: string;
+  card?: string;
+  'card-foreground'?: string;
+  popover?: string;
+  'popover-foreground'?: string;
+  border?: string;
+  input?: string;
+  ring?: string;
 }
 
 interface CustomCss {
     raw?: string;
 }
 
+export interface CustomThemeData {
+    version: 1;
+    colors: CustomColors;
+    rawCss: CustomCss;
+}
+
 // Define the structure for the context
 interface CustomThemeContextType {
   colors: CustomColors;
-  setColors: (newColors: Partial<CustomColors>) => void;
+  setColors: (newColors: Partial<CustomColors>, replace?: boolean) => void;
   rawCss: CustomCss;
   setRawCss: (newCss: Partial<CustomCss>) => void;
-  resetCustomTheme: () => void;
+  resetCustomTheme: (options?: { colors?: boolean; css?: boolean }) => void;
+  exportTheme: () => CustomThemeData;
+  importTheme: (themeData: CustomThemeData) => void;
 }
 
 const CustomThemeContext = createContext<CustomThemeContextType | undefined>(undefined);
 
 const CUSTOM_THEME_STORAGE_KEY = 'kiqiCustomTheme';
 
+const ALL_COLOR_VARS: (keyof CustomColors)[] = [
+    'primary', 'primary-foreground', 'secondary', 'secondary-foreground', 'muted', 
+    'muted-foreground', 'accent', 'accent-foreground', 'destructive', 'destructive-foreground',
+    'background', 'foreground', 'card', 'card-foreground', 'popover', 'popover-foreground',
+    'border', 'input', 'ring'
+];
+
 const applyCustomColors = (colors: CustomColors) => {
     if (typeof window === 'undefined') return;
     const root = document.documentElement;
-    const colorMap: Record<keyof CustomColors, string> = {
-        primary: '--primary',
-        background: '--background',
-        accent: '--accent',
-        foreground: '--foreground',
-    };
-
-    Object.entries(colors).forEach(([key, value]) => {
-        const cssVar = colorMap[key as keyof CustomColors];
-        if (cssVar && value) {
+    
+    ALL_COLOR_VARS.forEach(key => {
+        const cssVar = `--${key}`;
+        const value = colors[key];
+        if (value) {
             root.style.setProperty(cssVar, value);
+        } else {
+            root.style.removeProperty(cssVar);
         }
-    });
-};
-
-const removeCustomColors = () => {
-    if (typeof window === 'undefined') return;
-    const root = document.documentElement;
-    ['--primary', '--background', '--accent', '--foreground'].forEach(prop => {
-        root.style.removeProperty(prop);
     });
 };
 
@@ -81,7 +100,7 @@ export const CustomThemeProvider = ({ children }: { children: ReactNode }) => {
     try {
       const storedSettings = localStorage.getItem(CUSTOM_THEME_STORAGE_KEY);
       if (storedSettings) {
-        const { colors: savedColors, rawCss: savedCss } = JSON.parse(storedSettings);
+        const { colors: savedColors, rawCss: savedCss }: CustomThemeData = JSON.parse(storedSettings);
         if (savedColors) {
             setColorsState(savedColors);
             applyCustomColors(savedColors);
@@ -96,7 +115,7 @@ export const CustomThemeProvider = ({ children }: { children: ReactNode }) => {
     }
   }, []);
   
-  const saveSettings = (settings: {colors: CustomColors, rawCss: CustomCss}) => {
+  const saveSettings = (settings: CustomThemeData) => {
     if (isMounted) {
         try {
             localStorage.setItem(CUSTOM_THEME_STORAGE_KEY, JSON.stringify(settings));
@@ -106,31 +125,72 @@ export const CustomThemeProvider = ({ children }: { children: ReactNode }) => {
     }
   }
 
-  const setColors = (newColors: Partial<CustomColors>) => {
-    const updatedColors = { ...colors, ...newColors };
+  const setColors = (newColors: Partial<CustomColors>, replace = false) => {
+    const updatedColors = replace ? newColors : { ...colors, ...newColors };
     setColorsState(updatedColors);
     applyCustomColors(updatedColors);
-    saveSettings({ colors: updatedColors, rawCss });
+    saveSettings({ version: 1, colors: updatedColors, rawCss });
   };
 
   const setRawCss = (newCss: Partial<CustomCss>) => {
     const updatedCss = { ...rawCss, ...newCss };
     setRawCssState(updatedCss);
     applyRawCss(updatedCss);
-    saveSettings({ colors, rawCss: updatedCss });
+    saveSettings({ version: 1, colors, rawCss: updatedCss });
   };
   
-  const resetCustomTheme = useCallback(() => {
-    setColorsState({});
-    setRawCssState({});
-    removeCustomColors();
-    applyRawCss({}); // this will remove the style tag
-    if (isMounted) {
-       localStorage.removeItem(CUSTOM_THEME_STORAGE_KEY);
-    }
-  }, [isMounted]);
+  const resetCustomTheme = useCallback((options: { colors?: boolean; css?: boolean } = { colors: true, css: true }) => {
+    const currentSettings = { colors, rawCss };
+    let newColors = currentSettings.colors;
+    let newCss = currentSettings.rawCss;
 
-  const value = { colors, setColors, rawCss, setRawCss, resetCustomTheme };
+    if (options.colors) {
+      newColors = {};
+      setColorsState({});
+      applyCustomColors({});
+    }
+    if (options.css) {
+      newCss = {};
+      setRawCssState({});
+      applyRawCss({});
+    }
+
+    if (isMounted) {
+        const fullState = { version: 1, colors: newColors, rawCss: newCss };
+        if (Object.keys(newColors).length === 0 && Object.keys(newCss).length === 0) {
+            localStorage.removeItem(CUSTOM_THEME_STORAGE_KEY);
+        } else {
+            saveSettings(fullState);
+        }
+    }
+  }, [isMounted, colors, rawCss]);
+
+  const exportTheme = useCallback((): CustomThemeData => {
+    return {
+      version: 1,
+      colors,
+      rawCss
+    };
+  }, [colors, rawCss]);
+
+  const importTheme = useCallback((themeData: CustomThemeData) => {
+    if (themeData.version !== 1) {
+      console.error("Invalid theme version");
+      return;
+    }
+    const newColors = themeData.colors || {};
+    const newCss = themeData.rawCss || {};
+
+    setColorsState(newColors);
+    applyCustomColors(newColors);
+
+    setRawCssState(newCss);
+    applyRawCss(newCss);
+
+    saveSettings({ version: 1, colors: newColors, rawCss: newCss });
+  }, []);
+
+  const value = { colors, setColors, rawCss, setRawCss, resetCustomTheme, exportTheme, importTheme };
 
   return (
     <CustomThemeContext.Provider value={value}>
