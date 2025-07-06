@@ -5,7 +5,7 @@ import Link from 'next/link';
 import Image from 'next/image';
 import { ModeToggle } from '@/components/layout/ModeToggle';
 import { Button, buttonVariants } from '@/components/ui/button';
-import { Settings, Heart } from 'lucide-react';
+import { Settings, User } from 'lucide-react';
 import GlobalSettingsSheet from './GlobalSettingsSheet';
 import {
   AlertDialog,
@@ -119,10 +119,8 @@ export default function AppHeader() {
            <Button variant="ghost" size="icon" className="sm:hidden" onClick={handleDiscordButtonClick} aria-label="Unirse a Discord">
               <DiscordIcon className="h-5 w-5" />
           </Button>
-          <Button variant="ghost" size="icon" asChild>
-            <Link href="/favorites" aria-label="Ver favoritos">
-              <Heart className="h-5 w-5" />
-            </Link>
+          <Button variant="ghost" size="icon" onClick={() => setIsSettingsSheetOpen(true)} aria-label="Abrir perfil y configuración">
+            <User className="h-5 w-5" />
           </Button>
           <ModeToggle />
           <Button variant="ghost" size="icon" onClick={() => setIsSettingsSheetOpen(true)} aria-label="Abrir configuración global">

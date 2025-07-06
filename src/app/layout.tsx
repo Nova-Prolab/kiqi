@@ -26,7 +26,6 @@ import { CustomThemeProvider } from '@/contexts/CustomThemeContext';
 import { Toaster } from '@/components/ui/toaster';
 import AppHeader from '@/components/layout/AppHeader';
 import { ContentFilterProvider } from '@/contexts/ContentFilterContext';
-import { FavoritesProvider } from '@/contexts/FavoritesContext';
 import { LikedCommentsProvider } from '@/contexts/LikedCommentsContext';
 
 // Reader Font Options (from Google Fonts)
@@ -95,7 +94,6 @@ export default function RootLayout({
         >
           <CustomThemeProvider>
             <ContentFilterProvider>
-              <FavoritesProvider>
                 <LikedCommentsProvider>
                   <ReaderSettingsProvider>
                     <AppHeader />
@@ -105,7 +103,6 @@ export default function RootLayout({
                     <Toaster />
                   </ReaderSettingsProvider>
                 </LikedCommentsProvider>
-              </FavoritesProvider>
             </ContentFilterProvider>
           </CustomThemeProvider>
         </ThemeProvider>

@@ -1,6 +1,7 @@
+
 'use client';
 
-import { useState, useTransition, useEffect, useCallback, FormEvent } from 'react';
+import { useState, useTransition, useEffect, useCallback, FormEvent, useMemo } from 'react';
 import { formatDistanceToNow } from 'date-fns';
 import { es } from 'date-fns/locale';
 import type { Comment } from '@/lib/types';
@@ -8,7 +9,7 @@ import { addCommentAction, fetchCommentsAction, addReplyAction, likeCommentActio
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Input } from '@/components/ui/input';
-import { Loader2, MessageCircle, AlertTriangle, Send, Heart, MessageSquare, Maximize, Minimize } from 'lucide-react';
+import { Loader2, MessageCircle, AlertTriangle, Send, Heart, MessageSquare, Maximize, Minimize, Crown, Star, Award } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { useReaderSettings } from '@/contexts/ReaderSettingsContext';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
@@ -16,7 +17,7 @@ import { cn } from '@/lib/utils';
 import { useLikedComments } from '@/contexts/LikedCommentsContext';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
-import { Separator } from '@/components/ui/separator';
+import { Badge } from '@/components/ui/badge';
 import {
   Sheet,
   SheetContent,
@@ -220,8 +221,28 @@ export default function ChapterComments({ novelId, chapterId, isOpen, onOpenChan
     });
   };
 
+  const topCommentsMap = useMemo(() => {
+    if (!comments || comments.length < 1) {
+        return new Map<string, number>();
+    }
+    const sortedByLikes = [...comments].filter(c => c.likes > 0).sort((a, b) => b.likes - a.likes);
+    const rankMap = new Map<string, number>();
+    if (sortedByLikes[0]) rankMap.set(sortedByLikes[0].id, 1);
+    if (sortedByLikes[1]) rankMap.set(sortedByLikes[1].id, 2);
+    if (sortedByLikes[2]) rankMap.set(sortedByLikes[2].id, 3);
+    return rankMap;
+  }, [comments]);
+  
+  const sortedComments = useMemo(() => {
+    if (!comments) return null;
+    const topCommentIds = Array.from(topCommentsMap.keys());
+    const top = comments.filter(c => topCommentIds.includes(c.id)).sort((a, b) => (topCommentsMap.get(a.id) || 4) - (topCommentsMap.get(b.id) || 4));
+    const rest = comments.filter(c => !topCommentIds.includes(c.id));
+    return [...top, ...rest];
+  }, [comments, topCommentsMap]);
 
-  const CommentItem = ({ comment, level }: { comment: Comment; level: number }) => {
+
+  const CommentItem = ({ comment, level, highlightRank }: { comment: Comment; level: number, highlightRank?: number }) => {
     const [isReplySubmitting, startReplyTransition] = useTransition();
     const hasLiked = isCommentLiked(comment.id);
 
@@ -238,6 +259,21 @@ export default function ChapterComments({ novelId, chapterId, isOpen, onOpenChan
       }
     };
     
+    const highlightClasses = {
+        1: 'bg-amber-100/50 dark:bg-amber-900/30 border-amber-400/80', // Gold
+        2: 'bg-slate-100/50 dark:bg-slate-800/30 border-slate-400/70', // Silver
+        3: 'bg-orange-100/30 dark:bg-orange-900/20 border-orange-400/50' // Bronze
+    };
+
+    const highlightBadge = {
+        1: { icon: Crown, text: 'Comentario Destacado', class: 'text-amber-600 dark:text-amber-400' },
+        2: { icon: Star, text: 'Popular', class: 'text-slate-600 dark:text-slate-400' },
+        3: { icon: Award, text: 'Reconocido', class: 'text-orange-600 dark:text-orange-400' }
+    };
+
+    const BadgeIcon = highlightRank ? highlightBadge[highlightRank as keyof typeof highlightBadge]?.icon : null;
+    const badgeInfo = highlightRank ? highlightBadge[highlightRank as keyof typeof highlightBadge] : null;
+
     return (
        <div className={cn("flex items-start gap-3 sm:gap-4", level > 0 ? "mt-4" : "")}>
           <Avatar className="mt-1 h-10 w-10">
@@ -245,12 +281,19 @@ export default function ChapterComments({ novelId, chapterId, isOpen, onOpenChan
             <AvatarFallback>{comment.name.charAt(0).toUpperCase()}</AvatarFallback>
           </Avatar>
           <div className="flex-grow">
-              <div className="bg-muted/40 rounded-lg px-4 py-3">
-                  <div className="flex items-baseline gap-2">
-                      <p className="font-semibold text-foreground">{comment.name}</p>
-                      <p className="text-xs text-muted-foreground">
-                          · {formatDistanceToNow(new Date(comment.timestamp), { addSuffix: true, locale: es })}
-                      </p>
+              <div className={cn("rounded-lg px-4 py-3 border transition-all", highlightRank ? highlightClasses[highlightRank as keyof typeof highlightClasses] : 'bg-muted/40 border-transparent')}>
+                  <div className="flex items-baseline justify-between">
+                    <div className="flex items-baseline gap-2">
+                        <p className="font-semibold text-foreground">{comment.name}</p>
+                        <p className="text-xs text-muted-foreground">
+                            · {formatDistanceToNow(new Date(comment.timestamp), { addSuffix: true, locale: es })}
+                        </p>
+                    </div>
+                     {badgeInfo && BadgeIcon && (
+                        <Badge variant="outline" className={cn('text-xs font-medium border-none', badgeInfo.class)}>
+                            <BadgeIcon className="mr-1.5 h-3.5 w-3.5" /> {badgeInfo.text}
+                        </Badge>
+                     )}
                   </div>
                   <p className="text-foreground/90 mt-1 whitespace-pre-wrap text-sm sm:text-base">{comment.content}</p>
               </div>
@@ -320,12 +363,12 @@ export default function ChapterComments({ novelId, chapterId, isOpen, onOpenChan
       );
     }
     
-    if (comments) {
+    if (sortedComments) {
       return (
         <ScrollArea className="flex-grow h-full">
           <div className="p-4 sm:p-6 space-y-8">
-            {comments.length > 0 ? (
-              comments.map(comment => <CommentItem key={comment.id} comment={comment} level={0} />)
+            {sortedComments.length > 0 ? (
+              sortedComments.map(comment => <CommentItem key={comment.id} comment={comment} level={0} highlightRank={topCommentsMap.get(comment.id)} />)
             ) : (
               <p className="text-center text-muted-foreground py-12">Sé el primero en comentar.</p>
             )}
