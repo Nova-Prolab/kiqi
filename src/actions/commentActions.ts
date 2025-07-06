@@ -168,7 +168,7 @@ export async function likeCommentAction(novelId: string, chapterId: string, comm
         return { error: 'No se puede dar Me Gusta en un hilo de comentarios que no existe.' };
     }
     
-    const foundAndMutateComment = findAndMutateComment(currentComments, commentId, (comment) => {
+    const foundAndMutated = findAndMutateComment(currentComments, commentId, (comment) => {
         comment.likes = (comment.likes || 0) + 1;
     });
 
