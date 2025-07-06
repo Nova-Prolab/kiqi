@@ -1,14 +1,17 @@
-import { fetchNovels } from '@/lib/github';
-import type { Novel } from '@/lib/types';
+import { fetchNovels, fetchAdvertisement } from '@/lib/github';
+import type { Novel, Advertisement } from '@/lib/types';
 import NovelBrowser from '@/components/novel/NovelBrowser';
 import { Suspense } from 'react';
 import { Loader2 } from 'lucide-react';
+import AdvertisementBanner from '@/components/layout/AdvertisementBanner';
 
 export const dynamic = 'force-dynamic'; // Ensure dynamic rendering for this page
 
 export default async function HomePage() {
-  // Fetching novels here, on the server, is fine with 'force-dynamic'
-  const novels: Novel[] = await fetchNovels();
+  const [novels, advertisement] = await Promise.all([
+    fetchNovels(),
+    fetchAdvertisement(),
+  ]);
 
   return (
     <Suspense fallback={
@@ -17,6 +20,7 @@ export default async function HomePage() {
         <p className="text-lg text-muted-foreground">Cargando Kiqi!...</p>
       </div>
     }>
+      {advertisement && <AdvertisementBanner ad={advertisement} />}
       <NovelBrowser initialNovels={novels} />
     </Suspense>
   );

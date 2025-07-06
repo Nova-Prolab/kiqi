@@ -495,4 +495,3 @@ export default function NovelBrowser({ initialNovels }: NovelBrowserProps) {
     </div>
   );
 }
-

@@ -1,5 +1,5 @@
 
-import type { Novel, Chapter, InfoJson } from './types';
+import type { Novel, Chapter, InfoJson, Advertisement } from './types';
 
 const GITHUB_API_BASE = 'https://api.github.com';
 const DEFAULT_BRANCH = 'main';
@@ -342,7 +342,6 @@ export async function fetchNovelById(id: string): Promise<Novel | undefined> {
       return {
         id: file.name.replace('.html', ''),
         title: `Capítulo ${order}`,
-        order: order,
       };
     });
     
@@ -429,4 +428,22 @@ export async function fetchChapter(novelId: string, chapterId: string): Promise<
   
   console.log(`[GitHub Lib - fetchChapter] Successfully fetched chapter '${chapterId}' for novel '${novelId}'.`);
   return { novel, chapter };
+}
+
+export async function fetchAdvertisement(): Promise<Advertisement | null> {
+  console.log('[GitHub Lib - fetchAdvertisement] Attempting to fetch advertisement.json');
+  try {
+    const fileData = await fetchFileContent('advertisement.json');
+    if (!fileData || !fileData.content) {
+      console.log('[GitHub Lib - fetchAdvertisement] advertisement.json not found or is empty. No ad will be shown.');
+      return null;
+    }
+
+    const adData: Advertisement = JSON.parse(fileData.content);
+    console.log('[GitHub Lib - fetchAdvertisement] Successfully fetched and parsed advertisement.json.');
+    return adData;
+  } catch (error: any) {
+    console.error(`[GitHub Lib - fetchAdvertisement] Error fetching or parsing advertisement.json: ${error.message}`);
+    return null;
+  }
 }

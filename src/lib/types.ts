@@ -145,3 +145,20 @@ export interface Comment {
   likes: number;
   replies: Comment[];
 }
+
+export interface AdvertisementStyle {
+  background?: string;
+  color?: string;
+  borderColor?: string;
+}
+
+export interface Advertisement {
+  enabled: boolean;
+  title: string;
+  message: string;
+  link?: string;
+  icon?: string;
+  dismissible?: boolean;
+  durationSeconds?: number | null;
+  style?: AdvertisementStyle;
+}
