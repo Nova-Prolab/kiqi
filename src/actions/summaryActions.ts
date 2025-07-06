@@ -2,7 +2,7 @@
 'use server';
 
 import { generateChapterSummary } from '@/ai/flows/generate-chapter-summary';
-import type { GenerateChapterSummaryOutput } from '@/ai/flows/generate-chapter-summary';
+import type { GenerateChapterSummaryInput, GenerateChapterSummaryOutput } from '@/ai/flows/generate-chapter-summary';
 
 // Helper to strip HTML tags for summary generation
 const stripHtml = (html: string): string => {
@@ -13,7 +13,11 @@ const stripHtml = (html: string): string => {
 
 
 export async function getChapterSummaryAction(
-  chapterHtmlContent: string
+  chapterHtmlContent: string,
+  options: {
+    length: GenerateChapterSummaryInput['summaryLength'];
+    style: GenerateChapterSummaryInput['summaryStyle'];
+  }
 ): Promise<{ summary?: string; error?: string }> {
   if (!chapterHtmlContent || chapterHtmlContent.trim().length === 0) {
     return { error: 'El contenido del capítulo no puede estar vacío.' };
@@ -25,7 +29,11 @@ export async function getChapterSummaryAction(
   }
 
   try {
-    const result: GenerateChapterSummaryOutput = await generateChapterSummary({ chapterText });
+    const result: GenerateChapterSummaryOutput = await generateChapterSummary({
+      chapterText,
+      summaryLength: options.length,
+      summaryStyle: options.style,
+    });
     return { summary: result.summary };
   } catch (error) {
     console.error('Error generating chapter summary:', error);
