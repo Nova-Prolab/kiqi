@@ -1,3 +1,4 @@
+
 'use client';
 
 import React, { useState, useEffect } from 'react';
@@ -20,12 +21,15 @@ import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter, DialogClose } from '@/components/ui/dialog';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
-import { Palette, Languages, Code, AlertTriangle, RefreshCcw, Download as ImportIcon, Share as ExportIcon, ClipboardCopy, Check } from 'lucide-react';
+import { Palette, Languages, Code, AlertTriangle, RefreshCcw, Download as ImportIcon, Share as ExportIcon, ClipboardCopy, Check, FilterX as BlockIcon, X } from 'lucide-react';
 import { useReaderSettings } from '@/contexts/ReaderSettingsContext';
 import { useCustomTheme, type CustomColors, type CustomThemeData } from '@/contexts/CustomThemeContext';
-import { TARGET_LANGUAGES, type TargetLanguage } from '@/lib/types';
+import { TARGET_LANGUAGES, type TargetLanguage, AGE_RATING_VALUES, STATUS_VALUES, AgeRating, NovelStatus } from '@/lib/types';
 import { useToast } from '@/hooks/use-toast';
 import { Separator } from '../ui/separator';
+import { useContentFilter, type BlockableCategory } from '@/contexts/ContentFilterContext';
+import { Badge } from '@/components/ui/badge';
+
 
 interface GlobalSettingsSheetProps {
   isOpen: boolean;
@@ -250,10 +254,6 @@ const predefinedThemes = [
     @keyframes snow-fall-2 {
       0% { transform: translate(20px, -100vh) rotate(0deg); }
       100% { transform: translate(-25px, 100vh) rotate(720deg); }
-    }
-    @keyframes snow-fall-3 {
-      0% { transform: translate(0, -100vh) rotate(0deg); }
-      100% { transform: translate(-15px, 100vh) rotate(180deg); }
     }
     body {
       position: relative;
@@ -533,6 +533,48 @@ const predefinedThemes = [
   `},
 ];
 
+// A sub-component for the block list UI to reduce repetition
+const BlockListManagement = ({ category, title, placeholder }: { category: BlockableCategory, title: string, placeholder: string }) => {
+    const { addBlockedItem, removeBlockedItem, ...settings } = useContentFilter();
+    const [inputValue, setInputValue] = useState('');
+    const list = (settings[category] || []) as string[];
+
+    const handleAdd = () => {
+        if (inputValue.trim()) {
+            addBlockedItem(category, inputValue.trim());
+            setInputValue('');
+        }
+    };
+
+    return (
+        <div className="space-y-3">
+            <h4 className="font-semibold">{title}</h4>
+            <div className="flex items-center gap-2">
+                <Input
+                    value={inputValue}
+                    onChange={(e) => setInputValue(e.target.value)}
+                    placeholder={placeholder}
+                    className="h-9"
+                    onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); handleAdd(); } }}
+                />
+                <Button size="sm" onClick={handleAdd}>Bloquear</Button>
+            </div>
+            {list.length > 0 && (
+                <div className="flex flex-wrap gap-2 rounded-md border p-2 bg-muted/50 max-h-40 overflow-y-auto">
+                    {list.map(item => (
+                        <Badge key={item} variant="secondary" className="pl-2 pr-1 gap-1">
+                            {item}
+                            <button onClick={() => removeBlockedItem(category, item)} className="rounded-full hover:bg-destructive/20 p-0.5">
+                                <X className="h-3 w-3" />
+                            </button>
+                        </Badge>
+                    ))}
+                </div>
+            )}
+        </div>
+    )
+}
+
 // --- MAIN COMPONENT ---
 export default function GlobalSettingsSheet({ isOpen, onOpenChange }: GlobalSettingsSheetProps) {
   const { 
@@ -546,6 +588,11 @@ export default function GlobalSettingsSheet({ isOpen, onOpenChange }: GlobalSett
     resetCustomTheme,
     importTheme,
   } = useCustomTheme();
+  
+  const { 
+    blockedAuthors, blockedTranslators, blockedCategories, blockedTags,
+    blockedAgeRatings, blockedStatuses, addBlockedItem, removeBlockedItem
+  } = useContentFilter();
 
   const { toast } = useToast();
   
@@ -710,6 +757,9 @@ export default function GlobalSettingsSheet({ isOpen, onOpenChange }: GlobalSett
         fields: ['card', 'card-foreground', 'popover', 'popover-foreground', 'border', 'input', 'muted', 'muted-foreground']
       }
   ];
+  
+  const ageRatingLabels: Record<AgeRating, string> = { all: 'Todos', pg: '+10', teen: '+13', mature: '+17', adults: '+18' };
+  const novelStatusLabels: Record<NovelStatus, string> = { ongoing: 'En curso', completed: 'Completada', hiatus: 'En Hiato', dropped: 'Abandonada' };
 
   return (
     <Sheet open={isOpen} onOpenChange={onOpenChange}>
@@ -721,10 +771,11 @@ export default function GlobalSettingsSheet({ isOpen, onOpenChange }: GlobalSett
           </SheetDescription>
         </SheetHeader>
         <Tabs defaultValue="appearance" className="flex-grow flex flex-col">
-          <TabsList className="m-4 mx-auto">
+          <TabsList className="m-4 mx-auto grid w-full grid-cols-2 sm:grid-cols-4 sm:w-auto">
             <TabsTrigger value="appearance"><Palette className="mr-2 h-4 w-4" />Apariencia</TabsTrigger>
             <TabsTrigger value="translation"><Languages className="mr-2 h-4 w-4" />Traducción</TabsTrigger>
-            <TabsTrigger value="advanced-css"><Code className="mr-2 h-4 w-4" />CSS Avanzado</TabsTrigger>
+            <TabsTrigger value="content-filtering"><BlockIcon className="mr-2 h-4 w-4" />Filtrado</TabsTrigger>
+            <TabsTrigger value="advanced-css"><Code className="mr-2 h-4 w-4" />CSS</TabsTrigger>
           </TabsList>
           
           <div className="flex-grow overflow-y-auto px-4">
@@ -799,6 +850,78 @@ export default function GlobalSettingsSheet({ isOpen, onOpenChange }: GlobalSett
                )}
             </TabsContent>
 
+            <TabsContent value="content-filtering" className="m-0 space-y-6">
+                <div className="space-y-2">
+                    <h3 className="font-semibold text-lg">Filtrado de Contenido</h3>
+                    <p className="text-sm text-muted-foreground">
+                        Oculta novelas que no quieres ver. Los elementos bloqueados se sincronizarán en este navegador. Introduce un término y presiona "Bloquear".
+                    </p>
+                </div>
+                <Separator/>
+                <Accordion type="multiple" className="w-full" defaultValue={['item-text']}>
+                    <AccordionItem value="item-text">
+                        <AccordionTrigger>Bloqueo por Texto</AccordionTrigger>
+                        <AccordionContent className="space-y-4 pt-4">
+                            <BlockListManagement category="blockedAuthors" title="Autores Bloqueados" placeholder="Nombre del autor..." />
+                            <BlockListManagement category="blockedTranslators" title="Traductores Bloqueados" placeholder="Nombre del traductor..." />
+                            <BlockListManagement category="blockedCategories" title="Categorías Bloqueadas" placeholder="Nombre de la categoría..." />
+                            <BlockListManagement category="blockedTags" title="Etiquetas Bloqueadas" placeholder="Nombre de la etiqueta..." />
+                        </AccordionContent>
+                    </AccordionItem>
+                    <AccordionItem value="item-select">
+                        <AccordionTrigger>Bloqueo por Atributos</AccordionTrigger>
+                        <AccordionContent className="space-y-4 pt-4">
+                             <div className="space-y-3">
+                                <h4 className="font-semibold">Clasificación de Edad Bloqueada</h4>
+                                <Select onValueChange={(val) => addBlockedItem('blockedAgeRatings', val)} value="">
+                                    <SelectTrigger><SelectValue placeholder="Selecciona una clasificación para bloquear..." /></SelectTrigger>
+                                    <SelectContent>
+                                        {AGE_RATING_VALUES.filter(r => !blockedAgeRatings.includes(r)).map(rating => (
+                                            <SelectItem key={rating} value={rating}>{ageRatingLabels[rating]}</SelectItem>
+                                        ))}
+                                    </SelectContent>
+                                </Select>
+                                {blockedAgeRatings.length > 0 && (
+                                    <div className="flex flex-wrap gap-2 rounded-md border p-2 bg-muted/50 max-h-40 overflow-y-auto">
+                                        {blockedAgeRatings.map(item => (
+                                            <Badge key={item} variant="secondary" className="pl-2 pr-1 gap-1">
+                                                {ageRatingLabels[item as AgeRating]}
+                                                <button onClick={() => removeBlockedItem('blockedAgeRatings', item)} className="rounded-full hover:bg-destructive/20 p-0.5">
+                                                    <X className="h-3 w-3" />
+                                                </button>
+                                            </Badge>
+                                        ))}
+                                    </div>
+                                )}
+                            </div>
+                             <div className="space-y-3">
+                                <h4 className="font-semibold">Estado de Novela Bloqueado</h4>
+                                <Select onValueChange={(val) => addBlockedItem('blockedStatuses', val)} value="">
+                                    <SelectTrigger><SelectValue placeholder="Selecciona un estado para bloquear..." /></SelectTrigger>
+                                    <SelectContent>
+                                        {STATUS_VALUES.filter(s => !blockedStatuses.includes(s)).map(status => (
+                                            <SelectItem key={status} value={status}>{novelStatusLabels[status]}</SelectItem>
+                                        ))}
+                                    </SelectContent>
+                                </Select>
+                                {blockedStatuses.length > 0 && (
+                                    <div className="flex flex-wrap gap-2 rounded-md border p-2 bg-muted/50 max-h-40 overflow-y-auto">
+                                        {blockedStatuses.map(item => (
+                                            <Badge key={item} variant="secondary" className="pl-2 pr-1 gap-1">
+                                                {novelStatusLabels[item as NovelStatus]}
+                                                <button onClick={() => removeBlockedItem('blockedStatuses', item)} className="rounded-full hover:bg-destructive/20 p-0.5">
+                                                    <X className="h-3 w-3" />
+                                                </button>
+                                            </Badge>
+                                        ))}
+                                    </div>
+                                )}
+                            </div>
+                        </AccordionContent>
+                    </AccordionItem>
+                </Accordion>
+            </TabsContent>
+
             <TabsContent value="advanced-css" className="m-0 space-y-4">
               <Alert variant="destructive">
                 <AlertTriangle className="h-4 w-4" />
@@ -867,7 +990,7 @@ body {
 
       {/* Import Dialog */}
       <Dialog open={isImportDialogOpen} onOpenChange={setIsImportDialogOpen}>
-          <DialogContent>
+          <DialogContent className="z-[260]">
               <DialogHeader>
                   <DialogTitle>Importar Tema</DialogTitle>
                   <DialogDescription>Pega el texto del tema (JSON) en el campo de abajo para aplicarlo.</DialogDescription>
@@ -887,7 +1010,7 @@ body {
 
       {/* Export Dialog */}
       <Dialog open={isExportDialogOpen} onOpenChange={setIsExportDialogOpen}>
-          <DialogContent>
+          <DialogContent className="z-[260]">
               <DialogHeader>
                   <DialogTitle>Exportar Tema</DialogTitle>
                   <DialogDescription>Copia este texto y guárdalo. Puedes importarlo más tarde o compartirlo.</DialogDescription>

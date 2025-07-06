@@ -25,6 +25,7 @@ import { ReaderSettingsProvider } from '@/contexts/ReaderSettingsContext';
 import { CustomThemeProvider } from '@/contexts/CustomThemeContext';
 import { Toaster } from '@/components/ui/toaster';
 import AppHeader from '@/components/layout/AppHeader';
+import { ContentFilterProvider } from '@/contexts/ContentFilterContext';
 
 // Reader Font Options (from Google Fonts)
 const lora = Lora({ subsets: ['latin'], variable: '--font-lora', display: 'swap', weight: ['400', '700'] });
@@ -91,13 +92,15 @@ export default function RootLayout({
           disableTransitionOnChange
         >
           <CustomThemeProvider>
-            <ReaderSettingsProvider>
-              <AppHeader />
-              <main className="flex-grow container mx-auto px-4 py-8">
-                {children}
-              </main>
-              <Toaster />
-            </ReaderSettingsProvider>
+            <ContentFilterProvider>
+              <ReaderSettingsProvider>
+                <AppHeader />
+                <main className="flex-grow container mx-auto px-4 py-8">
+                  {children}
+                </main>
+                <Toaster />
+              </ReaderSettingsProvider>
+            </ContentFilterProvider>
           </CustomThemeProvider>
         </ThemeProvider>
       </body>

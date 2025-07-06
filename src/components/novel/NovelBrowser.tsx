@@ -7,13 +7,14 @@ import type { Novel, AgeRating, NovelStatus } from '@/lib/types';
 import { AGE_RATING_VALUES, STATUS_VALUES } from '@/lib/types';
 import NovelCard from '@/components/novel/NovelCard';
 import { Input } from '@/components/ui/input';
-import { Search, BookX, Tags, LayoutGrid, Star, FilterX, ChevronLeft, ChevronRight, Loader2, Shield, ClockIcon, Library, User, Tag as TagIcon, FileSearch, Users, HelpCircle } from 'lucide-react';
+import { Search, BookX, Tags, LayoutGrid, Star, FilterX, ChevronLeft, ChevronRight, Loader2, Shield, ClockIcon, Library, User, Tag as TagIcon, FileSearch, Users, HelpCircle, Ban } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import AgeRatingBadge from '@/components/ui/AgeRatingBadge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { useContentFilter } from '@/contexts/ContentFilterContext';
 
 interface NovelBrowserProps {
   initialNovels: Novel[];
@@ -67,6 +68,11 @@ const searchTypeOptions: { value: SearchType, label: string, icon: React.Element
 export default function NovelBrowser({ initialNovels }: NovelBrowserProps) {
   const searchParams = useSearchParams();
   const router = useRouter();
+  
+  const { 
+    blockedAuthors, blockedTranslators, blockedCategories, blockedTags,
+    blockedAgeRatings, blockedStatuses, isLoaded: isFilterLoaded
+  } = useContentFilter();
 
   const [currentInputText, setCurrentInputText] = useState('');
   const [searchTerm, setSearchTerm] = useState('');
@@ -151,12 +157,6 @@ export default function NovelBrowser({ initialNovels }: NovelBrowserProps) {
     handleSearchExecute();
   };
   
-  const featuredNovels = useMemo(() => {
-    return initialNovels.filter(novel =>
-      novel.etiquetas?.some(tag => tag.toLowerCase() === 'destacado')
-    );
-  }, [initialNovels]);
-
   const allUniqueCategories = useMemo(() => {
     const categoriesFromNovels = new Set<string>();
     initialNovels.forEach(novel => {
@@ -221,8 +221,32 @@ export default function NovelBrowser({ initialNovels }: NovelBrowserProps) {
     return counts;
   }, [initialNovels]);
 
+  const globallyFilteredNovels = useMemo(() => {
+    if (!isFilterLoaded) return [];
+
+    return initialNovels.filter(novel => {
+      const authorLower = novel.author.toLowerCase();
+      if (blockedAuthors.some(blocked => authorLower.includes(blocked.toLowerCase()))) return false;
+
+      const translatorLower = (novel.traductor || '').toLowerCase();
+      if (translatorLower && blockedTranslators.some(blocked => translatorLower.includes(blocked.toLowerCase()))) return false;
+      
+      const categoryLower = (novel.categoria || '').toLowerCase();
+      if (categoryLower && blockedCategories.some(blocked => categoryLower.includes(blocked.toLowerCase()))) return false;
+
+      if (novel.ageRating && blockedAgeRatings.includes(novel.ageRating)) return false;
+      if (novel.status && blockedStatuses.includes(novel.status)) return false;
+
+      const tagsLower = novel.etiquetas?.map(t => t.toLowerCase()) || [];
+      if (tagsLower.some(tag => blockedTags.some(blocked => tag.includes(blocked.toLowerCase())))) return false;
+
+      return true;
+    });
+  }, [initialNovels, isFilterLoaded, blockedAuthors, blockedTranslators, blockedCategories, blockedTags, blockedAgeRatings, blockedStatuses]);
+
+
   const filteredNovels = useMemo(() => {
-    let novelsToFilter = [...initialNovels];
+    let novelsToFilter = [...globallyFilteredNovels];
     const normalizedSearchTerm = searchTerm.toLowerCase().trim();
 
     if (selectedCategory) {
@@ -257,7 +281,13 @@ export default function NovelBrowser({ initialNovels }: NovelBrowserProps) {
       });
     }
     return novelsToFilter;
-  }, [initialNovels, searchTerm, searchType, selectedCategory, selectedTag, selectedAgeRating, selectedStatus]);
+  }, [globallyFilteredNovels, searchTerm, searchType, selectedCategory, selectedTag, selectedAgeRating, selectedStatus]);
+
+  const featuredNovels = useMemo(() => {
+    return globallyFilteredNovels.filter(novel =>
+      novel.etiquetas?.some(tag => tag.toLowerCase() === 'destacado')
+    );
+  }, [globallyFilteredNovels]);
 
   useEffect(() => {
     setSuggestion(null);
@@ -273,7 +303,7 @@ export default function NovelBrowser({ initialNovels }: NovelBrowserProps) {
     for (const otherType of searchTypeOptions) {
       if (otherType.value === searchType) continue;
 
-      const foundInOtherType = initialNovels.some(novel => {
+      const foundInOtherType = globallyFilteredNovels.some(novel => {
         const title = novel.title?.toLowerCase() || '';
         const author = novel.author?.toLowerCase() || '';
         const category = novel.categoria?.toLowerCase() || '';
@@ -306,7 +336,7 @@ export default function NovelBrowser({ initialNovels }: NovelBrowserProps) {
         return; // Stop after finding the first suggestion
       }
     }
-}, [filteredNovels.length, searchTerm, searchType, initialNovels]);
+}, [filteredNovels.length, searchTerm, searchType, globallyFilteredNovels]);
 
   const handleSuggestionClick = (suggestion: { newSearchType: SearchType; newSearchTerm: string }) => {
     setSearchType(suggestion.newSearchType);
@@ -369,7 +399,7 @@ export default function NovelBrowser({ initialNovels }: NovelBrowserProps) {
     setCurrentPage(1);
   };
 
-  if (!mounted) {
+  if (!mounted || !isFilterLoaded) {
     return (
       <div className="space-y-8 py-10">
         <div className="flex flex-col items-center justify-center text-center">
@@ -417,6 +447,8 @@ export default function NovelBrowser({ initialNovels }: NovelBrowserProps) {
   const activeBadgeFilters = selectedCategory || selectedTag || selectedAgeRating || selectedStatus;
   const totalActiveFilterCount = (activeTextSearch ? 1 : 0) + [selectedCategory, selectedTag, selectedAgeRating, selectedStatus].filter(Boolean).length;
   const isFiltering = activeTextSearch || activeBadgeFilters;
+  
+  const globallyHiddenCount = initialNovels.length - globallyFilteredNovels.length;
 
   return (
     <div className="space-y-10">
@@ -458,6 +490,15 @@ export default function NovelBrowser({ initialNovels }: NovelBrowserProps) {
           </div>
         </form>
       </section>
+
+      {globallyHiddenCount > 0 && (
+        <div className="mb-6 -mt-4 text-center">
+          <p className="text-sm text-muted-foreground flex items-center justify-center gap-2">
+            <Ban className="h-4 w-4" />
+            {globallyHiddenCount} novela{globallyHiddenCount > 1 ? 's' : ''} oculta{globallyHiddenCount > 1 ? 's' : ''} por tus filtros de contenido.
+          </p>
+        </div>
+      )}
 
       {featuredNovels.length > 0 && !isFiltering && (
         <section className="bg-gradient-to-br from-primary/10 via-background to-background py-8 rounded-xl shadow-lg border border-primary/30">
@@ -510,7 +551,12 @@ export default function NovelBrowser({ initialNovels }: NovelBrowserProps) {
             {isFiltering ? (
               <p className="mt-2 text-lg text-muted-foreground">Intenta con otros términos de búsqueda o ajusta los filtros.</p>
             ) : (
-              <p className="mt-2 text-lg text-muted-foreground">Parece que no hay novelas disponibles en este momento. ¡Vuelve pronto!</p>
+               <p className="mt-2 text-lg text-muted-foreground">
+                {globallyHiddenCount > 0 
+                  ? "Todas las novelas disponibles están ocultas por tus filtros."
+                  : "Parece que no hay novelas disponibles en este momento. ¡Vuelve pronto!"
+                }
+               </p>
             )}
             {suggestion && (
               <div className="mt-8 bg-primary/5 p-4 rounded-lg border border-primary/20 max-w-md mx-auto text-center">
@@ -545,7 +591,7 @@ export default function NovelBrowser({ initialNovels }: NovelBrowserProps) {
         <Card>
           <CardHeader><CardTitle className="text-lg flex items-center"><LayoutGrid className="mr-2 h-5 w-5" />Categorías</CardTitle></CardHeader>
           <CardContent className="flex flex-wrap gap-2">
-            <Badge variant={selectedCategory === null ? 'default' : 'outline'} className="cursor-pointer text-sm px-3 py-1.5" onClick={() => handleBadgeCategorySelect(null)}>Todas ({initialNovels.length})</Badge>
+            <Badge variant={selectedCategory === null ? 'default' : 'outline'} className="cursor-pointer text-sm px-3 py-1.5" onClick={() => handleBadgeCategorySelect(null)}>Todas ({globallyFilteredNovels.length})</Badge>
             {allUniqueCategories.map(category => ((categoryCounts[category] > 0 || PREDEFINED_CATEGORIES.includes(category)) &&
               <Badge key={category} variant={selectedCategory === category ? 'default' : 'outline'} className="cursor-pointer text-sm px-3 py-1.5" onClick={() => handleBadgeCategorySelect(category)}>{category} ({categoryCounts[category] || 0})</Badge>
             ))}
@@ -554,7 +600,7 @@ export default function NovelBrowser({ initialNovels }: NovelBrowserProps) {
         <Card>
             <CardHeader><CardTitle className="text-lg flex items-center"><Tags className="mr-2 h-5 w-5" />Etiquetas</CardTitle></CardHeader>
             <CardContent className="flex flex-wrap gap-2">
-                <Badge variant={selectedTag === null ? 'default' : 'outline'} className="cursor-pointer text-sm px-3 py-1.5" onClick={() => handleBadgeTagSelect(null)}>Todas ({initialNovels.length})</Badge>
+                <Badge variant={selectedTag === null ? 'default' : 'outline'} className="cursor-pointer text-sm px-3 py-1.5" onClick={() => handleBadgeTagSelect(null)}>Todas ({globallyFilteredNovels.length})</Badge>
                 {allUniqueTags.map(tag => ((tagCounts[tag] > 0 || PREDEFINED_TAGS.includes(tag)) &&
                   <Badge key={tag} variant={selectedTag === tag ? 'default' : 'outline'} className="cursor-pointer text-sm px-3 py-1.5" onClick={() => handleBadgeTagSelect(tag)}>{tag} ({tagCounts[tag] || 0})</Badge>
                 ))}
@@ -563,7 +609,7 @@ export default function NovelBrowser({ initialNovels }: NovelBrowserProps) {
         <Card>
             <CardHeader><CardTitle className="text-lg flex items-center"><Shield className="mr-2 h-5 w-5" />Clasificación de Edad</CardTitle></CardHeader>
             <CardContent className="flex flex-wrap gap-2">
-                <Badge variant={selectedAgeRating === null ? 'default' : 'outline'} className="cursor-pointer text-sm px-3 py-1.5" onClick={() => handleBadgeAgeRatingSelect(null)}>Todas ({initialNovels.length})</Badge>
+                <Badge variant={selectedAgeRating === null ? 'default' : 'outline'} className="cursor-pointer text-sm px-3 py-1.5" onClick={() => handleBadgeAgeRatingSelect(null)}>Todas ({globallyFilteredNovels.length})</Badge>
                 {AGE_RATING_VALUES.map(ar => ((ageRatingCounts[ar] > 0) &&
                   <Badge key={ar} variant={selectedAgeRating === ar ? 'default' : 'outline'} className="cursor-pointer text-sm px-3 py-1.5" onClick={() => handleBadgeAgeRatingSelect(ar)}>{ageRatingLabels[ar]} ({ageRatingCounts[ar] || 0})</Badge>
                 ))}
@@ -572,7 +618,7 @@ export default function NovelBrowser({ initialNovels }: NovelBrowserProps) {
         <Card>
             <CardHeader><CardTitle className="text-lg flex items-center"><ClockIcon className="mr-2 h-5 w-5" />Estado de la Novela</CardTitle></CardHeader>
             <CardContent className="flex flex-wrap gap-2">
-                <Badge variant={selectedStatus === null ? 'default' : 'outline'} className="cursor-pointer text-sm px-3 py-1.5" onClick={() => handleBadgeStatusSelect(null)}>Todos ({initialNovels.length})</Badge>
+                <Badge variant={selectedStatus === null ? 'default' : 'outline'} className="cursor-pointer text-sm px-3 py-1.5" onClick={() => handleBadgeStatusSelect(null)}>Todos ({globallyFilteredNovels.length})</Badge>
                 {STATUS_VALUES.map(st => ((statusCounts[st] > 0) &&
                   <Badge key={st} variant={selectedStatus === st ? 'default' : 'outline'} className="cursor-pointer text-sm px-3 py-1.5" onClick={() => handleBadgeStatusSelect(st)}>{novelStatusLabels[st]} ({statusCounts[st] || 0})</Badge>
                 ))}
