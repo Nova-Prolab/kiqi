@@ -22,6 +22,7 @@ import { useReaderSettings } from '@/contexts/ReaderSettingsContext';
 import { useCustomTheme } from '@/contexts/CustomThemeContext';
 import { TARGET_LANGUAGES, type TargetLanguage } from '@/lib/types';
 import { useToast } from '@/hooks/use-toast';
+import { cn } from '@/lib/utils';
 
 interface GlobalSettingsSheetProps {
   isOpen: boolean;
@@ -30,9 +31,16 @@ interface GlobalSettingsSheetProps {
 
 const getCssVariableValue = (variable: string) => {
     if (typeof window === 'undefined') return '';
-    // This function will now run only on client, so window is safe
     return getComputedStyle(document.documentElement).getPropertyValue(variable).trim();
 };
+
+const isValidHslString = (hslString: string): boolean => {
+  if (!hslString) return false;
+  // Matches "H S% L%" with optional units and decimals.
+  const hslRegex = /^\s*(-?\d*\.?\d+)(deg|rad|turn)?\s+(-?\d*\.?\d+)%\s+(-?\d*\.?\d+)%\s*$/;
+  return hslRegex.test(hslString);
+}
+
 
 export default function GlobalSettingsSheet({ isOpen, onOpenChange }: GlobalSettingsSheetProps) {
   const { 
@@ -55,7 +63,6 @@ export default function GlobalSettingsSheet({ isOpen, onOpenChange }: GlobalSett
 
   useEffect(() => {
     if (isOpen) {
-      // When opening, initialize temp state from context or computed styles
       setTempColors({
         primary: colors.primary || getCssVariableValue('--primary'),
         background: colors.background || getCssVariableValue('--background'),
@@ -87,8 +94,6 @@ export default function GlobalSettingsSheet({ isOpen, onOpenChange }: GlobalSett
   
   const handleReset = () => {
       resetCustomTheme();
-      // After resetting, we need to read the default values from the DOM again
-      // a slight delay might be needed for styles to re-apply from CSS file
       setTimeout(() => {
         setTempColors({
           primary: getCssVariableValue('--primary'),
@@ -99,6 +104,22 @@ export default function GlobalSettingsSheet({ isOpen, onOpenChange }: GlobalSett
       }, 50);
       setTempRawCss('');
       toast({ title: "Personalización Restaurada", description: "Se han eliminado todos los estilos personalizados." });
+  };
+
+  const ColorInput = ({ label, id, value, onChange }: { label: string, id: string, value: string, onChange: (e: React.ChangeEvent<HTMLInputElement>) => void }) => {
+    const colorStyle = isValidHslString(value) ? `hsl(${value})` : 'transparent';
+    return (
+      <div className="space-y-1.5">
+        <Label htmlFor={id}>{label}</Label>
+        <div className="flex items-center gap-2">
+          <Input id={id} value={value} onChange={onChange} placeholder="Ej: 338 80% 65%" className="font-mono"/>
+          <div 
+            className={cn("h-9 w-10 shrink-0 rounded-md border-2", isValidHslString(value) ? 'border-border' : 'border-destructive')}
+            style={{ backgroundColor: colorStyle }}
+          />
+        </div>
+      </div>
+    );
   };
 
   return (
@@ -121,25 +142,13 @@ export default function GlobalSettingsSheet({ isOpen, onOpenChange }: GlobalSett
             <TabsContent value="appearance" className="m-0 p-4 space-y-6">
               <h3 className="font-semibold text-lg">Colores del Tema</h3>
               <p className="text-sm text-muted-foreground -mt-4">
-                Personaliza los colores principales de la interfaz. Introduce los valores HSL sin paréntesis (ej: <code className="bg-muted px-1 py-0.5 rounded">240 10% 3.9%</code>).
+                Personaliza los colores principales de la interfaz. Introduce los valores HSL sin paréntesis (ej: <code className="bg-muted px-1 py-0.5 rounded">240 10% 3.9%</code>). El cuadro mostrará una previsualización.
               </p>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                 <div>
-                    <Label htmlFor="primary-color">Primario</Label>
-                    <Input id="primary-color" value={tempColors.primary} onChange={e => handleColorChange('primary', e.target.value)} placeholder="Ej: 338 80% 65%"/>
-                 </div>
-                 <div>
-                    <Label htmlFor="background-color">Fondo</Label>
-                    <Input id="background-color" value={tempColors.background} onChange={e => handleColorChange('background', e.target.value)} placeholder="Ej: 0 0% 98%"/>
-                 </div>
-                 <div>
-                    <Label htmlFor="accent-color">Acento</Label>
-                    <Input id="accent-color" value={tempColors.accent} onChange={e => handleColorChange('accent', e.target.value)} placeholder="Ej: 58 85% 60%"/>
-                 </div>
-                 <div>
-                    <Label htmlFor="foreground-color">Texto Principal</Label>
-                    <Input id="foreground-color" value={tempColors.foreground} onChange={e => handleColorChange('foreground', e.target.value)} placeholder="Ej: 240 10% 20%"/>
-                 </div>
+                 <ColorInput label="Primario" id="primary-color" value={tempColors.primary} onChange={e => handleColorChange('primary', e.target.value)} />
+                 <ColorInput label="Fondo" id="background-color" value={tempColors.background} onChange={e => handleColorChange('background', e.target.value)} />
+                 <ColorInput label="Acento" id="accent-color" value={tempColors.accent} onChange={e => handleColorChange('accent', e.target.value)} />
+                 <ColorInput label="Texto Principal" id="foreground-color" value={tempColors.foreground} onChange={e => handleColorChange('foreground', e.target.value)} />
               </div>
               <Button onClick={applyThemeChanges} className="w-full">Aplicar Colores</Button>
             </TabsContent>
