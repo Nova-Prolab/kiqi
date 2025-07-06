@@ -1,7 +1,6 @@
 
 'use client';
 
-import type { ReaderTheme, ReaderFontSize, ReaderFontFamily, ReaderLineHeight, ReaderLetterSpacing, ReaderTextAlign, ReaderTextWidth, ReaderParagraphSpacing } from '@/lib/types';
 import { Button } from '@/components/ui/button';
 import {
   Settings2,
@@ -10,6 +9,7 @@ import {
   Maximize,
   Languages,
   Loader2,
+  Volume2
 } from 'lucide-react';
 import React, { Suspense } from 'react';
 import dynamic from 'next/dynamic';
@@ -39,13 +39,16 @@ interface ReaderControlsProps {
   onApplyTranslation: (translatedHtml: string) => void;
   onRevertToOriginal: () => void;
   isCurrentlyTranslated: boolean;
+  onFetchAudio: () => void;
+  isFetchingAudio: boolean;
 }
 
 
 function ReaderControls({
   chapterHtmlContent, onToggleImmersive, isImmersive, novelId,
   isVisibleInImmersiveMode, onHoverStateChange, onToggleSettingsSheet, isSettingsSheetOpen,
-  onApplyTranslation, onRevertToOriginal, isCurrentlyTranslated
+  onApplyTranslation, onRevertToOriginal, isCurrentlyTranslated,
+  onFetchAudio, isFetchingAudio
 }: ReaderControlsProps) {
   const [isSummaryDialogOpen, setIsSummaryDialogOpen] = React.useState(false);
   const [isTranslationDialogOpen, setIsTranslationDialogOpen] = React.useState(false);
@@ -139,6 +142,18 @@ function ReaderControls({
               isCurrentlyTranslated={isCurrentlyTranslated}
             />
           </Suspense>
+
+          <TooltipProvider delayDuration={100}>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button variant="ghost" size="icon" onClick={onFetchAudio} disabled={isFetchingAudio} aria-label="Escuchar Capítulo (IA)">
+                  {isFetchingAudio ? <Loader2 className="h-5 w-5 animate-spin" /> : <Volume2 />}
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent><p>Escuchar Capítulo (IA)</p></TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
+
           {isCurrentlyTranslated && (
             <TooltipProvider delayDuration={100}>
               <Tooltip>
@@ -171,4 +186,3 @@ function ReaderControls({
 }
 
 export default React.memo(ReaderControls);
-

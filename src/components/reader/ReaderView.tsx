@@ -8,6 +8,7 @@ import { useRecentlyRead } from '@/hooks/useRecentlyRead';
 import React, { useEffect, useRef, useState, useCallback } from 'react';
 import ReaderControls from './ReaderControls';
 import ReaderSettingsSheet from './ReaderSettingsSheet'; 
+import AudioPlayer from './AudioPlayer';
 import { Button } from '@/components/ui/button';
 import { ChevronLeft, ChevronRight, Home, Loader2 } from 'lucide-react';
 import Link from 'next/link';
@@ -16,6 +17,7 @@ import { Card } from '../ui/card';
 import { cn } from '@/lib/utils';
 import { useToast } from '@/hooks/use-toast';
 import { translateChapterAction } from '@/actions/translationActions';
+import { getAudioNarrationAction } from '@/actions/ttsActions';
 
 interface ReaderViewProps {
   novel: Novel;
@@ -55,6 +57,9 @@ export default function ReaderView({ novel, currentChapter }: ReaderViewProps) {
   const [isSettingsSheetOpen, setIsSettingsSheetOpen] = useState(false); 
   const [isNavigatingToChapter, setIsNavigatingToChapter] = useState(false);
 
+  const [audioSrc, setAudioSrc] = useState<string | null>(null);
+  const [isFetchingAudio, setIsFetchingAudio] = useState(false);
+
   const contentToRender = translatedContentForDisplay ?? currentChapter.content;
   const isCurrentlyTranslated = translatedContentForDisplay !== null;
 
@@ -78,8 +83,9 @@ export default function ReaderView({ novel, currentChapter }: ReaderViewProps) {
       });
     }
 
-    // Reset translation when chapter changes
-    setTranslatedContentForDisplay(null); 
+    // Reset state when chapter changes
+    setTranslatedContentForDisplay(null);
+    setAudioSrc(null);
 
     if (scrollViewportRef.current) {
       scrollViewportRef.current.scrollTop = 0;
@@ -98,12 +104,12 @@ export default function ReaderView({ novel, currentChapter }: ReaderViewProps) {
     }, 50);
 
     return () => clearTimeout(timer);
-  }, [currentChapter.id, novel?.id, isMounted, addRecentlyReadChapter]); // Simplified dependencies
+  }, [currentChapter.id, novel?.id, isMounted, addRecentlyReadChapter, loadPosition]); // loadPosition added
+
 
   // Effect for auto-translation
   useEffect(() => {
     const performAutoTranslation = async () => {
-      // Only run if mounted, auto-translate is on, a language is selected, and content isn't already translated
       if (isMounted && autoTranslate && autoTranslateLanguage && !isCurrentlyTranslated) {
         toast({
             title: "Traducción Automática en Progreso...",
@@ -130,7 +136,7 @@ export default function ReaderView({ novel, currentChapter }: ReaderViewProps) {
 
     performAutoTranslation();
     
-  }, [currentChapter.content, isMounted, autoTranslate, autoTranslateLanguage, toast]);
+  }, [currentChapter.content, isMounted, autoTranslate, autoTranslateLanguage, toast, isCurrentlyTranslated]);
 
 
   const debounceTimeoutRef = useRef<NodeJS.Timeout | null>(null);
@@ -139,7 +145,6 @@ export default function ReaderView({ novel, currentChapter }: ReaderViewProps) {
       clearTimeout(debounceTimeoutRef.current);
     }
     debounceTimeoutRef.current = setTimeout(() => {
-      // Only save position if we are viewing original content
       if (!translatedContentForDisplay) {
         savePosition(scrollTop);
       }
@@ -201,24 +206,54 @@ export default function ReaderView({ novel, currentChapter }: ReaderViewProps) {
   const handleApplyTranslation = (translatedHtml: string) => {
     setTranslatedContentForDisplay(translatedHtml);
     if (scrollViewportRef.current) {
-      scrollViewportRef.current.scrollTop = 0; // Scroll to top when applying translation
+      scrollViewportRef.current.scrollTop = 0;
     }
     toast({ title: "Traducción Aplicada", description: "Mostrando el capítulo traducido."});
   };
 
   const handleRevertToOriginal = () => {
     setTranslatedContentForDisplay(null);
-    // Scroll to saved position or top if no saved position
     const savedPosition = loadPosition();
     if (scrollViewportRef.current) {
         scrollViewportRef.current.scrollTop = savedPosition ?? 0;
     }
     toast({ title: "Contenido Original Restaurado"});
   };
+  
+  const handleFetchAudio = useCallback(async () => {
+    if (isFetchingAudio) return;
+
+    setIsFetchingAudio(true);
+    toast({
+      title: 'Generando audio...',
+      description: 'La IA está preparando la narración. Esto puede tardar unos segundos.',
+    });
+
+    try {
+      const result = await getAudioNarrationAction(currentChapter.content);
+      if (result.audioUrl) {
+        setAudioSrc(result.audioUrl);
+        toast({
+          title: '¡Audio listo!',
+          description: 'La narración del capítulo está lista para escuchar.',
+        });
+      } else {
+        throw new Error(result.error || 'Ocurrió un error desconocido.');
+      }
+    } catch (error: any) {
+      toast({
+        variant: 'destructive',
+        title: 'Error al generar audio',
+        description: error.message || 'No se pudo completar la solicitud.',
+      });
+      setAudioSrc(null);
+    } finally {
+      setIsFetchingAudio(false);
+    }
+  }, [currentChapter.content, isFetchingAudio, toast]);
 
   const handleChapterLinkClick = () => {
     setIsNavigatingToChapter(true);
-    // Actual navigation is handled by Link component
   };
 
 
@@ -293,6 +328,8 @@ export default function ReaderView({ novel, currentChapter }: ReaderViewProps) {
         onApplyTranslation={handleApplyTranslation}
         onRevertToOriginal={handleRevertToOriginal}
         isCurrentlyTranslated={isCurrentlyTranslated}
+        onFetchAudio={handleFetchAudio}
+        isFetchingAudio={isFetchingAudio}
       />
       
       <ReaderSettingsSheet 
@@ -336,6 +373,14 @@ export default function ReaderView({ novel, currentChapter }: ReaderViewProps) {
           </nav>
         </Card>
       </ScrollArea>
+      
+      {audioSrc && (
+        <AudioPlayer
+          src={audioSrc}
+          onClose={() => setAudioSrc(null)}
+          title={`Capítulo ${currentChapter.order}: ${currentChapter.title}`}
+        />
+      )}
     </div>
   );
 }
