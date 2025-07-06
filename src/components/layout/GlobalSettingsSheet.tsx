@@ -21,7 +21,7 @@ import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter, DialogClose } from '@/components/ui/dialog';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
-import { Palette, Languages, Code, AlertTriangle, RefreshCcw, Download as ImportIcon, Share as ExportIcon, ClipboardCopy, Check, FilterX as BlockIcon, X, UserCircle } from 'lucide-react';
+import { Palette, Languages, Code, AlertTriangle, RefreshCcw, Download as ImportIcon, Share as ExportIcon, ClipboardCopy, Check, FilterX as BlockIcon, X } from 'lucide-react';
 import { useReaderSettings } from '@/contexts/ReaderSettingsContext';
 import { useCustomTheme, type CustomColors, type CustomThemeData } from '@/contexts/CustomThemeContext';
 import { TARGET_LANGUAGES, type TargetLanguage, AGE_RATING_VALUES, STATUS_VALUES, AgeRating, NovelStatus } from '@/lib/types';
@@ -587,8 +587,6 @@ export default function GlobalSettingsSheet({ isOpen, onOpenChange }: GlobalSett
   const { 
     autoTranslate, setAutoTranslate, 
     autoTranslateLanguage, setAutoTranslateLanguage,
-    commentAuthorName, setCommentAuthorName,
-    commentAuthorAvatar, setCommentAuthorAvatar
   } = useReaderSettings();
   
   const { 
@@ -779,9 +777,8 @@ export default function GlobalSettingsSheet({ isOpen, onOpenChange }: GlobalSett
           </SheetDescription>
         </SheetHeader>
         <Tabs defaultValue="appearance" className="flex-grow flex flex-col">
-          <TabsList className="m-4 mx-auto grid w-full grid-cols-3 sm:grid-cols-5">
+          <TabsList className="m-4 mx-auto grid w-full grid-cols-2 sm:grid-cols-4">
             <TabsTrigger value="appearance"><Palette className="mr-2 h-4 w-4" />Apariencia</TabsTrigger>
-            <TabsTrigger value="identity"><UserCircle className="mr-2 h-4 w-4" />Identidad</TabsTrigger>
             <TabsTrigger value="translation"><Languages className="mr-2 h-4 w-4" />Traducción</TabsTrigger>
             <TabsTrigger value="content-filtering"><BlockIcon className="mr-2 h-4 w-4" />Filtrado</TabsTrigger>
             <TabsTrigger value="advanced-css"><Code className="mr-2 h-4 w-4" />CSS</TabsTrigger>
@@ -827,39 +824,6 @@ export default function GlobalSettingsSheet({ isOpen, onOpenChange }: GlobalSett
                 </div>
               </div>
 
-            </TabsContent>
-
-            <TabsContent value="identity" className="m-0 space-y-6">
-                <div className="space-y-2">
-                    <h3 className="font-semibold text-lg">Identidad para Comentarios</h3>
-                    <p className="text-sm text-muted-foreground">
-                    Establece un nombre y un avatar predeterminados para cuando dejes comentarios. Esto se guardará en tu navegador.
-                    </p>
-                </div>
-                <Separator />
-                <div className="space-y-4">
-                    <div className="space-y-2">
-                        <Label htmlFor="comment-name-input">Nombre Predeterminado</Label>
-                        <Input
-                            id="comment-name-input"
-                            value={commentAuthorName || ''}
-                            onChange={(e) => setCommentAuthorName(e.target.value)}
-                            placeholder="Tu nombre o apodo..."
-                        />
-                    </div>
-                    <div className="space-y-2">
-                        <Label htmlFor="comment-avatar-input">URL de tu Avatar</Label>
-                        <Input
-                            id="comment-avatar-input"
-                            value={commentAuthorAvatar || ''}
-                            onChange={(e) => setCommentAuthorAvatar(e.target.value)}
-                            placeholder="https://i.imgur.com/..."
-                        />
-                        <p className="text-xs text-muted-foreground">
-                            Pega la URL de una imagen (ej. de Imgur). Déjalo en blanco para usar las iniciales de tu nombre.
-                        </p>
-                    </div>
-                </div>
             </TabsContent>
             
             <TabsContent value="translation" className="m-0 space-y-6">

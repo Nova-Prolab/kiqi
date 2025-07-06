@@ -119,8 +119,10 @@ export default function AppHeader() {
            <Button variant="ghost" size="icon" className="sm:hidden" onClick={handleDiscordButtonClick} aria-label="Unirse a Discord">
               <DiscordIcon className="h-5 w-5" />
           </Button>
-          <Button variant="ghost" size="icon" onClick={() => setIsSettingsSheetOpen(true)} aria-label="Abrir perfil y configuración">
-            <User className="h-5 w-5" />
+          <Button variant="ghost" size="icon" asChild aria-label="Editar Perfil">
+            <Link href="/profile">
+              <User className="h-5 w-5" />
+            </Link>
           </Button>
           <ModeToggle />
           <Button variant="ghost" size="icon" onClick={() => setIsSettingsSheetOpen(true)} aria-label="Abrir configuración global">
