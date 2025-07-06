@@ -133,3 +133,10 @@ export const TARGET_LANGUAGES = [
 ] as const;
 
 export type TargetLanguage = typeof TARGET_LANGUAGES[number];
+
+export interface Comment {
+  id: string;
+  name: string;
+  content: string;
+  timestamp: number;
+}

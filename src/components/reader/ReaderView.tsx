@@ -17,6 +17,7 @@ import { cn } from '@/lib/utils';
 import { useToast } from '@/hooks/use-toast';
 import { translateChapterAction } from '@/actions/translationActions';
 import { useTextToSpeech } from '@/hooks/useTextToSpeech';
+import ChapterComments from './ChapterComments';
 
 interface ReaderViewProps {
   novel: Novel;
@@ -341,6 +342,11 @@ export default function ReaderView({ novel, currentChapter }: ReaderViewProps) {
         </Card>
       </ScrollArea>
       
+      {!isImmersive && (
+         <div className={`mx-auto pb-4 px-2 ${textWidthClass}`}>
+           <ChapterComments novelId={novel.id} chapterId={currentChapter.id} />
+        </div>
+      )}
     </div>
   );
 }
