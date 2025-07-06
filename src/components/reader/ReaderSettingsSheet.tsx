@@ -233,4 +233,3 @@ export default function ReaderSettingsSheet({ isOpen, onOpenChange }: ReaderSett
     </Sheet>
   );
 }
-

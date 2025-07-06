@@ -14,8 +14,8 @@ import type {
   ReaderParagraphSpacing
 } from '@/lib/types';
 import { 
-  Type, Columns, Palette, Sun, Moon, Coffee, MoonStar, FileTextIcon as PaperIcon, Trees, Paintbrush, 
-  CaseSensitive, Text, AlignLeft, AlignJustify, ALargeSmall, Pilcrow, ArrowLeftRight, Baseline 
+  Type, Columns, Palette, RefreshCcw, Sun, Moon, Coffee, MoonStar, FileTextIcon as PaperIcon, Trees, Paintbrush, 
+  CaseSensitive, Text, AlignLeft, AlignJustify, ALargeSmall, Pilcrow, ArrowLeftRight, Baseline, Settings2 
 } from 'lucide-react';
 
 
@@ -304,4 +304,3 @@ export const useReaderSettings = () => {
   }
   return context;
 };
-
