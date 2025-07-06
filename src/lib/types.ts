@@ -142,4 +142,6 @@ export interface Comment {
   avatarUrl?: string;
   content: string;
   timestamp: number;
+  likes: number;
+  replies: Comment[];
 }

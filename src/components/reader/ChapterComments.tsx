@@ -1,20 +1,47 @@
 
 'use client';
 
-import { useState, useTransition, useEffect } from 'react';
+import { useState, useTransition, useEffect, useCallback, FormEvent } from 'react';
 import { formatDistanceToNow } from 'date-fns';
 import { es } from 'date-fns/locale';
 import type { Comment } from '@/lib/types';
-import { addCommentAction, fetchCommentsAction } from '@/actions/commentActions';
+import { addCommentAction, fetchCommentsAction, addReplyAction, likeCommentAction } from '@/actions/commentActions';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Textarea } from '@/components/ui/textarea';
 import { Input } from '@/components/ui/input';
-import { Loader2, MessageCircle, User, AlertTriangle, Send } from 'lucide-react';
+import { Loader2, MessageCircle, AlertTriangle, Send, Heart, MessageSquare } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
-import { Separator } from '../ui/separator';
 import { useReaderSettings } from '@/contexts/ReaderSettingsContext';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { cn } from '@/lib/utils';
+
+
+// Helper functions for optimistic updates
+const updateLikesInTree = (comments: Comment[], commentId: string): Comment[] => {
+    return comments.map(c => {
+        if (c.id === commentId) {
+            return { ...c, likes: (c.likes || 0) + 1 };
+        }
+        if (c.replies?.length > 0) {
+            return { ...c, replies: updateLikesInTree(c.replies, commentId) };
+        }
+        return c;
+    });
+};
+
+const addReplyInTree = (comments: Comment[], parentId: string, newReply: Comment): Comment[] => {
+    return comments.map(c => {
+        if (c.id === parentId) {
+            const updatedReplies = [newReply, ...(c.replies || [])];
+            return { ...c, replies: updatedReplies };
+        }
+        if (c.replies?.length > 0) {
+            return { ...c, replies: addReplyInTree(c.replies, parentId, newReply) };
+        }
+        return c;
+    });
+};
 
 
 interface ChapterCommentsProps {
@@ -28,9 +55,11 @@ export default function ChapterComments({ novelId, chapterId }: ChapterCommentsP
   const [isSubmitting, startSubmittingTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
   
-  const { commentAuthorName, commentAuthorAvatar } = useReaderSettings();
+  const { commentAuthorName, setCommentAuthorName, commentAuthorAvatar } = useReaderSettings();
   const [name, setName] = useState('');
   const [commentText, setCommentText] = useState('');
+  const [replyingTo, setReplyingTo] = useState<string | null>(null);
+  
   const { toast } = useToast();
 
   useEffect(() => {
@@ -51,35 +80,158 @@ export default function ChapterComments({ novelId, chapterId }: ChapterCommentsP
     });
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleAddTopLevelComment = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!name.trim() || !commentText.trim()) {
-      toast({
-        variant: 'destructive',
-        title: 'Error de Validación',
-        description: 'Por favor, introduce tu nombre y un comentario.',
-      });
+      toast({ variant: 'destructive', title: 'Error', description: 'Nombre y comentario son obligatorios.' });
       return;
     }
     
     startSubmittingTransition(async () => {
+      const originalComments = comments;
+      const optimisticComment: Comment = {
+        id: `temp-${Date.now()}`,
+        name, content: commentText, avatarUrl: commentAuthorAvatar,
+        timestamp: Date.now(), likes: 0, replies: [],
+      };
+      setComments([optimisticComment, ...(comments || [])]);
+      setCommentText('');
+
       const result = await addCommentAction(novelId, chapterId, name, commentText, commentAuthorAvatar);
+      
       if (result.newComment) {
-        setComments(prev => [result.newComment!, ...(prev || [])]);
-        setCommentText('');
-        toast({
-          title: '¡Comentario Publicado!',
-          description: 'Tu comentario ha sido añadido.',
-        });
+        setComments(prev => (prev || []).map(c => c.id === optimisticComment.id ? result.newComment! : c));
+        toast({ title: '¡Comentario Publicado!' });
       } else {
-        toast({
-          variant: 'destructive',
-          title: 'Error al Publicar',
-          description: result.error || 'No se pudo publicar tu comentario.',
-        });
+        setComments(originalComments);
+        toast({ variant: 'destructive', title: 'Error', description: result.error });
       }
     });
   };
+
+  const handleLike = (commentId: string) => {
+    const originalComments = comments;
+    setComments(prev => prev ? updateLikesInTree(prev, commentId) : null);
+
+    startSubmittingTransition(async () => {
+      const result = await likeCommentAction(novelId, chapterId, commentId);
+      if (result.error) {
+          setComments(originalComments);
+          toast({ variant: 'destructive', title: 'Error', description: `No se pudo dar Me Gusta: ${result.error}`});
+      }
+    });
+  };
+
+  const handleAddReply = (parentId: string, replyContent: string) => {
+    if (!name.trim() || !replyContent.trim()) {
+      toast({ variant: 'destructive', title: 'Error', description: 'Nombre y comentario son obligatorios.'});
+      return;
+    }
+
+    startSubmittingTransition(async () => {
+        const originalComments = comments;
+        const optimisticReply: Comment = {
+            id: `temp-reply-${Date.now()}`,
+            name, content: replyContent, avatarUrl: commentAuthorAvatar,
+            timestamp: Date.now(), likes: 0, replies: [],
+        };
+        setComments(prev => prev ? addReplyInTree(prev, parentId, optimisticReply) : null);
+        setReplyingTo(null);
+
+        const result = await addReplyAction(novelId, chapterId, parentId, name, replyContent, commentAuthorAvatar);
+        
+        if (result.newReply) {
+            setComments(prev => (prev || []).map(c => {
+                const newC = { ...c };
+                findAndMutateComment([newC], optimisticReply.id, (comment) => {
+                    Object.assign(comment, result.newReply);
+                });
+                return newC;
+            }));
+        } else {
+            setComments(originalComments);
+            toast({ variant: 'destructive', title: 'Error', description: `No se pudo responder: ${result.error}` });
+        }
+    });
+  };
+
+
+  const CommentItem = ({ comment, level }: { comment: Comment; level: number }) => {
+    const [isReplySubmitting, startReplyTransition] = useTransition();
+
+    const onReplySubmit = (e: FormEvent<HTMLFormElement>) => {
+      e.preventDefault();
+      const form = e.currentTarget;
+      const contentInput = form.elements.namedItem('replyContent') as HTMLTextAreaElement;
+      const content = contentInput.value;
+      if (content.trim()) {
+        startReplyTransition(() => {
+            handleAddReply(comment.id, content);
+            contentInput.value = '';
+        });
+      }
+    };
+    
+    return (
+       <div className={cn("flex items-start gap-3 sm:gap-4", level > 0 && "mt-4")}>
+          <Avatar className="mt-1">
+            <AvatarImage src={comment.avatarUrl} alt={comment.name} />
+            <AvatarFallback>{comment.name.charAt(0).toUpperCase()}</AvatarFallback>
+          </Avatar>
+          <div className="flex-grow">
+              <div className="bg-muted/40 rounded-lg px-4 py-3">
+                  <div className="flex items-baseline gap-2">
+                      <p className="font-semibold text-foreground">{comment.name}</p>
+                      <p className="text-xs text-muted-foreground">
+                          · {formatDistanceToNow(new Date(comment.timestamp), { addSuffix: true, locale: es })}
+                      </p>
+                  </div>
+                  <p className="text-foreground/90 mt-1 whitespace-pre-wrap text-sm sm:text-base">{comment.content}</p>
+              </div>
+              <div className="mt-2 flex items-center gap-4 text-xs text-muted-foreground font-medium">
+                  <button onClick={() => handleLike(comment.id)} className="flex items-center gap-1.5 group hover:text-red-500 transition-colors">
+                      <Heart size={14} className="group-hover:fill-red-500" />
+                      <span>{comment.likes || 0}</span>
+                  </button>
+                  <button onClick={() => setReplyingTo(replyingTo === comment.id ? null : comment.id)} className="flex items-center gap-1.5 hover:text-primary transition-colors">
+                      <MessageSquare size={14} />
+                      <span>Responder</span>
+                  </button>
+              </div>
+
+              {replyingTo === comment.id && (
+                  <form onSubmit={onReplySubmit} className="mt-3 flex items-start gap-3">
+                      <Avatar className="h-9 w-9">
+                          <AvatarImage src={commentAuthorAvatar} alt={name || 'Tu'} />
+                          <AvatarFallback>{(name || '?').charAt(0).toUpperCase()}</AvatarFallback>
+                      </Avatar>
+                      <div className="flex-grow space-y-2">
+                         <Textarea name="replyContent" placeholder="Escribe una respuesta..." required rows={2} className="bg-background"/>
+                         <div className="flex justify-end gap-2">
+                             <Button type="button" variant="ghost" size="sm" onClick={() => setReplyingTo(null)}>Cancelar</Button>
+                             <Button type="submit" size="sm" disabled={isReplySubmitting}>
+                                 {isReplySubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                                 Responder
+                             </Button>
+                         </div>
+                      </div>
+                  </form>
+              )}
+              
+              {comment.replies && comment.replies.length > 0 && (
+                <div className="mt-4 pl-4 border-l-2 border-muted">
+                    <div className="space-y-4">
+                        {comment.replies.map(reply => (
+                            <CommentItem key={reply.id} comment={reply} level={level + 1} />
+                        ))}
+                    </div>
+                </div>
+              )}
+          </div>
+      </div>
+    );
+  };
+
 
   return (
     <Card className="shadow rounded-lg border mt-6">
@@ -101,7 +253,6 @@ export default function ChapterComments({ novelId, chapterId }: ChapterCommentsP
         ) : isLoading ? (
           <div className="flex justify-center items-center py-8">
             <Loader2 className="h-8 w-8 text-primary animate-spin" />
-            <p className="ml-4 text-muted-foreground">Cargando comentarios...</p>
           </div>
         ) : error ? (
            <div className="text-center py-8 text-destructive bg-destructive/10 rounded-md">
@@ -112,15 +263,15 @@ export default function ChapterComments({ novelId, chapterId }: ChapterCommentsP
             </div>
         ) : (
           <div className="space-y-8">
-            <form onSubmit={handleSubmit} className="flex items-start gap-4 p-4 border rounded-lg bg-muted/40">
-              <Avatar className="hidden sm:block">
-                <AvatarImage src={commentAuthorAvatar} alt={name} />
+            <form onSubmit={handleAddTopLevelComment} className="flex items-start gap-4">
+              <Avatar>
+                <AvatarImage src={commentAuthorAvatar} alt={name || 'Tu'} />
                 <AvatarFallback>{(name || '?').charAt(0).toUpperCase()}</AvatarFallback>
               </Avatar>
               <div className="w-full space-y-3">
                 <Input
                   value={name}
-                  onChange={(e) => setName(e.target.value)}
+                  onChange={(e) => setCommentAuthorName(e.target.value)}
                   placeholder="Tu nombre o apodo..."
                   required
                   className="font-semibold bg-background"
@@ -142,30 +293,9 @@ export default function ChapterComments({ novelId, chapterId }: ChapterCommentsP
               </div>
             </form>
             
-            <div>
-                <h3 className="font-semibold text-lg mb-4">
-                    {comments.length > 0 ? `Comentarios (${comments.length})` : 'Aún no hay comentarios'}
-                </h3>
+            <div className="space-y-6">
                 {comments.length > 0 ? (
-                    <div className="space-y-6 max-h-[60vh] overflow-y-auto pr-3 -mr-3">
-                      {comments.map(comment => (
-                          <div key={comment.id} className="flex items-start gap-3 sm:gap-4">
-                              <Avatar>
-                                <AvatarImage src={comment.avatarUrl} alt={comment.name} />
-                                <AvatarFallback>{comment.name.charAt(0).toUpperCase()}</AvatarFallback>
-                              </Avatar>
-                              <div className="flex-grow rounded-lg bg-muted/40 px-4 py-3">
-                                  <div className="flex items-baseline gap-2">
-                                      <p className="font-semibold text-foreground">{comment.name}</p>
-                                      <p className="text-xs text-muted-foreground">
-                                          · {formatDistanceToNow(new Date(comment.timestamp), { addSuffix: true, locale: es })}
-                                      </p>
-                                  </div>
-                                  <p className="text-foreground/90 mt-1 whitespace-pre-wrap text-sm sm:text-base">{comment.content}</p>
-                              </div>
-                          </div>
-                      ))}
-                    </div>
+                    comments.map(comment => <CommentItem key={comment.id} comment={comment} level={0} />)
                 ) : (
                     <p className="text-center text-muted-foreground py-6">Sé el primero en comentar.</p>
                 )}
